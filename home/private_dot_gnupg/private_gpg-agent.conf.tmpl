@@ -15,7 +15,7 @@ max-cache-ttl-ssh 120
 {{ if eq .chezmoi.os "darwin" -}}
 pinentry-program /opt/homebrew/bin/pinentry-mac
 {{ else -}}
-pinentry-program /usr/bin/pinentry-qt
+pinentry-program /usr/bin/pinentry
 {{ end -}}
 # https://developers.yubico.com/PGP/SSH_authentication/Windows.html
 #enable-win32-openssh-support
