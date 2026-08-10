@@ -2,3 +2,7 @@
 .config/fish/functions/showfiles.fish
 .config/fish/functions/hidefiles.fish
 {{ end }}
+
+{{ if not (hasKey . "work") }}
+.config/git/config.work.inc
+{{ end }}

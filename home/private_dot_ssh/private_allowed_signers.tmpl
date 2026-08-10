@@ -1,0 +1,6 @@
+{{ if hasKey . "work" -}}
+{{ .work.allowed_signers | trim }}
+{{ end -}}
+{{ if hasKey . "personal" -}}
+{{ .personal.allowed_signers | trim }}
+{{ end -}}

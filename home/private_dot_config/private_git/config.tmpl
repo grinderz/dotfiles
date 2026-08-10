@@ -1,0 +1,119 @@
+{{ if hasKey . "work" -}}
+{{ .work.git_includes }}
+{{ end -}}
+
+[includeIf "hasconfig:remote.*.url:git@github.com:grinderz/**"]
+    path = "config.github.inc"
+
+[includeIf "hasconfig:remote.*.url:git@gitlab.com:grinderz/**"]
+    path = "config.gitlab.inc"
+
+[core]
+	autocrlf = input
+	editor = nvim
+	whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+	pager = delta
+
+[gpg "ssh"]
+    allowedSignersFile = ~/.ssh/allowed_signers
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+
+[diff]
+	algorithm = histogram
+	colorMoved = plain
+	renames = true
+	tool = vimdiff
+
+[difftool]
+	prompt = false
+
+[push]
+	autoSetupRemote = true
+	followTags = true
+
+[fetch]
+	prune = true
+	pruneTags = true
+	all = true
+
+[rebase]
+	autoSquash = true
+	updateRefs = true
+
+[merge]
+    tool = vimdiff
+
+[column]
+	ui = auto
+
+[branch]
+	sort = -committerdate
+
+[tag]
+	sort = version:refname
+
+[color]
+	ui = auto
+
+[color "branch"]
+	current = yellow bold
+	local = green bold
+	remote = cyan bold
+
+[color "diff"]
+	meta = yellow bold
+	frag = magenta bold
+	old = red bold
+	new = green bold
+	whitespace = red reverse
+
+[color "status"]
+	added = green bold
+	changed = yellow bold
+	untracked = red bold
+
+[init]
+    defaultBranch = master
+
+[checkout]
+	defaultRemote = origin
+
+[rerere]
+	enabled = 1
+	autoupdate = 1
+
+[sequence]
+	editor = interactive-rebase-tool
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+	features = line-numbers decorations
+	dark = true
+	side-by-side = false
+	true-color = always
+    navigate = true  # use n and N to move between diff sections
+
+[delta "decorations"]
+	minus-style = red bold normal
+	plus-style = green bold normal
+	minus-emph-style = white bold red
+	minus-non-emph-style = red bold normal
+	plus-emph-style = white bold green
+	plus-non-emph-style = green bold normal
+	file-style = yellow bold none
+	file-decoration-style = yellow box
+	hunk-header-style = magenta bold
+	hunk-header-decoration-style = magenta box
+	minus-empty-line-marker-style = normal normal
+	plus-empty-line-marker-style = normal normal
+	line-numbers-right-format = "{np:^4}│ "
+
+[alias]
+    tagm = tag -a

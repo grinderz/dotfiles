@@ -1,0 +1,19 @@
+[user]
+    email = {{ .work.email }}
+    name = {{ .work.name }}
+    signingKey = {{ .work.git_signing_key }}
+
+[commit]
+    gpgSign = false
+    signoff = true
+
+[tag]
+    gpgSign = false
+    signoff = true
+
+[push]
+    gpgSign = false
+    signoff = false
+
+[gpg]
+    format = ssh

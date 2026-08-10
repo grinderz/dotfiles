@@ -4,7 +4,7 @@ Personal machine configuration. Successor to `desktop-playbook` (archived, Ansib
 
 Two tools, split by scope:
 
-* **chezmoi** (`home/`) — user dotfiles: fish, ssh client, etc.
+* **chezmoi** (`home/`) — user dotfiles: fish, ssh client, git, gpg, etc.
   Templates use `.chezmoi.os` / `.chezmoi.hostname` instead of Ansible facts.
 * **pyinfra** (`infra/`) — system state: packages, `/etc`, services.
   Agentless over ssh, jinja2 templates carried over from the old roles.
@@ -34,20 +34,33 @@ Makefile). Requires pyinfra >= 3.10 (agent-held sk keys, PR 1858).
 
 ## Private data
 
-Work and VPS specifics never enter the repo. Templates guard on machine-local
-data from `~/.config/chezmoi/chezmoi.toml`:
+Identity (name/emails/signing keys), work and VPS specifics never enter the
+repo. Templates guard on machine-local data from
+`~/.config/chezmoi/chezmoi.toml`:
 
 ```toml
 [data.work]
+name = "..."
+email = "..."
+git_signing_key = "~/.ssh/..."
+git_includes = """..."""    # verbatim [includeIf] git config blocks
+allowed_signers = """..."""
 okd_url = "..."
-ssh_hosts = """..."""   # verbatim ssh Host blocks
+ssh_hosts = """..."""       # verbatim ssh Host blocks
+
+[data.personal]
+name = "..."
+email = "..."
+git_signing_key = "~/.ssh/..."
+allowed_signers = """..."""
 
 [data.vps]
 ssh_hosts = """..."""
 ```
 
 Machines without a table simply render without those sections
-(`{{ if hasKey . "work" }}`).
+(`{{ if hasKey . "work" }}`); `.config/git/config.work.inc` is not even
+created (see `home/.chezmoiignore`).
 
 ## Bootstrap of a new machine
 
@@ -73,6 +86,9 @@ infra/
 |---|---|---|
 | fish | `home/.../fish/` | done (pilot) |
 | sshclient | `home/private_dot_ssh/` | done |
+| git | `home/.../git/`, `home/private_dot_ssh/` (allowed_signers) | done |
+| gpg | `home/private_dot_gnupg/` | done |
+| zellij | `home/.../zellij/` | done |
 | pacman | `infra/deploys/pacman.py` | done (pilot) |
 | systemd | `infra/deploys/systemd.py` | done (pilot) |
 | sublime | `infra/deploys/sublime.py` | done |
@@ -84,4 +100,8 @@ Notes:
   Old `# BEGIN/END ANSIBLE MANAGED BLOCK ...` markers must be removed by hand once.
 * fish functions live in `functions/` (autoloaded); macOS-only ones are
   excluded on other systems via `home/.chezmoiignore`.
+* git: `config.mts.inc` was renamed to `config.work.inc` — remove the old
+  file from `~/.config/git/` by hand once.
+* gpg: pinentry is picked per OS in `gpg-agent.conf.tmpl` (pinentry-mac on
+  macOS, `/usr/bin/pinentry` elsewhere).
 * OpenBSD hosts stay on the old repo until migrated.

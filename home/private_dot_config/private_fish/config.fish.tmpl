@@ -35,17 +35,25 @@ if status is-interactive
 
     fish_add_path (go env GOPATH)/bin
 
-    ## Alias
+    ## Abbr
 
-    alias kk="kubectl"
-    alias ls="lsd"
+    abbr -a vim 'nvim'
+    abbr -a kk 'kubectl'
+    abbr -a ls 'eza --icons --group-directories-first'
+
+{{ if eq .chezmoi.os "darwin" }}
+    abbr -a ql 'qlmanage -p'
+    abbr -a cpwd 'pwd | pbcopy'
+    abbr -a flushdns 'sudo dscacheutil -flushcache; and sudo killall -HUP mDNSResponder'
+    abbr -a ports 'lsof -iTCP -sTCP:LISTEN -n -P'
+{{- end }}
 
     ## Plugins
 
     fzf --fish | source
     # tv init fish | source
-    pyenv init - fish | source
-    pyenv virtualenv-init - | source
+    #pyenv init - fish | source
+    #pyenv virtualenv-init - | source
     direnv hook fish | source
 
     ##
@@ -57,13 +65,3 @@ if status is-interactive
 
     set fish_greeting
 end
-
-abbr -a vim 'nvim'
-abbr -a ls 'eza --icons --group-directories-first'
-
-{{- if eq .chezmoi.os "darwin" }}
-abbr -a ql 'qlmanage -p'
-abbr -a cpwd 'pwd | pbcopy'
-abbr -a flushdns 'sudo dscacheutil -flushcache; and sudo killall -HUP mDNSResponder'
-abbr -a ports 'lsof -iTCP -sTCP:LISTEN -n -P'
-{{- end }}
