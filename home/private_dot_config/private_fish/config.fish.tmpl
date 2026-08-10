@@ -1,0 +1,69 @@
+if status is-interactive
+    # Commands to run in interactive sessions can go here
+
+    ## Envs
+
+    set -x LC_ALL en_US.UTF-8
+    set -x LANG en_US.UTF-8
+    set -x GOPATH $HOME/go
+    set -x PASSWORD_STORE_DIR $HOME/sync/pass
+    set -x --path KUBECONFIG $HOME/.kube/config $HOME/.kube/*.conf
+    set -x GPG_TTY (tty)
+    set -x SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
+
+{{ if hasKey . "work" }}
+    set -x OKD_TOKEN_URL "{{ .work.okd_url }}"
+    set -x OKD_TOKEN_USER_ID {{ .work.okd_user }}
+    set -x OKD_TOKEN_API_URL "{{ .work.okd_api_url }}"
+    set -x OKD_TOKEN_PASS_PATH "{{ .work.okd_pass_path }}"
+
+{{ if eq .chezmoi.os "darwin" }}
+    set -x OKD_TOKEN_GREP ggrep
+{{ else if eq .chezmoi.os "linux" }}
+    set -x OKD_TOKEN_GREP grep
+{{- end }}
+{{- end }}
+
+    ## Path
+
+{{ if eq .chezmoi.os "darwin" }}
+    fish_add_path (brew --prefix)/opt/make/libexec/gnubin
+    fish_add_path (brew --prefix)/opt/coreutils/libexec/gnubin
+    fish_add_path (brew --prefix)/bin
+    fish_add_path (brew --prefix)/sbin
+{{- end }}
+
+    fish_add_path (go env GOPATH)/bin
+
+    ## Alias
+
+    alias kk="kubectl"
+    alias ls="lsd"
+
+    ## Plugins
+
+    fzf --fish | source
+    # tv init fish | source
+    pyenv init - fish | source
+    pyenv virtualenv-init - | source
+    direnv hook fish | source
+
+    ##
+
+{{ if eq .chezmoi.os "darwin" }}
+    gpgconf --launch gpg-agent
+    gpg-connect-agent updatestartuptty /bye > /dev/null
+{{- end }}
+
+    set fish_greeting
+end
+
+abbr -a vim 'nvim'
+abbr -a ls 'eza --icons --group-directories-first'
+
+{{- if eq .chezmoi.os "darwin" }}
+abbr -a ql 'qlmanage -p'
+abbr -a cpwd 'pwd | pbcopy'
+abbr -a flushdns 'sudo dscacheutil -flushcache; and sudo killall -HUP mDNSResponder'
+abbr -a ports 'lsof -iTCP -sTCP:LISTEN -n -P'
+{{- end }}

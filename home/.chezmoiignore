@@ -1,0 +1,4 @@
+{{ if ne .chezmoi.os "darwin" }}
+.config/fish/functions/showfiles.fish
+.config/fish/functions/hidefiles.fish
+{{ end }}
