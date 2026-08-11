@@ -1,0 +1,15 @@
+[Match]
+Name={{ net.match_name }}
+
+[Link]
+{% if net.get("required_for_online") %}RequiredForOnline=routable{% else %}#RequiredForOnline=routable{% endif %}
+
+[Network]
+DHCP=yes
+{% if net.get("ignore_carrier_loss") %}IgnoreCarrierLoss=yes
+{% endif %}
+[DHCPv4]
+RouteMetric={{ net.metric }}
+
+[IPv6AcceptRA]
+RouteMetric={{ net.metric }}

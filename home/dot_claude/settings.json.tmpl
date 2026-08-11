@@ -1,0 +1,58 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": []
+  },
+  "model": "claude-fable-5[1m]",
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+{{- if eq .chezmoi.os "darwin" }}
+            "command": "jq -r '.message' | xargs -I {} terminal-notifier -title 'Claude Code' -message \"{}\" -sound Glass -group claude-code"
+{{- else }}
+            "command": "jq -r '.message' | xargs -I {} notify-send 'Claude Code' \"{}\""
+{{- end }}
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+{{- if eq .chezmoi.os "darwin" }}
+            "command": "terminal-notifier -title 'Claude Code' -message \"Done in $(basename $(pwd))\" -sound Hero -group claude-code"
+{{- else }}
+            "command": "notify-send 'Claude Code' \"Done in $(basename $(pwd))\""
+{{- end }}
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "caveman@caveman": true,
+    "gopls-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark"
+}

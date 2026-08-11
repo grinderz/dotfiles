@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -o errtrace -o pipefail -o noclobber -o errexit -o nounset
+
+{% if debug %}
+set -x
+{% endif %}
+
+export OC_IP4_DNS="$INTERNAL_IP4_DNS"
+{% if not profile.internal_ip4_dns %}
+unset INTERNAL_IP4_DNS
+{% endif %}
+
+# Set up split tunneling
+{% for tun_split in profile.cisco_split_inc %}
+export CISCO_SPLIT_INC={{ tun_split.inc }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_ADDR={{ tun_split.addr }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_MASK={{ tun_split.mask }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_MASKLEN={{ tun_split.masklen }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_PROTOCOL={{ tun_split.protocol }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_SPORT={{ tun_split.sport }}
+export CISCO_SPLIT_INC_{{ tun_split.index }}_DPORT={{ tun_split.dport }}
+{% endfor %}
+
+
+export OC_VPN_NAME="{{ profile.name }}"
+exec "{{ vpnc_script_path }}" "$@"

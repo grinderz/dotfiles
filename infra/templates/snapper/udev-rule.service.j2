@@ -1,0 +1,10 @@
+[Unit]
+Description=Run systemd-udev-rule-{{ mount.name }}.sh
+Requires={{ mount_unit }}
+After={{ mount_unit }}
+
+[Service]
+ExecStart=/usr/local/bin/systemd-udev-rule-{{ mount.name }}.sh
+
+[Install]
+WantedBy={{ mount_unit }}

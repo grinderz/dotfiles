@@ -1,0 +1,25 @@
+timestamp_format        long
+transaction_log         /var/log/btrbk.log
+lockfile                /run/lock/btrbk.lock
+{% if conf.ssh %}
+ssh_identity            {{ conf.ssh.identity }}
+ssh_user                {{ conf.ssh.user }}
+{% endif %}
+snapshot_preserve_min   {{ conf.snapshot_preserve_min }}
+snapshot_preserve       {{ conf.snapshot_preserve }}
+
+target_preserve_min     {{ conf.target_preserve_min }}
+target_preserve         {{ conf.target_preserve }}
+
+volume {{ conf.volume }}
+  snapshot_dir {{ conf.snapshot_dir }}
+{% for sv in conf.subvolumes %}
+  subvolume {{ sv.name }}
+    snapshot_name {{ sv.snapshot_name }}
+{%- for t in sv.targets %}
+    target {{ t.path }}
+{%- if t.group %}
+      group {{ t.group }}
+{%- endif %}
+{%- endfor %}
+{% endfor %}

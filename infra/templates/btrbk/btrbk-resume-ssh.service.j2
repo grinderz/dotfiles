@@ -1,0 +1,10 @@
+[Unit]
+Description=btrbk resume ssh targets
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# skip (not fail) when the network is not up
+ExecCondition=/usr/lib/systemd/systemd-networkd-wait-online -q --timeout=10
+ExecStart=/usr/bin/btrbk resume ssh

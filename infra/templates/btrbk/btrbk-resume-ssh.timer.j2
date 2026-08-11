@@ -1,0 +1,9 @@
+[Unit]
+Description=periodic btrbk resume of ssh targets
+
+[Timer]
+OnCalendar={{ calendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

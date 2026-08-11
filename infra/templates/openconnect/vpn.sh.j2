@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -o errtrace -o pipefail -o noclobber -o errexit -o nounset
+
+{% if debug %}
+set -x
+{% endif %}
+
+VPN_EXEC="{{ exec_path }}"
+VPN_HOST="{{ profile.host }}"
+VPN_USERNAME="{{ profile.username }}"
+VPN_GROUP="{{ profile.group }}"
+PUSH_OR_PIN="{{ profile.push_or_pin }}"
+VPN_INTERFACE="{{ profile.if }}"
+VPN_CERT_ID="{{ profile.cert_id }}"
+CSD_WRAPPER_PATH="{{ profile.csd_wrapper_path }}"
+GET_VPN_PASSWORD="{{ profile.vpn_password_cmd }}"
+
+{% if darwin %}
+# GUI Prompt for your token/key (ex: Duo/Yubikey/Google Authenticator)
+function prompt_2fa_method() {
+		osascript <<EOT
+		tell app "System Events"
+			text returned of (display dialog "Enter $1 token:" default answer "" buttons {"OK"} default button 1 with title "$(basename "$0")")
+		end tell
+EOT
+}
+{% else %}
+# terminal prompt for your token/key
+function prompt_2fa_method() {
+	local reply
+	read -rp "Enter $1 token: " reply < /dev/tty
+	echo "$reply"
+}
+{% endif %}
+
+VPN_PASSWORD="eval $GET_VPN_PASSWORD"
+PIN_PASSWORD="prompt_2fa_method $PUSH_OR_PIN"
+({{ profile.password_cmd }}) | \
+sudo "$VPN_EXEC" \
+  --disable-ipv6 \
+  --user "$VPN_USERNAME" \
+  --interface "$VPN_INTERFACE" \
+  --script "/etc/vpnc/vpnc-script-{{ profile.name }}" \
+  --passwd-on-stdin \
+  --useragent 'AnyConnect' \
+  --no-external-auth \
+{% if profile.group | length %}
+  --authgroup "$VPN_GROUP" \
+{% endif %}
+{% if profile.cert_id | length %}
+  --certificate "$VPN_CERT_ID" \
+{% endif %}
+{% if profile.csd_enabled %}
+  --csd-user "$USER" \
+  --csd-wrapper "$CSD_WRAPPER_PATH" \
+{% endif %}
+{% if debug %}
+  -vvv \
+  --dump-http-traffic \
+{% endif %}
+  "$VPN_HOST"
+exit

@@ -2,6 +2,14 @@ SHELL := /usr/bin/env bash -o errtrace -o pipefail -o noclobber -o errexit -o no
 
 CHEZMOI_SRC := $(CURDIR)/home
 
+# --- setup ---
+
+setup.pyinfra:
+	uv tool install pyinfra
+
+setup.pyinfra.upgrade:
+	uv tool upgrade pyinfra
+
 # --- dotfiles (chezmoi) ---
 
 dotfiles.diff:
@@ -27,6 +35,14 @@ infra.linux.%:
 
 # --- infra, local machine only (no ssh, no agent) ---
 # usage: make infra.local.linux.local deploy=pacman args="--dry"
+# guarded by uname: local linux deploys must not run on a macos machine
 
 infra.local.linux.%:
+	@test "$$(uname -s)" = Linux || { echo "error: linux-only target, this machine is $$(uname -s)" >&2; exit 1; }
 	cd infra && pyinfra --diff --limit $* linux.py deploys/$(deploy).py $(args)
+
+# usage: make infra.local.macos.local deploy=openconnect args="--dry"
+
+infra.local.macos.%:
+	@test "$$(uname -s)" = Darwin || { echo "error: macos-only target, this machine is $$(uname -s)" >&2; exit 1; }
+	cd infra && pyinfra --diff --limit $* macos.py deploys/$(deploy).py $(args)

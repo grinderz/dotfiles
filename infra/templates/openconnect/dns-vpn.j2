@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -o errtrace -o pipefail -o noclobber -o errexit -o nounset
+
+{% if debug %}
+set -x
+{% endif %}
+
+{% for profile in profiles %}
+{% if profile.dns_post_enabled %}
+if [[ "$OC_VPN_NAME" == "{{ profile.name }}" ]]; then
+{% if profile.domains | length %}
+    scutil<<HERE
+d.init
+d.add ServerAddresses * $OC_IP4_DNS
+d.add SupplementalMatchDomains * {{ profile.domains | join(' ') }}
+set State:/Network/Service/$OC_VPN_NAME-dns/DNS
+exit
+HERE
+{% else %}
+{% for net in net_svc %}
+    networksetup -setdnsservers "{{ net }}" $OC_IP4_DNS
+{% endfor %}
+{% endif %}
+    /usr/bin/killall -HUP mDNSResponder
+fi
+{% endif %}
+{% endfor %}

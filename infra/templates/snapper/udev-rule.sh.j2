@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -o errtrace -o pipefail -o noclobber -o errexit -o nounset
+
+{% for command in mount.backup_commands %}
+{{ command }}
+{% endfor %}
+sync && umount {{ mount.path }} && udisksctl power-off -b /dev/disk/by-id/{{ mount.disk_id }}

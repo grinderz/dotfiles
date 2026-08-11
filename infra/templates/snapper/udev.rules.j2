@@ -1,0 +1,1 @@
+SUBSYSTEM=="block", ENV{ID_TYPE}=="disk", ENV{ID_FS_UUID}=="{{ mount.uuid }}", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}="udev-rule-{{ mount.name }}.service"

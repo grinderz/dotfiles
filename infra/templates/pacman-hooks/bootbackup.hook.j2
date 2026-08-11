@@ -1,0 +1,20 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Path
+Target = usr/lib/modules/*/vmlinuz
+Target = usr/lib/initcpio/*
+Target = boot/*
+
+[Action]
+Depends = rsync
+Description = Backing up {{ stage }} /boot...
+When = {{ when }}
+{% if cleanup -%}
+Exec = /usr/bin/bash -c 'rsync -a --mkpath --delete /boot/ "/.bootbackup/$(date +%Y_%m_%d_%H.%M.%S)_{{ stage }}"/ || exit 1; ls -1d /.bootbackup/*_pre 2>/dev/null | head -n -{{ keep }} | xargs -r rm -rf || true; ls -1d /.bootbackup/*_post 2>/dev/null | head -n -{{ keep }} | xargs -r rm -rf || true'
+{% else -%}
+Exec = /usr/bin/bash -c 'rsync -a --mkpath --delete /boot/ "/.bootbackup/$(date +%Y_%m_%d_%H.%M.%S)_{{ stage }}"/'
+{% endif -%}
+{% if abort_on_fail %}AbortOnFail
+{% endif %}

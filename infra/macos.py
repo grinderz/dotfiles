@@ -1,9 +1,8 @@
 # hosts (including @local placeholders) are private and live in the
-# machine-local chezmoi.toml under [[data.infra.linux]]; each entry's
-# `group` key becomes an inventory group usable with --limit
+# machine-local chezmoi.toml under [[data.infra.macos]]
 from util import chezmoi_infra_hosts
 
-for _host in chezmoi_infra_hosts('linux'):
+for _host in chezmoi_infra_hosts('macos'):
     globals().setdefault(_host['group'], []).append(
         (_host['name'], _host.get('data', {}))
     )

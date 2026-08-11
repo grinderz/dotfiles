@@ -34,6 +34,7 @@ if status is-interactive
 {{- end }}
 
     fish_add_path (go env GOPATH)/bin
+    fish_add_path $HOME/.local/bin
 
     ## Abbr
 
@@ -46,6 +47,9 @@ if status is-interactive
     abbr -a cpwd 'pwd | pbcopy'
     abbr -a flushdns 'sudo dscacheutil -flushcache; and sudo killall -HUP mDNSResponder'
     abbr -a ports 'lsof -iTCP -sTCP:LISTEN -n -P'
+{{ else if eq .chezmoi.os "linux" }}
+{{- $rc := dig "personal" "reflector_countries" "" . }}
+    abbr -a mirrors-update 'sudo reflector --latest 5{{ if $rc }} -c {{ $rc }}{{ end }} --protocol https --sort age --save /etc/pacman.d/mirrorlist'
 {{- end }}
 
     ## Plugins

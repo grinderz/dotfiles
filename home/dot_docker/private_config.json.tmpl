@@ -1,0 +1,13 @@
+{
+	"auths": {
+{{- if hasKey . "work" }}
+		"{{ .work.docker_registry }}": {},
+		"{{ .work.docker_registry }}:443": {}
+{{- end }}
+	},
+	"credsStore": "osxkeychain",
+	"currentContext": "colima",
+	"cliPluginsExtraDirs": [
+		"/opt/homebrew/lib/docker/cli-plugins"
+	]
+}
