@@ -25,6 +25,22 @@ make infra.linux.<host-or-group> deploy=systemd           # remote over ssh
 `--limit` value (the last target component) is a host name or an inventory
 group. Remote sudo: pyinfra prompts for the password interactively.
 
+To run deploys on a managed host locally (no ssh), its own
+`~/.config/chezmoi/chezmoi.toml` declares the same host as `@local` —
+group and data stay identical, only `name` differs:
+
+```toml
+[[data.infra.linux]]
+name = '@local'        # instead of the ssh host name
+group = 'somehost'
+[data.infra.linux.data]
+# same data as in the ssh variant
+```
+
+```sh
+make infra.local.linux.somehost deploy=pacman args="--dry"
+```
+
 ## SSH / YubiKey
 
 Auth key is ed25519-sk (FIDO2). paramiko cannot read sk key files and

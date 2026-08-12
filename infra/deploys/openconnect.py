@@ -20,6 +20,14 @@ files.directory(
 )
 
 for profile in profiles:
+    if not profile['enabled']:
+        files.file(
+            name=f'remove vpnc-script-{profile["name"]} (profile disabled)',
+            path=f'/etc/vpnc/vpnc-script-{profile["name"]}',
+            present=False,
+            _sudo=True,
+        )
+        continue
     files.template(
         name=f'render vpnc-script-{profile["name"]}',
         src='templates/openconnect/vpnc-script.j2',
@@ -54,6 +62,11 @@ server.shell(
 
 for profile in profiles:
     if not profile['enabled']:
+        files.file(
+            name=f'remove vpn-{profile["name"]}.sh (profile disabled)',
+            path=f'{bin_path}/vpn-{profile["name"]}.sh',
+            present=False,
+        )
         continue
     files.template(
         name=f'render vpn-{profile["name"]}.sh',
