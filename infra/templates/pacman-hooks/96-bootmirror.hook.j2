@@ -1,0 +1,14 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Path
+Target = usr/lib/modules/*/vmlinuz
+Target = usr/lib/initcpio/*
+Target = boot/*
+
+[Action]
+Depends = rsync
+Description = Syncing /boot to the mirror stick...
+When = PostTransaction
+Exec = /usr/bin/bash -c 'if rsync -rt --delete --modify-window=1 /boot/ {{ mirror_mountpoint }}/ 2>/dev/null; then echo "boot mirror synced"; else echo "WARNING: boot mirror not available, sync skipped"; fi'

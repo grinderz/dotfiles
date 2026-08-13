@@ -4,7 +4,7 @@ import tomllib
 from pyinfra import logger, state
 from pyinfra.context import host
 from pyinfra.facts.files import Block
-from pyinfra.operations import files
+from pyinfra.operations import files, server
 from pyinfra.operations.files import generate_color_diff
 
 
@@ -29,6 +29,33 @@ def block_with_diff(path, content, marker=None, begin=None, end=None, **kwargs):
     files.block(
         path=path, content=desired, marker=marker, begin=begin, end=end, **kwargs
     )
+
+
+def sudoers_template(name, src, dest, **kwargs):
+    """files.template for sudoers.d: render to a staging path, visudo -c,
+    then copy into place. A syntax error never reaches the live path, where
+    it could break sudo entirely.
+
+    The staging file is kept around (and lives in /var/tmp, not tmpfs) so
+    unchanged runs stay idempotent: no re-upload, no install step. If the
+    live file is ever deleted by hand, remove the staging copy too to force
+    a reinstall.
+    """
+    staging = f'/var/tmp/.pyinfra-staging-{pathlib.Path(dest).name}'
+    staged = files.template(
+        name=f'{name} (staging)',
+        src=src,
+        dest=staging,
+        mode='440',
+        _sudo=True,
+        **kwargs,
+    )
+    if staged.changed:
+        server.shell(
+            name=f'{name}: visudo check + install',
+            commands=[f'visudo -c -q -f {staging} && cp -p {staging} {dest}'],
+            _sudo=True,
+        )
 
 
 def chezmoi_work_data():

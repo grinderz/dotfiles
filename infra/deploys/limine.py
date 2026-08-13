@@ -12,6 +12,7 @@ files.template(
     src='templates/limine-default.j2',
     dest='/etc/default/limine',
     conf=conf,
+    mode='644',
     _sudo=True,
 )
 

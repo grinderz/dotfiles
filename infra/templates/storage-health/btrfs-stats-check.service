@@ -1,0 +1,6 @@
+[Unit]
+Description=Check btrfs device error counters
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/btrfs device stats --check /

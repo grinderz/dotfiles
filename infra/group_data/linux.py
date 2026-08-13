@@ -10,12 +10,21 @@ pacman_conf_no_extract = [
 
 systemd_journal_system_max_use = '100M'
 systemd_networks = []
+# sway binds XF86PowerOff to the lock script; logind must not also react
+systemd_handle_power_key = 'ignore'
 
 zram_device = 'zram0'
 
 hosts_entries = []
 
 docker_users = ['obsd']
+
+btrfs_free_min_gb = 50
+
+conservation_users = ['obsd']
+conservation_node = (
+    '/sys/devices/pci0000:00/0000:00:14.3/PNP0C09:00/VPC2004:00/conservation_mode'
+)
 
 docker_storage_driver = 'overlay2'
 
@@ -31,6 +40,7 @@ snapper_backup_configs = []
 snapper_backup_mounts = []
 
 bootbackup_keep = 5
+bootmirror_mountpoint = '/boot-mirror'
 
 openconnect_debug = True
 openconnect_exec_path = '/usr/bin/openconnect'

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Alert (via failed unit -> failed-units-notify) when btrfs free space is low.
+# "Free (estimated)" accounts for raid profile and unallocated chunks.
+free_bytes=$(btrfs filesystem usage -b / | awk '/Free \(estimated\)/ {print $3}')
+min_bytes=$(( {{ min_gb }} * 1024 * 1024 * 1024 ))
+
+if [ -z "$free_bytes" ]; then
+    echo "could not parse btrfs filesystem usage output"
+    exit 1
+fi
+
+if [ "$free_bytes" -lt "$min_bytes" ]; then
+    echo "btrfs free space low: $((free_bytes / 1024 / 1024 / 1024))G left, threshold {{ min_gb }}G"
+    exit 1
+fi

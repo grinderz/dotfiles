@@ -2,6 +2,8 @@
 Description=Run systemd-udev-rule-{{ mount.name }}.sh
 Requires={{ mount_unit }}
 After={{ mount_unit }}
+# do not transfer while snapper-cleanup deletes snapshots from under snbk
+After=snapper-cleanup.service
 
 [Service]
 ExecStart=/usr/local/bin/systemd-udev-rule-{{ mount.name }}.sh

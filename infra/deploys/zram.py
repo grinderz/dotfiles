@@ -8,6 +8,7 @@ conf = files.template(
     src='templates/zram-generator.conf.j2',
     dest='/etc/systemd/zram-generator.conf',
     device=device,
+    mode='644',
     _sudo=True,
 )
 

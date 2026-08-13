@@ -1,0 +1,15 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Operation = Remove
+Type = Path
+Target = usr/lib/modules/*/vmlinuz
+Target = usr/lib/initcpio/*
+Target = boot/*
+
+[Action]
+Depends = util-linux
+Description = Checking /boot is mounted...
+When = PreTransaction
+Exec = /usr/bin/findmnt --mountpoint /boot
+AbortOnFail

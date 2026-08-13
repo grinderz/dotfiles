@@ -1,0 +1,31 @@
+#!/bin/sh
+# Copy new Brave NTP background images into the wallpaper directory.
+# Brave keeps them in a versioned component dir that gets replaced on
+# component updates, so anything worth keeping must be copied out.
+# The component is located by its manifest name, not the hardcoded id.
+set -eu
+
+root="$HOME/.config/BraveSoftware/Brave-Browser"
+
+dest="{{ .desktop.wallpaper_dir }}"
+case "$dest" in "~"*) dest="$HOME${dest#\~}" ;; esac
+
+manifests=$(grep -ls 'Brave NTP background images' "$root"/*/*/manifest.json 2>/dev/null) \
+    || { echo "error: Brave NTP background images component not found under $root" >&2; exit 1; }
+mkdir -p "$dest"
+
+added=0
+for manifest in $manifests; do
+    src=${manifest%/manifest.json}
+    for img in "$src"/*.jpg "$src"/*.png "$src"/*.webp; do
+        [ -e "$img" ] || continue
+        base=$(basename "$img")
+        if [ ! -e "$dest/$base" ]; then
+            cp "$img" "$dest/"
+            echo "added $base"
+            added=$((added + 1))
+        fi
+    done
+done
+
+echo "$added new, $(ls "$dest" | wc -l) total in $dest"

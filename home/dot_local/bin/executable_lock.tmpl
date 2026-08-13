@@ -1,0 +1,12 @@
+#!/bin/sh
+# Lock the screen: en layout, random wallpaper from the sway wallpaper dir
+swaymsg 'input type:keyboard xkb_switch_layout 0'
+
+dir="{{ .desktop.wallpaper_dir }}"
+case "$dir" in "~"*) dir="$HOME${dir#\~}" ;; esac
+
+img=$(find "$dir" -type f \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' \) 2>/dev/null | shuf -n 1)
+if [ -n "$img" ]; then
+    exec swaylock -f -i "$img" -s fill
+fi
+exec swaylock -f

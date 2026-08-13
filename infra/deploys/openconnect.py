@@ -1,9 +1,10 @@
 import getpass
-from io import StringIO
 
 from pyinfra.context import host
 from pyinfra.facts.server import Home, Os
-from pyinfra.operations import files, server
+from pyinfra.operations import files
+
+from util import sudoers_template
 
 darwin = host.get_fact(Os) == 'Darwin'
 
@@ -44,20 +45,12 @@ files.directory(
     path=bin_path,
 )
 
-files.put(
+sudoers_template(
     name='sudoers for openconnect',
-    src=StringIO(
-        f'{getpass.getuser()} ALL=(ALL) NOPASSWD: {host.data.openconnect_exec_path}\n'
-    ),
+    src='templates/sudoers-openconnect.j2',
     dest='/etc/sudoers.d/openconnect',
-    mode='440',
-    _sudo=True,
-)
-
-server.shell(
-    name='validate sudoers',
-    commands=['visudo -cf /etc/sudoers.d/openconnect'],
-    _sudo=True,
+    username=getpass.getuser(),
+    exec_path=host.data.openconnect_exec_path,
 )
 
 for profile in profiles:

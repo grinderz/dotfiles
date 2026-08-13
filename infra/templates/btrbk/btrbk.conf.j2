@@ -1,7 +1,7 @@
 timestamp_format        long
 transaction_log         /var/log/btrbk.log
 lockfile                /run/lock/btrbk.lock
-{% if conf.ssh %}
+{% if conf.get('ssh') %}
 ssh_identity            {{ conf.ssh.identity }}
 ssh_user                {{ conf.ssh.user }}
 {% endif %}
@@ -18,7 +18,7 @@ volume {{ conf.volume }}
     snapshot_name {{ sv.snapshot_name }}
 {%- for t in sv.targets %}
     target {{ t.path }}
-{%- if t.group %}
+{%- if t.get('group') %}
       group {{ t.group }}
 {%- endif %}
 {%- endfor %}

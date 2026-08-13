@@ -27,6 +27,7 @@ daemon_json = files.template(
     src='templates/docker-daemon.json.j2',
     dest='/etc/docker/daemon.json',
     config=daemon_config,
+    mode='644',
     _sudo=True,
 )
 

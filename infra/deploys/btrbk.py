@@ -9,6 +9,7 @@ files.template(
     src='templates/btrbk/btrbk.conf.j2',
     dest='/etc/btrbk/btrbk.conf',
     conf=conf,
+    mode='644',
     _sudo=True,
 )
 
@@ -25,6 +26,7 @@ for unit in units:
         src=f'templates/btrbk/{unit}.j2',
         dest=f'/etc/systemd/system/{unit}',
         calendar=ssh_conf.get('resume_calendar', '*-*-* 18:00') if ssh_conf else None,
+        mode='644',
         _sudo=True,
     )
     units_changed = units_changed or op.changed
@@ -53,6 +55,7 @@ files.template(
     name='render /etc/logrotate.d/btrbk',
     src='templates/btrbk/logrotate.j2',
     dest='/etc/logrotate.d/btrbk',
+    mode='644',
     _sudo=True,
 )
 

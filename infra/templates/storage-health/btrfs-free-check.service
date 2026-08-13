@@ -1,0 +1,6 @@
+[Unit]
+Description=Check btrfs free space
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/btrfs-free-check

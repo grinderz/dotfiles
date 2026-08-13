@@ -4,3 +4,6 @@ Description=btrbk snapshot (no transfer)
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/btrbk snapshot
+# btrbk exits 10 when a target was skipped; the archive disk is detached
+# most of the time, so that is the expected state, not a failure
+SuccessExitStatus=10

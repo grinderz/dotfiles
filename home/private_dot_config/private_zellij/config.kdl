@@ -302,8 +302,8 @@ default_mode "locked"
  
 // Choose the path to the default shell that zellij will use for opening new panes
 // Default: $SHELL
-// 
-// default_shell "fish"
+//
+default_shell "fish"
  
 // Choose the path to override cwd that zellij will use for opening new panes
 // 
@@ -514,7 +514,8 @@ attach_to_session true
 // Whether to show tips on startup
 // Default: true
 // 
-// show_startup_tips false
+
+show_startup_tips false
  
 // Whether to show release notes on first version run
 // Default: true

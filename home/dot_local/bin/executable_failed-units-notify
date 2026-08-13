@@ -1,0 +1,7 @@
+#!/bin/sh
+# Notify the desktop (mako) about failed systemd units, system and user
+failed=$( { systemctl --failed --no-legend --plain
+            systemctl --user --failed --no-legend --plain; } | awk '{print $1}')
+[ -z "$failed" ] && exit 0
+# fixed replace-id: repeated runs update one notification instead of stacking
+notify-send -u critical -r 9990 "Failed systemd units" "$failed"

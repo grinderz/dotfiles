@@ -15,6 +15,31 @@ for key, value in host.data.snapper_conf_options.items():
         _sudo=True,
     )
 
+# --- cleanup timer: daily instead of upstream hourly ---
+
+files.directory(
+    name='ensure snapper-cleanup.timer.d',
+    path='/etc/systemd/system/snapper-cleanup.timer.d',
+    _sudo=True,
+)
+
+override = files.put(
+    name='render snapper-cleanup.timer override',
+    src='templates/snapper/cleanup-timer-override.conf',
+    dest='/etc/systemd/system/snapper-cleanup.timer.d/override.conf',
+    mode='644',
+    _sudo=True,
+)
+
+if override.changed:
+    systemd.service(
+        name='restart snapper-cleanup.timer',
+        service='snapper-cleanup.timer',
+        restarted=True,
+        daemon_reload=True,
+        _sudo=True,
+    )
+
 # --- snbk backup configs ---
 
 for bc in host.data.snapper_backup_configs:
@@ -23,6 +48,7 @@ for bc in host.data.snapper_backup_configs:
         src='templates/snapper/backup-config.json.j2',
         dest=f'/etc/snapper/backup-configs/{bc["name"]}.json',
         bc=bc,
+        mode='644',
         _sudo=True,
     )
 
@@ -65,6 +91,7 @@ for mount in host.data.snapper_backup_mounts:
         dest=f'/etc/systemd/system/udev-rule-{mount["name"]}.service',
         mount=mount,
         mount_unit=mount_unit,
+        mode='644',
         _sudo=True,
     )
     units_changed = units_changed or unit.changed
@@ -74,6 +101,7 @@ for mount in host.data.snapper_backup_mounts:
         src='templates/snapper/udev.rules.j2',
         dest=f'/etc/udev/rules.d/99-systemd-{mount["name"]}.rules',
         mount=mount,
+        mode='644',
         _sudo=True,
     )
 

@@ -1,0 +1,11 @@
+#!/bin/sh
+# Sync /boot to the mirror stick after every limine config update — this
+# also covers snapshot entries written by limine-snapper-sync, which never
+# pass through the pacman 96-bootmirror hook. Warn-only: a missing stick
+# must not fail the limine sync (and with it snapper-cleanup).
+if rsync -rt --delete --modify-window=1 /boot/ {{ mirror_mountpoint }}/ 2>/dev/null; then
+    echo "boot mirror synced"
+else
+    echo "WARNING: boot mirror not available, sync skipped" >&2
+fi
+exit 0

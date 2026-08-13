@@ -1,0 +1,21 @@
+#!/bin/sh
+# Lenovo conservation mode (charge cap ~60%): waybar status / toggle
+node=/sys/devices/pci0000:00/0000:00:14.3/PNP0C09:00/VPC2004:00/conservation_mode
+
+case "${1:-status}" in
+status)
+    if [ "$(cat "$node")" = 1 ]; then
+        printf '{"text":"eco","tooltip":"Conservation mode on: charge capped at ~60%%","class":"on"}\n'
+    else
+        printf '{"text":"max","tooltip":"Conservation mode off: charges to 100%%","class":"off"}\n'
+    fi
+    ;;
+toggle)
+    if [ "$(cat "$node")" = 1 ]; then v=0; else v=1; fi
+    printf '%s' "$v" | sudo -n /usr/bin/tee "$node" > /dev/null
+    ;;
+*)
+    echo "usage: $0 [status|toggle]" >&2
+    exit 1
+    ;;
+esac

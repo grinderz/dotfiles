@@ -1,0 +1,26 @@
+# Output profiles, applied automatically by kanshi based on which
+# monitors are connected (a profile matches when the connected set is
+# exactly the outputs listed in it). Matching is by "make model serial"
+# so it does not depend on DP-N connector numbers, which change between
+# ports and docks. Positions are in logical (scaled) coordinates.
+
+# Two Dells + builtin
+profile docked {
+	output "Dell Inc. DELL U2515H 9X2VY6BO0LXL" position 0,0
+	output "Dell Inc. DELL U2515H 9X2VY6BO0LUL" position 2560,0
+	output eDP-1 position 5120,0 scale 1.5
+}
+
+# Samsung + builtin
+# TODO: replace the description with the real one from
+# `swaymsg -t get_outputs` (make model serial) when the monitor is
+# around, and adjust the eDP-1 x position to the Samsung's logical width.
+# profile samsung {
+# 	output "Samsung Electric Company ... ..." position 0,0
+# 	output eDP-1 position 2560,0 scale 1.5
+# }
+
+# Builtin only
+profile mobile {
+	output eDP-1 enable scale 1.5
+}

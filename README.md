@@ -72,6 +72,9 @@ allowed_signers = """..."""
 
 [data.vps]
 ssh_hosts = """..."""
+
+[data.desktop]
+wallpaper_dir = "~/pictures/wallpapers/brave"   # sway bg, swaylock bg, sync script
 ```
 
 Machines without a table simply render without those sections
@@ -87,7 +90,7 @@ only `@local` and builds `--limit` groups from each entry's `group` key.
 
 1. `pyinfra` deploys packages, services, sshd (installs chezmoi too)
 2. copy `~/.config/chezmoi/chezmoi.toml` (private data, kept out of the repo)
-3. `chezmoi init --apply --source ./home` as the user
+3. `make dotfiles.apply` as the user
 
 ## Layout
 
@@ -98,7 +101,8 @@ infra/
 ├── group_data/        # defaults per group (was roles/*/defaults)
 ├── deploys/           # one file per former role
 ├── templates/         # jinja2, reused from ansible almost verbatim
-└── util.py            # block_with_diff: files.block + textual diff output
+└── util.py            # block_with_diff, sudoers_template (visudo-checked
+                       # staging install), chezmoi.toml readers
 ```
 
 ## One-time operations
@@ -115,16 +119,66 @@ Per deploy, once per host:
 * **hosts** — after: remove old ansible markers from `/etc/hosts`
 * **snapper** — after: remove old ansible markers from `/etc/fstab`
   (the archive disk mount)
-* **btrbk** — before: create the target directory on the mounted archive
-  disk (btrbk requires it to exist);
-  ssh target (if enabled): `ssh-keygen -t ed25519 -N '' -f /etc/btrbk/ssh/id_ed25519`
-  and authorize the pubkey on the receiver (`ssh_filter_btrbk.sh` forced command)
+* **btrbk** — before:
+  * `pacman -S btrbk`
+  * snapshot dir subvolume must exist:
+    `btrfs subvolume create /.btrfs_pool/@btrbk_snapshots`
+  * create the target directory on the mounted archive disk (btrbk requires
+    it to exist): `mkdir /media/archive-usb-hdd/home`
+  * ssh target (if enabled): `ssh-keygen -t ed25519 -N '' -f /etc/btrbk/ssh/id_ed25519`
+    and authorize the pubkey on the receiver (`ssh_filter_btrbk.sh` forced command)
+
+  after:
+  * config sanity + planned actions: `btrbk -n run`
+  * first snapshot: `systemctl start btrbk-snapshot.service`, then
+    `btrbk list snapshots`
+  * transfer: plug the archive disk (udev pipeline runs `btrbk resume`) or run
+    `btrbk resume` by hand, then `btrbk list backups`
+  * timer armed: `systemctl list-timers btrbk-snapshot.timer`;
+    log: `/var/log/btrbk.log`
 * **git** (chezmoi) — after: delete the old work include from
   `~/.config/git/`, renamed to `config.work.inc`
 * **bin** (chezmoi) — after, macOS: delete `/usr/local/bin/okd-token.sh` from
   the old ansible role, superseded by `~/.local/bin/okd-token.sh`
 * **openconnect** — after, macOS: delete old `/usr/local/bin/vpn-*.sh`,
   superseded by `~/.local/bin/vpn-*.sh`
+* **backup-boot** — before (hosts with `bootmirror_mountpoint`): prepare the
+  mirror stick, see below
+* **storage-health** — before: `pacman -S smartmontools` (deploys only
+  configure, packages are installed by hand)
+* **systemd** — before: `pacman -S power-profiles-daemon`
+* **battery** — hosts other than tb-6: override `conservation_node` in host
+  data (ideapad sysfs path differs per machine)
+* **sway session** (chezmoi) — packages: `kanshi` (output profiles),
+  `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`; the failed-units
+  notifier timer is enabled by the systemd deploy (run dotfiles apply
+  first — the unit files come from chezmoi)
+
+### Boot mirror stick
+
+The `96-bootmirror.hook` rsyncs `/boot` to a second bootable stick after every
+transaction that touches it, removing the single point of failure. One-time
+prep of the stick (assuming it shows up as `sdX`):
+
+```sh
+sudo pacman -S --needed dosfstools
+sudo parted /dev/sdX --script mklabel gpt mkpart ESP fat32 1MiB 100% set 1 esp on
+sudo mkfs.vfat -n BOOTMIRROR /dev/sdX1
+
+sudo mkdir -p /boot-mirror
+# fstab entry, UUID from `lsblk -f /dev/sdX1`; noauto+automount so an absent
+# stick never blocks boot and the hook mounts it on demand
+# UUID=XXXX-XXXX  /boot-mirror  vfat  rw,noauto,x-systemd.automount,x-systemd.idle-timeout=1min,fmask=0022,dmask=0022  0 0
+sudo systemctl daemon-reload
+
+sudo rsync -rt --modify-window=1 /boot/ /boot-mirror/   # initial sync
+```
+
+Then verify the machine actually boots from the mirror once (firmware boot
+menu; limine is picked up via the `EFI/BOOT` fallback path rsync carries
+over). Add `nofail` to the `/boot` fstab options so booting from the mirror
+does not drop to emergency when the primary stick is dead — the failed
+`boot.mount` is surfaced by the `failed-units-notify` user timer instead.
 
 ## Notes
 
@@ -135,4 +189,3 @@ Per deploy, once per host:
 * limine: the deploy edits `/etc/default/limine` and `/boot/limine.conf` but
   does not regenerate boot entries — kernel cmdline changes take effect on the
   next kernel transaction (or run `limine-update` by hand).
-* OpenBSD hosts stay on the old repo until migrated.

@@ -12,6 +12,7 @@ journald_conf = files.template(
     src='templates/journald.conf.d/00-journal-size.conf.j2',
     dest='/etc/systemd/journald.conf.d/00-journal-size.conf',
     journal_system_max_use=host.data.systemd_journal_system_max_use,
+    mode='644',
     _sudo=True,
 )
 
@@ -23,6 +24,57 @@ if journald_conf.changed:
         _sudo=True,
     )
 
+systemd.service(
+    name='enable and start systemd-timesyncd',
+    service='systemd-timesyncd',
+    enabled=True,
+    running=True,
+    _sudo=True,
+)
+
+# user session: failed-units desktop notifier; the unit files come from
+# chezmoi (~/.config/systemd/user), so run dotfiles apply first
+systemd.service(
+    name='enable and start failed-units-notify.timer (user)',
+    service='failed-units-notify.timer',
+    enabled=True,
+    running=True,
+    user_mode=True,
+)
+
+# EPP + platform_profile switching on amd-pstate-epp laptops; requires the
+# power-profiles-daemon package
+systemd.service(
+    name='enable and start power-profiles-daemon',
+    service='power-profiles-daemon',
+    enabled=True,
+    running=True,
+    _sudo=True,
+)
+
+files.directory(
+    name='ensure /etc/systemd/logind.conf.d',
+    path='/etc/systemd/logind.conf.d',
+    _sudo=True,
+)
+
+logind_conf = files.template(
+    name='render logind.conf.d/00-power-key.conf',
+    src='templates/logind.conf.d/00-power-key.conf.j2',
+    dest='/etc/systemd/logind.conf.d/00-power-key.conf',
+    handle_power_key=host.data.systemd_handle_power_key,
+    mode='644',
+    _sudo=True,
+)
+
+if logind_conf.changed:
+    systemd.service(
+        name='restart systemd-logind',
+        service='systemd-logind',
+        restarted=True,
+        _sudo=True,
+    )
+
 networks_changed = False
 for net in host.data.systemd_networks:
     unit = files.template(
@@ -30,6 +82,8 @@ for net in host.data.systemd_networks:
         src='templates/network/unit.network.j2',
         dest=f'/etc/systemd/network/{net["file"]}',
         net=net,
+        # networkd runs as systemd-network, needs world-readable units
+        mode='644',
         _sudo=True,
     )
     networks_changed = networks_changed or unit.changed
