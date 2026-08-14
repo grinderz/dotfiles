@@ -113,9 +113,9 @@
     },
     "clock": {
         // "timezone": "America/New_York",
-        "format": "{:%a %e %b %H:%M W%V}",
+        "format": "W{:%V %a %e %b %H:%M}",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-        "format-alt": "{:%Y-%m-%d W%V}"
+        "format-alt": "W{:%V %Y-%m-%d}"
     },
     "cpu": {
         "format": "{usage}% ",

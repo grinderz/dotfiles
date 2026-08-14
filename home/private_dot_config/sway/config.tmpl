@@ -18,6 +18,16 @@ set $term foot
 # Your preferred application launcher
 set $menu fuzzel
 
+# Workspace names: number stays first so $mod+N binds and the keyboard
+# number layer keep working; the label shows up in waybar.
+set $ws1 "1:cli"
+set $ws2 "2:dev"
+set $ws3 "3:web"
+set $ws4 "4:ide"
+set $ws5 "5:wrk"
+set $ws9 "9:msg"
+set $ws10 "10:doc"
+
 ### Output configuration
 #
 # Default wallpaper (more resolutions are available in /usr/share/backgrounds/sway/)
@@ -115,21 +125,22 @@ for_window [app_id="gcr-prompter"] floating enable
 # overflows the builtin screen; clamp it to the current workspace instead
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 80 ppt height 80 ppt, move position center
 
-# Long-lived apps open on their dedicated workspace:
-# browser 1 (left Dell), IDE 2 (right Dell), chats 9 and notes 10 (builtin)
-assign [app_id="brave-browser"] workspace number 1
-assign [app_id="jetbrains-pycharm"] workspace number 2
-assign [app_id="com.ayugram.desktop"] workspace number 9
-assign [app_id="md.obsidian.Obsidian"] workspace number 10
+# Long-lived apps open on their dedicated workspace: browser 3 and work
+# browser 5 (left Dell), IDE 4 (right Dell), chats 9 and notes 10 (builtin)
+assign [app_id="brave-browser"] workspace $ws3
+assign [app_id="jetbrains-pycharm"] workspace $ws4
+assign [app_id="firefox"] workspace $ws5
+assign [app_id="com.ayugram.desktop"] workspace $ws9
+assign [app_id="md.obsidian.Obsidian"] workspace $ws10
 
-# Autostart terminals with zellij sessions: main (4, right Dell) and
-# aux (3, left Dell). Dedicated app-ids keep the assign rules away from
-# ad-hoc $mod+Return terminals and avoid the startup race a
+# Autostart terminals on the primary workspaces: zellij main (2, right
+# Dell) and a plain shell (1, left Dell). Dedicated app-ids keep the assign
+# rules away from ad-hoc $mod+Return terminals and avoid the startup race a
 # `swaymsg 'workspace N; exec ...'` chain would have.
-assign [app_id="foot-main"] workspace number 4
-assign [app_id="foot-aux"] workspace number 3
-exec foot --app-id=foot-main zellij attach --create main
-exec foot --app-id=foot-aux
+assign [app_id="foot-dev"] workspace $ws2
+assign [app_id="foot-cli"] workspace $ws1
+exec foot --app-id=foot-dev zellij attach --create main
+exec foot --app-id=foot-cli
 
 # Long-lived apps land on their assigned workspaces (see assign rules above)
 exec brave
@@ -202,27 +213,27 @@ bindgesture swipe:4:right workspace prev_on_output
 # Workspaces:
 #
     # Switch to workspace
-    bindsym $mod+1 workspace number 1
-    bindsym $mod+2 workspace number 2
-    bindsym $mod+3 workspace number 3
-    bindsym $mod+4 workspace number 4
-    bindsym $mod+5 workspace number 5
+    bindsym $mod+1 workspace $ws1
+    bindsym $mod+2 workspace $ws2
+    bindsym $mod+3 workspace $ws3
+    bindsym $mod+4 workspace $ws4
+    bindsym $mod+5 workspace $ws5
     bindsym $mod+6 workspace number 6
     bindsym $mod+7 workspace number 7
     bindsym $mod+8 workspace number 8
-    bindsym $mod+9 workspace number 9
-    bindsym $mod+0 workspace number 10
+    bindsym $mod+9 workspace $ws9
+    bindsym $mod+0 workspace $ws10
     # Move focused container to workspace
-    bindsym $mod+Shift+1 move container to workspace number 1
-    bindsym $mod+Shift+2 move container to workspace number 2
-    bindsym $mod+Shift+3 move container to workspace number 3
-    bindsym $mod+Shift+4 move container to workspace number 4
-    bindsym $mod+Shift+5 move container to workspace number 5
+    bindsym $mod+Shift+1 move container to workspace $ws1
+    bindsym $mod+Shift+2 move container to workspace $ws2
+    bindsym $mod+Shift+3 move container to workspace $ws3
+    bindsym $mod+Shift+4 move container to workspace $ws4
+    bindsym $mod+Shift+5 move container to workspace $ws5
     bindsym $mod+Shift+6 move container to workspace number 6
     bindsym $mod+Shift+7 move container to workspace number 7
     bindsym $mod+Shift+8 move container to workspace number 8
-    bindsym $mod+Shift+9 move container to workspace number 9
-    bindsym $mod+Shift+0 move container to workspace number 10
+    bindsym $mod+Shift+9 move container to workspace $ws9
+    bindsym $mod+Shift+0 move container to workspace $ws10
     # Note: workspaces can have any name you want, not just numbers.
     # We just use 1-10 as the default.
 
@@ -231,16 +242,16 @@ bindgesture swipe:4:right workspace prev_on_output
     # the keyboard's number layer: odd digits live on the left half, even on
     # the right, so the hand matches the monitor side. eDP-1 is the fallback:
     # with no externals connected everything lands on the builtin screen.
-    workspace 1 output '{{ .desktop.output_left }}' eDP-1
-    workspace 3 output '{{ .desktop.output_left }}' eDP-1
-    workspace 5 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws1 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws3 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws5 output '{{ .desktop.output_left }}' eDP-1
     workspace 7 output '{{ .desktop.output_left }}' eDP-1
-    workspace 2 output '{{ .desktop.output_right }}' eDP-1
-    workspace 4 output '{{ .desktop.output_right }}' eDP-1
+    workspace $ws2 output '{{ .desktop.output_right }}' eDP-1
+    workspace $ws4 output '{{ .desktop.output_right }}' eDP-1
     workspace 6 output '{{ .desktop.output_right }}' eDP-1
     workspace 8 output '{{ .desktop.output_right }}' eDP-1
-    workspace 9 output eDP-1
-    workspace 10 output eDP-1
+    workspace $ws9 output eDP-1
+    workspace $ws10 output eDP-1
 #
 # Layout stuff:
 #
