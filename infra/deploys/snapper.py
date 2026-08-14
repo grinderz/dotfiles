@@ -15,6 +15,17 @@ for key, value in host.data.snapper_conf_options.items():
         _sudo=True,
     )
 
+# --- snap-pac: mark critical-package transactions important=yes ---
+
+files.template(
+    name='render /etc/snap-pac.ini',
+    src='templates/snapper/snap-pac.ini.j2',
+    dest='/etc/snap-pac.ini',
+    important_packages=host.data.snap_pac_important_packages,
+    mode='644',
+    _sudo=True,
+)
+
 # --- cleanup timer: daily instead of upstream hourly ---
 
 files.directory(

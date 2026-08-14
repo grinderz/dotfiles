@@ -1,8 +1,8 @@
 [Unit]
-Description=Weekly btrfs device error counter check
+Description=Daily btrfs device error counter check
 
 [Timer]
-OnCalendar=weekly
+OnCalendar=daily
 Persistent=true
 
 [Install]

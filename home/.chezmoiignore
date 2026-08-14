@@ -7,6 +7,29 @@
 
 {{ if eq .chezmoi.os "darwin" }}
 .config/foot
+.config/brave-flags.conf
+.config/fuzzel
+.config/gtk-3.0
+.config/gtk-4.0
+.config/kanshi
+.config/mako
+.config/sway
+.config/swayidle
+.config/swaylock
+.config/systemd
+.config/waybar
+.config/wireplumber
+.config/yay
+.config/user-dirs.dirs
+.config/user-dirs.locale
+# sublime keeps its mac config under ~/Library/Application Support
+.config/sublime-text
+.local/bin/battery-conservation
+.local/bin/failed-units-notify
+.local/bin/lock
+.local/bin/samsung-ssd.sh
+.local/bin/sync-brave-wallpapers
+.local/share/flatpak
 {{ end }}
 
 {{ if not (hasKey . "work") }}

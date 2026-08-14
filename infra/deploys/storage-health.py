@@ -20,7 +20,7 @@ systemd.service(
     _sudo=True,
 )
 
-# weekly btrfs device error-counter check: btrfs keeps per-device i/o error
+# daily btrfs device error-counter check: btrfs keeps per-device i/o error
 # counters, --check exits non-zero when any is set, so a tripped check shows
 # up as a failed unit in `systemctl --failed`
 stats_units_changed = False

@@ -4,53 +4,9 @@ Include ~/.colima/ssh_config
 
 # HOME
 
-host rtr1-gl-mt6000
-  Hostname rtr1-gl-mt6000
-  User root
-  Port 22
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-ansible
-
-host rtr3-almond-s3
-  Hostname 192.168.12.1
-  User root
-  Port 22
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-ansible
-
-host dock2-mokin-3707
-  Hostname dock2-mokin-3707
-  Port 22
-  User obsd
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-ansible
-
-host srv1-rpi3-nut-es700
-  Hostname srv1-rpi3-nut-es700
-  Port 22
-  User root
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-ansible
-
-host srv4-hp-ms8-backup
-  Hostname srv4-hp-ms8-backup
-  Port 22
-  User root
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-sa
-
-host kvm2-hp-ms8-virtual
-    Hostname kvm2-hp-ms8-virtual
-    Port 2280
-    User Administrator
-    KexAlgorithms diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
-
-host srv3-hp-ms8-virtual
-  Hostname srv3-hp-ms8-virtual
-  Port 22
-  User root
-  PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-sa
+{{ if hasKey .personal "ssh_hosts" -}}
+{{ .personal.ssh_hosts }}
+{{ end -}}
 
 # GIT
 

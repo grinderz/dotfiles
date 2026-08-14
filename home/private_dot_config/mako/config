@@ -1,5 +1,5 @@
 # Dismiss notifications automatically (mako default is 0 = never)
-default-timeout=5000
+default-timeout=15000
 # Apply default-timeout even when the app requests a persistent notification
 ignore-timeout=1
 

@@ -1,0 +1,8 @@
+# Taskwarrior; sync via the syncthing-carried folder: `task sync` writes
+# versioned operation blobs there, taskchampion merges histories on its own
+sync.local.server_dir=~/sync/common/task
+
+# https://github.com/GothenburgBitFactory/taskwarrior/blob/develop/doc/man/taskrc.5.adoc
+data.location=~/.local/share/task
+
+news.version=3.4.2

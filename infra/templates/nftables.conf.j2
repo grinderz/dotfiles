@@ -1,0 +1,55 @@
+#!/usr/bin/nft -f
+# vim:set ts=4 sw=4 et:
+# Managed by pyinfra (deploys/nftables.py); local edits will be overwritten.
+
+# Destroy only our own table: docker manages its rules via iptables-nft in
+# separate tables (ip filter / ip nat), a full `flush ruleset` would wipe
+# them until the docker daemon restarts.
+destroy table inet filter
+
+table inet filter {
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        ct state invalid drop comment "early drop of invalid connections"
+        ct state established,related accept comment "allow tracked connections"
+        iif "lo" accept comment "allow from loopback"
+
+        ip protocol icmp accept
+        meta l4proto ipv6-icmp accept
+
+        # DHCPv6 client (server replies come from fe80::/10 to port 546)
+        udp dport 546 accept
+
+        # containers reaching host-side services (e.g. 172.17.0.1)
+        iifname "docker0" accept
+        iifname "br-*" accept
+
+{% for rule in nftables_open_tcp %}
+        tcp dport {{ rule.port }} accept comment "{{ rule.comment }}"
+{% endfor %}
+{% for rule in nftables_open_udp %}
+        udp dport {{ rule.port }} accept comment "{{ rule.comment }}"
+{% endfor %}
+
+        # polite rate-limited reject for direct packets, count the rest
+        pkttype host limit rate 5/second counter reject with icmpx type admin-prohibited
+        counter
+    }
+
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+
+        # verdicts are per-hook-chain across ALL tables: docker accepting a
+        # packet in its own forward chain is not enough, ours must too
+        ct state established,related accept
+        iifname "docker0" accept
+        oifname "docker0" accept
+        iifname "br-*" accept
+        oifname "br-*" accept
+    }
+
+    chain output {
+        type filter hook output priority filter; policy accept;
+    }
+}

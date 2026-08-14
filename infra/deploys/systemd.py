@@ -32,6 +32,46 @@ systemd.service(
     _sudo=True,
 )
 
+files.directory(
+    name='ensure /etc/systemd/resolved.conf.d',
+    path='/etc/systemd/resolved.conf.d',
+    _sudo=True,
+)
+
+resolved_conf = files.put(
+    name='install resolved.conf.d/00-no-llmnr.conf',
+    src='templates/resolved.conf.d/00-no-llmnr.conf',
+    dest='/etc/systemd/resolved.conf.d/00-no-llmnr.conf',
+    mode='644',
+    _sudo=True,
+)
+
+if resolved_conf.changed:
+    systemd.service(
+        name='restart systemd-resolved',
+        service='systemd-resolved',
+        restarted=True,
+        _sudo=True,
+    )
+
+# weekly pacman cache cleanup (keeps 3 versions); requires pacman-contrib
+systemd.service(
+    name='enable and start paccache.timer',
+    service='paccache.timer',
+    enabled=True,
+    running=True,
+    _sudo=True,
+)
+
+# smart card daemon for YubiKey (gpg/ssh via scdaemon); requires pcsclite
+systemd.service(
+    name='enable and start pcscd.socket',
+    service='pcscd.socket',
+    enabled=True,
+    running=True,
+    _sudo=True,
+)
+
 # user session: failed-units desktop notifier; the unit files come from
 # chezmoi (~/.config/systemd/user), so run dotfiles apply first
 systemd.service(

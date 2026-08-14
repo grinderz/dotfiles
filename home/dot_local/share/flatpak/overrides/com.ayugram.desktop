@@ -1,0 +1,10 @@
+[Context]
+shared=!ipc;
+sockets=!fallback-x11;
+devices=!all;dri;
+
+[Session Bus Policy]
+com.canonical.indicator.application=none
+com.canonical.AppMenu.Registrar=none
+org.gnome.Mutter.IdleMonitor=none
+org.sigxcpu.Feedback=none

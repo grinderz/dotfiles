@@ -17,11 +17,11 @@ zram_device = 'zram0'
 
 hosts_entries = []
 
-docker_users = ['obsd']
+docker_users = []  # host data (machine-local chezmoi.toml)
 
 btrfs_free_min_gb = 50
 
-conservation_users = ['obsd']
+conservation_users = []  # host data (machine-local chezmoi.toml)
 conservation_node = (
     '/sys/devices/pci0000:00/0000:00:14.3/PNP0C09:00/VPC2004:00/conservation_mode'
 )
@@ -36,6 +36,9 @@ snapper_conf_options = {
     'NUMBER_LIMIT_IMPORTANT': '4',
     'EMPTY_PRE_POST_CLEANUP': 'yes',
 }
+snap_pac_important_packages = [
+    'linux', 'linux-lts', 'systemd', 'btrfs-progs', 'limine', 'cryptsetup',
+]
 snapper_backup_configs = []
 snapper_backup_mounts = []
 
@@ -52,3 +55,19 @@ from util import chezmoi_work_data
 _work = chezmoi_work_data()
 openconnect_profiles = _work.get('openconnect_profiles', [])
 openconnect_csd_wrapper = _work.get('openconnect_csd_wrapper')
+
+# inbound firewall holes; everything else is dropped (established allowed)
+nftables_open_tcp = [
+    {'port': 22, 'comment': 'sshd'},
+    {'port': 22000, 'comment': 'syncthing transfers'},
+    {'port': 53317, 'comment': 'localsend transfers'},
+]
+nftables_open_udp = [
+    {'port': 22000, 'comment': 'syncthing quic'},
+    {'port': 21027, 'comment': 'syncthing discovery'},
+    {'port': 5353, 'comment': 'mdns'},
+    # llmnr (5355) deliberately closed and disabled in resolved (poisoning
+    # target, legacy); re-open here AND drop LLMNR=no from the resolved
+    # drop-in if Windows hosts must resolve this machine by name
+    {'port': 53317, 'comment': 'localsend'},
+]

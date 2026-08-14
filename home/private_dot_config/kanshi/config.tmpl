@@ -6,8 +6,8 @@
 
 # Two Dells + builtin
 profile docked {
-	output "Dell Inc. DELL U2515H 9X2VY6BO0LXL" position 0,0
-	output "Dell Inc. DELL U2515H 9X2VY6BO0LUL" position 2560,0
+	output "{{ .desktop.output_left }}" position 0,0
+	output "{{ .desktop.output_right }}" position 2560,0
 	output eDP-1 position 5120,0 scale 1.5
 }
 

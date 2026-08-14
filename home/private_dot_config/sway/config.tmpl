@@ -61,6 +61,10 @@ exec 'swaymsg output "*" bg "$(find {{ .desktop.wallpaper_dir }} -type f | shuf 
 # Events live in ~/.config/swayidle/config
 exec swayidle -w
 
+# Night light: color temperature follows the sun at the given location
+# (coordinates live in the private chezmoi.toml, [data.desktop])
+exec wlsunset -l {{ .desktop.latitude }} -L {{ .desktop.longitude }} -t 4000 -T 6500
+
 ### Input configuration
 #
 # Example configuration:
@@ -94,6 +98,43 @@ input type:keyboard {
     xkb_layout "eu,ru"
     xkb_options grp:caps_toggle
 }
+
+### Windows
+#
+# Volume mixer opened from the waybar pulseaudio module
+for_window [app_id="mixer"] floating enable
+
+# GPG/YubiKey pin prompts: any pinentry backend the wrapper picks,
+# plus the gcr system prompter used by pinentry-gnome3.
+# pinentry-gtk runs via XWayland, hence the class criteria next to app_id.
+for_window [app_id="^pinentry-"] floating enable
+for_window [class="(?i)^pinentry"] floating enable
+for_window [app_id="gcr-prompter"] floating enable
+
+# Portal file chooser remembers its size from the big externals and then
+# overflows the builtin screen; clamp it to the current workspace instead
+for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 80 ppt height 80 ppt, move position center
+
+# Long-lived apps open on their dedicated workspace:
+# browser 1 (left Dell), IDE 2 (right Dell), chats 9 and notes 10 (builtin)
+assign [app_id="brave-browser"] workspace number 1
+assign [app_id="jetbrains-pycharm"] workspace number 2
+assign [app_id="com.ayugram.desktop"] workspace number 9
+assign [app_id="md.obsidian.Obsidian"] workspace number 10
+
+# Autostart terminals with zellij sessions: main (4, right Dell) and
+# aux (3, left Dell). Dedicated app-ids keep the assign rules away from
+# ad-hoc $mod+Return terminals and avoid the startup race a
+# `swaymsg 'workspace N; exec ...'` chain would have.
+assign [app_id="foot-main"] workspace number 4
+assign [app_id="foot-aux"] workspace number 3
+exec foot --app-id=foot-main zellij attach --create main
+exec foot --app-id=foot-aux
+
+# Long-lived apps land on their assigned workspaces (see assign rules above)
+exec brave
+exec flatpak run com.ayugram.desktop
+exec obsidian
 
 ### Gestures
 #
@@ -184,6 +225,22 @@ bindgesture swipe:4:right workspace prev_on_output
     bindsym $mod+Shift+0 move container to workspace number 10
     # Note: workspaces can have any name you want, not just numbers.
     # We just use 1-10 as the default.
+
+    # Pin workspaces to outputs (docked profile in ~/.config/kanshi/config).
+    # Odd workspaces sit on the left Dell, even on the right one, mirroring
+    # the keyboard's number layer: odd digits live on the left half, even on
+    # the right, so the hand matches the monitor side. eDP-1 is the fallback:
+    # with no externals connected everything lands on the builtin screen.
+    workspace 1 output '{{ .desktop.output_left }}' eDP-1
+    workspace 3 output '{{ .desktop.output_left }}' eDP-1
+    workspace 5 output '{{ .desktop.output_left }}' eDP-1
+    workspace 7 output '{{ .desktop.output_left }}' eDP-1
+    workspace 2 output '{{ .desktop.output_right }}' eDP-1
+    workspace 4 output '{{ .desktop.output_right }}' eDP-1
+    workspace 6 output '{{ .desktop.output_right }}' eDP-1
+    workspace 8 output '{{ .desktop.output_right }}' eDP-1
+    workspace 9 output eDP-1
+    workspace 10 output eDP-1
 #
 # Layout stuff:
 #
@@ -265,8 +322,13 @@ bindsym $mod+r mode "resize"
     bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
     bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
 
-    # Special key to take a screenshot with grim
-    bindsym Print exec grim
+    # Screenshots via grimshot (sway-contrib); $mod+p variants work from
+    # keyboards without a Print key. Area save first: the most used one
+    # goes on the lightest chord.
+    bindsym $mod+p exec grimshot --notify save area          # area to file
+    bindsym $mod+Shift+p exec grimshot copy area             # area to clipboard
+    bindsym $mod+Ctrl+p exec grimshot --notify save active   # active window
+    bindsym $mod+Alt+p exec grimshot --notify save output    # current monitor
 
 #
 # Status Bar:

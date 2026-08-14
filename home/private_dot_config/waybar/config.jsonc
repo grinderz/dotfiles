@@ -16,21 +16,22 @@
         "sway/window"
     ],
     "modules-right": [
+        "tray",
         // "mpd",
-        "idle_inhibitor",
+        // "idle_inhibitor",
         "pulseaudio",
+        "bluetooth",
         "network",
         "power-profiles-daemon",
         "cpu",
         "memory",
         "temperature",
-        "backlight",
+        // "backlight",
         // "keyboard-state",
         "sway/language",
         "battery",
         "custom/conservation",
         "clock",
-        "tray",
         "custom/power"
     ],
     // Modules configuration
@@ -112,7 +113,7 @@
     },
     "clock": {
         // "timezone": "America/New_York",
-        "format": "{:%H:%M W%V}",
+        "format": "{:%a %e %b %H:%M W%V}",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%Y-%m-%d W%V}"
     },
@@ -188,7 +189,17 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol"
+        "on-click": "foot --app-id=mixer wiremix"
+    },
+    "bluetooth": {
+        "format": "{status} 󰂯",
+        "format-connected": "{num_connections} 󰂱",
+        "format-disabled": "",
+        "tooltip-format": "{controller_alias}\t{controller_address}",
+        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
+        "on-click": "foot --app-id=mixer bluetoothctl"
     },
     "custom/media": {
         "format": "{icon} {text}",

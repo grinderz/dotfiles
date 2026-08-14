@@ -1,0 +1,7 @@
+# Overrides merge over the built-in preset:
+# https://yazi-rs.github.io/docs/configuration/yazi
+
+[mgr]
+show_hidden = false
+sort_by = "natural"
+sort_dir_first = true

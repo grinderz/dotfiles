@@ -69,12 +69,17 @@ name = "..."
 email = "..."
 git_signing_key = "~/.ssh/..."
 allowed_signers = """..."""
+ssh_hosts = """..."""       # home LAN Host blocks
 
 [data.vps]
 ssh_hosts = """..."""
 
 [data.desktop]
 wallpaper_dir = "~/pictures/wallpapers/brave"   # sway bg, swaylock bg, sync script
+latitude = "51.48"                              # wlsunset night light
+longitude = "-0.01"
+output_left = "Make Model Serial"               # kanshi profile + sway workspace pins
+output_right = "Make Model Serial"
 ```
 
 Machines without a table simply render without those sections
@@ -146,13 +151,21 @@ Per deploy, once per host:
   mirror stick, see below
 * **storage-health** — before: `pacman -S smartmontools` (deploys only
   configure, packages are installed by hand)
-* **systemd** — before: `pacman -S power-profiles-daemon`
-* **battery** — hosts other than tb-6: override `conservation_node` in host
-  data (ideapad sysfs path differs per machine)
+* **systemd** — before: `pacman -S power-profiles-daemon pacman-contrib`
+* **nftables** — inbound firewall; extra holes go to `nftables_open_tcp` /
+  `nftables_open_udp` in host or group data
+* **battery** / **docker** — `conservation_users` / `docker_users` live in
+  host data (machine-local chezmoi.toml, `[data.infra.linux.data]`); hosts
+  other than tb-6 also override `conservation_node` (ideapad sysfs path
+  differs per machine)
+* **bluetooth** — before: `pacman -S bluez bluez-utils`
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
-  `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`; the failed-units
+  `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
+  (grimshot), `wlsunset`; the failed-units
   notifier timer is enabled by the systemd deploy (run dotfiles apply
-  first — the unit files come from chezmoi)
+  first — the unit files come from chezmoi); dark theme for GTK4/portal
+  apps and web (dconf state, chezmoi only covers the settings.ini files):
+  `gsettings set org.gnome.desktop.interface color-scheme prefer-dark`
 
 ### Boot mirror stick
 
