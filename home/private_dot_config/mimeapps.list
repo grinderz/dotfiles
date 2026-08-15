@@ -1,0 +1,7 @@
+[Default Applications]
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/jetbrains=jetbrainsd.desktop
+x-scheme-handler/mailto=org.gnome.Evolution.desktop
+
+[Added Associations]
+x-scheme-handler/mailto=org.gnome.Evolution.desktop;
