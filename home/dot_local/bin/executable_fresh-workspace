@@ -1,0 +1,16 @@
+#!/bin/sh
+# Switch to the first free workspace numbered 11+ (created on the focused
+# output). Numbers 1-10 are skipped: they belong to the named workspaces
+# in the sway config, and a bare "11" can never clash with a "N:label"
+# bind the way a bare "1" would.
+# With "move": take the focused window along.
+n=11
+used=$(swaymsg -t get_workspaces | jq '.[].num')
+while echo "$used" | grep -qx "$n"; do
+    n=$((n + 1))
+done
+if [ "$1" = move ]; then
+    swaymsg "move container to workspace number $n; workspace number $n"
+else
+    swaymsg workspace number "$n"
+fi

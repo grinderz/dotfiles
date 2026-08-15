@@ -26,6 +26,7 @@
 .config/sublime-text
 .local/bin/battery-conservation
 .local/bin/failed-units-notify
+.local/bin/fresh-workspace
 .local/bin/lock
 .local/bin/samsung-ssd.sh
 .local/bin/sync-brave-wallpapers

@@ -159,6 +159,8 @@ Per deploy, once per host:
   other than tb-6 also override `conservation_node` (ideapad sysfs path
   differs per machine)
 * **bluetooth** — before: `pacman -S bluez bluez-utils`
+* **keyring** — before: `pacman -S gnome-keyring libsecret`; takes effect on
+  next tty login (PAM unlocks the default keyring with the login password)
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`; the failed-units

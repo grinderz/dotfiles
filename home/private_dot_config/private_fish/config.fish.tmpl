@@ -50,6 +50,7 @@ if status is-interactive
 {{ else if eq .chezmoi.os "linux" }}
 {{- $rc := dig "personal" "reflector_countries" "" . }}
     abbr -a mirrors-update 'sudo reflector --latest 5{{ if $rc }} -c {{ $rc }}{{ end }} --protocol https --sort age --save /etc/pacman.d/mirrorlist'
+    abbr -a news 'yay -Pw'
 {{- end }}
 
     ## Plugins

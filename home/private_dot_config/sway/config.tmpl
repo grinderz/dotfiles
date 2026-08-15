@@ -25,8 +25,9 @@ set $ws2 "2:dev"
 set $ws3 "3:web"
 set $ws4 "4:ide"
 set $ws5 "5:wrk"
+set $ws6 "6:eml"
+set $ws7 "7:doc"
 set $ws9 "9:msg"
-set $ws10 "10:doc"
 
 ### Output configuration
 #
@@ -126,12 +127,14 @@ for_window [app_id="gcr-prompter"] floating enable
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 80 ppt height 80 ppt, move position center
 
 # Long-lived apps open on their dedicated workspace: browser 3 and work
-# browser 5 (left Dell), IDE 4 (right Dell), chats 9 and notes 10 (builtin)
+# browser 5, notes 7 and chats 9 (left Dell), IDE 4 and mail 6
+# (right Dell)
 assign [app_id="brave-browser"] workspace $ws3
 assign [app_id="jetbrains-pycharm"] workspace $ws4
 assign [app_id="firefox"] workspace $ws5
+assign [app_id="org.gnome.Evolution"] workspace $ws6
 assign [app_id="com.ayugram.desktop"] workspace $ws9
-assign [app_id="md.obsidian.Obsidian"] workspace $ws10
+assign [app_id="md.obsidian.Obsidian"] workspace $ws7
 
 # Autostart terminals on the primary workspaces: zellij main (2, right
 # Dell) and a plain shell (1, left Dell). Dedicated app-ids keep the assign
@@ -218,24 +221,29 @@ bindgesture swipe:4:right workspace prev_on_output
     bindsym $mod+3 workspace $ws3
     bindsym $mod+4 workspace $ws4
     bindsym $mod+5 workspace $ws5
-    bindsym $mod+6 workspace number 6
-    bindsym $mod+7 workspace number 7
+    bindsym $mod+6 workspace $ws6
+    bindsym $mod+7 workspace $ws7
     bindsym $mod+8 workspace number 8
     bindsym $mod+9 workspace $ws9
-    bindsym $mod+0 workspace $ws10
+    bindsym $mod+0 workspace number 10
     # Move focused container to workspace
     bindsym $mod+Shift+1 move container to workspace $ws1
     bindsym $mod+Shift+2 move container to workspace $ws2
     bindsym $mod+Shift+3 move container to workspace $ws3
     bindsym $mod+Shift+4 move container to workspace $ws4
     bindsym $mod+Shift+5 move container to workspace $ws5
-    bindsym $mod+Shift+6 move container to workspace number 6
-    bindsym $mod+Shift+7 move container to workspace number 7
+    bindsym $mod+Shift+6 move container to workspace $ws6
+    bindsym $mod+Shift+7 move container to workspace $ws7
     bindsym $mod+Shift+8 move container to workspace number 8
     bindsym $mod+Shift+9 move container to workspace $ws9
-    bindsym $mod+Shift+0 move container to workspace $ws10
+    bindsym $mod+Shift+0 move container to workspace number 10
     # Note: workspaces can have any name you want, not just numbers.
     # We just use 1-10 as the default.
+
+    # Fresh empty workspace (first free number from 11) on the focused
+    # output; Shift variant takes the focused window along
+    bindsym $mod+n exec $HOME/.local/bin/fresh-workspace
+    bindsym $mod+Shift+n exec $HOME/.local/bin/fresh-workspace move
 
     # Pin workspaces to outputs (docked profile in ~/.config/kanshi/config).
     # Odd workspaces sit on the left Dell, even on the right one, mirroring
@@ -245,13 +253,13 @@ bindgesture swipe:4:right workspace prev_on_output
     workspace $ws1 output '{{ .desktop.output_left }}' eDP-1
     workspace $ws3 output '{{ .desktop.output_left }}' eDP-1
     workspace $ws5 output '{{ .desktop.output_left }}' eDP-1
-    workspace 7 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws7 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws9 output '{{ .desktop.output_left }}' eDP-1
     workspace $ws2 output '{{ .desktop.output_right }}' eDP-1
     workspace $ws4 output '{{ .desktop.output_right }}' eDP-1
-    workspace 6 output '{{ .desktop.output_right }}' eDP-1
+    workspace $ws6 output '{{ .desktop.output_right }}' eDP-1
     workspace 8 output '{{ .desktop.output_right }}' eDP-1
-    workspace $ws9 output eDP-1
-    workspace $ws10 output eDP-1
+    workspace 10 output '{{ .desktop.output_right }}' eDP-1
 #
 # Layout stuff:
 #
