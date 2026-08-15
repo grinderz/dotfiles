@@ -21,6 +21,7 @@
 .config/systemd
 .config/waybar
 .config/wireplumber
+.config/yubikey-touch-detector
 .config/yay
 .config/user-dirs.dirs
 .config/user-dirs.locale
@@ -33,6 +34,7 @@
 .local/bin/power
 .local/bin/samsung-ssd.sh
 .local/bin/sync-brave-wallpapers
+.local/bin/traffic-level
 .local/share/flatpak
 {{ end }}
 

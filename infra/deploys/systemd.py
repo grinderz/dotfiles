@@ -82,6 +82,17 @@ systemd.service(
     user_mode=True,
 )
 
+# user session: desktop notification while a yubikey waits for a touch
+# (config from chezmoi enables libnotify); requires the
+# yubikey-touch-detector package
+systemd.service(
+    name='enable and start yubikey-touch-detector (user)',
+    service='yubikey-touch-detector.service',
+    enabled=True,
+    running=True,
+    user_mode=True,
+)
+
 # EPP + platform_profile switching on amd-pstate-epp laptops; requires the
 # power-profiles-daemon package
 systemd.service(

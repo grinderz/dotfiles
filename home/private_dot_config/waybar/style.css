@@ -81,6 +81,7 @@ button:hover {
 }
 
 #clock,
+#custom-traffic,
 #battery,
 #cpu,
 #memory,
@@ -312,6 +313,15 @@ label:focus {
 
 #scratchpad.empty {
 	background-color: transparent;
+}
+
+/* traffic level: class comes from the feed's color */
+#custom-traffic.yellow {
+    color: #f1c40f;
+}
+
+#custom-traffic.red {
+    color: #f53c3c;
 }
 
 #privacy {

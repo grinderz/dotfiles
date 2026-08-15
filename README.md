@@ -80,6 +80,8 @@ latitude = "51.48"                              # wlsunset night light
 longitude = "-0.01"
 output_left = "Make Model Serial"               # kanshi profile + sway workspace pins
 output_right = "Make Model Serial"
+traffic_url = "https://..."                     # regional traffic XML feed, waybar module
+traffic_map_url = "https://..."                 # map page opened on click
 ```
 
 Machines without a table simply render without those sections
@@ -151,7 +153,8 @@ Per deploy, once per host:
   mirror stick, see below
 * **storage-health** — before: `pacman -S smartmontools` (deploys only
   configure, packages are installed by hand)
-* **systemd** — before: `pacman -S power-profiles-daemon pacman-contrib`
+* **systemd** — before: `pacman -S power-profiles-daemon pacman-contrib
+  yubikey-touch-detector`
 * **nftables** — inbound firewall; extra holes go to `nftables_open_tcp` /
   `nftables_open_udp` in host or group data
 * **battery** / **docker** — `conservation_users` / `docker_users` live in
@@ -161,6 +164,10 @@ Per deploy, once per host:
 * **bluetooth** — before: `pacman -S bluez bluez-utils`
 * **keyring** — before: `pacman -S gnome-keyring libsecret`; takes effect on
   next tty login (PAM unlocks the default keyring with the login password)
+* **pam** — before: `pacman -S pam-u2f`; after: register the yubikeys for
+  sudo-by-touch (per machine, file stays out of the repo):
+  `mkdir -p ~/.config/Yubico && pamu2fcfg > ~/.config/Yubico/u2f_keys`,
+  each additional key: `pamu2fcfg -n >> ~/.config/Yubico/u2f_keys`
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`

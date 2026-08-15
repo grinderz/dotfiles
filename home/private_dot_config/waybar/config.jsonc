@@ -28,9 +28,10 @@
         "temperature",
         // "backlight",
         // "keyboard-state",
-        "sway/language",
         "battery",
         "custom/conservation",
+        "custom/traffic",
+        "sway/language",
         "clock",
         "custom/power"
     ],
@@ -212,6 +213,12 @@
         "escape": true,
         "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
         // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
+    },
+    "custom/traffic": {
+        "exec": "$HOME/.local/bin/traffic-level",
+        "return-type": "json",
+        "interval": 600,
+        "on-click": "$HOME/.local/bin/traffic-level open"
     },
     "custom/conservation": {
         "exec": "$HOME/.local/bin/battery-conservation status",

@@ -1,0 +1,32 @@
+#!/bin/sh
+# Road traffic level for waybar. The provider feed (a regional-info XML
+# with <level>/<icon>/<hint>/<tend>) and the map page for on-click both
+# live in the private chezmoi.toml ([data.desktop] traffic_url,
+# traffic_map_url); with no feed configured the module stays empty.
+{{- if hasKey .desktop "traffic_url" }}
+
+{{- if hasKey .desktop "traffic_map_url" }}
+if [ "$1" = open ]; then
+    exec xdg-open '{{ .desktop.traffic_map_url }}'
+fi
+{{- end }}
+
+xml=$(curl -sfm 10 '{{ .desktop.traffic_url }}') || exit 0
+
+get() { printf '%s\n' "$xml" | sed -n "s:.*<$1>\\(.*\\)</$1>.*:\\1:p" | head -1; }
+
+level=$(get level)
+[ -n "$level" ] || exit 0
+icon=$(get icon)                                     # green | yellow | red
+hint=$(printf '%s\n' "$xml" | sed -n 's:.*<hint lang="ru">\(.*\)</hint>.*:\1:p' | head -1)
+time=$(get time)
+
+case $(get tend) in
+    1)  trend=" ↑" ;;
+    -1) trend=" ↓" ;;
+    *)  trend="" ;;
+esac
+
+printf '{"text": "%s %s%s", "tooltip": "%s (%s)", "class": "%s"}\n' \
+    "" "$level" "$trend" "$hint" "$time" "$icon"
+{{- end }}

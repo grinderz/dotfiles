@@ -39,6 +39,10 @@ infra.linux.%:
 
 infra.local.linux.%:
 	@test "$$(uname -s)" = Linux || { echo "error: linux-only target, this machine is $$(uname -s)" >&2; exit 1; }
+	@# one sudo auth (yubikey touch / password) per run: prime the normal
+	@# tty-scoped timestamp; pyinfra gets no password and its sudo -n
+	@# rides the cache (its children share this terminal's ctty)
+	sudo -v
 	cd infra && pyinfra --diff --limit $* linux.py deploys/$(deploy).py $(args)
 
 # usage: make infra.local.macos.local deploy=openconnect args="--dry"
