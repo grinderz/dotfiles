@@ -5,3 +5,19 @@
 show_hidden = false
 sort_by = "natural"
 sort_dir_first = true
+
+[plugin]
+prepend_previewers = [
+	{ mime = "application/pdf", run = "noop" },
+	{ mime = "image/*", run = "noop" },
+]
+
+[opener]
+extractrar = [
+	{ run = 'unrar x "$1"', desc = "Extract rar" },
+]
+
+[open]
+prepend_rules = [
+	{ mime = "application/rar", use = "extractrar" },
+]

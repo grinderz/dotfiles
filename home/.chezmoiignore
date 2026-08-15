@@ -6,6 +6,7 @@
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}
+.bash_profile
 .config/foot
 .config/brave-flags.conf
 .config/fuzzel
