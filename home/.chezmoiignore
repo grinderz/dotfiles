@@ -28,6 +28,7 @@
 .local/bin/failed-units-notify
 .local/bin/fresh-workspace
 .local/bin/lock
+.local/bin/power
 .local/bin/samsung-ssd.sh
 .local/bin/sync-brave-wallpapers
 .local/share/flatpak

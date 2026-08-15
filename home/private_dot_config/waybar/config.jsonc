@@ -227,8 +227,8 @@
 		"menu": "on-click",
 		"menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder
 		"menu-actions": {
-			"shutdown": "shutdown",
-			"reboot": "reboot",
+			"shutdown": "$HOME/.local/bin/power poweroff",
+			"reboot": "$HOME/.local/bin/power reboot",
 			"suspend": "systemctl suspend"
 		}
     }

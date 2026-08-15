@@ -1,0 +1,28 @@
+#!/bin/sh
+# Graceful poweroff/reboot from the sway session. A bare systemctl
+# poweroff tears the session down with SIGTERM/SIGKILL and browsers log
+# it as a crash ("Brave quit unexpectedly", session restore prompt).
+# Instead ask every sway view to close (xdg close request, same as
+# clicking the titlebar X), wait until they are gone, then hand over to
+# systemd. Apps that block on a "save changes?" prompt get 15s, after
+# that shutdown proceeds anyway.
+action=${1:?usage: power poweroff|reboot}
+
+views() {
+    swaymsg -t get_tree | jq '[.. | objects | select(.pid != null) | .id]'
+}
+
+# Outside a sway session (bare tty) there is nothing to close gracefully
+if [ -n "$SWAYSOCK" ]; then
+    for id in $(views | jq '.[]'); do
+        swaymsg "[con_id=$id] kill" > /dev/null
+    done
+
+    i=0
+    while [ "$(views | jq 'length')" -gt 0 ] && [ $i -lt 30 ]; do
+        sleep 0.5
+        i=$((i + 1))
+    done
+fi
+
+exec systemctl "$action"

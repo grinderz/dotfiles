@@ -349,6 +349,9 @@ bindsym $mod+r mode "resize"
     bindsym $mod+Ctrl+p exec grimshot --notify save active   # active window
     bindsym $mod+Alt+p exec grimshot --notify save output    # current monitor
 
+    # OCR an area to the clipboard (eng+rus; needs tesseract-data-*)
+    bindsym $mod+o exec 'grim -g "$(slurp)" - | tesseract -l eng+rus - - | wl-copy'
+
 #
 # Status Bar:
 #

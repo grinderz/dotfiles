@@ -51,6 +51,9 @@ if status is-interactive
 {{- $rc := dig "personal" "reflector_countries" "" . }}
     abbr -a mirrors-update 'sudo reflector --latest 5{{ if $rc }} -c {{ $rc }}{{ end }} --protocol https --sort age --save /etc/pacman.d/mirrorlist'
     abbr -a news 'yay -Pw'
+    # Close sway views gracefully before shutdown (browser profiles)
+    abbr -a poweroff 'power poweroff'
+    abbr -a reboot 'power reboot'
 {{- end }}
 
     ## Plugins

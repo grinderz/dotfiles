@@ -163,7 +163,8 @@ Per deploy, once per host:
   next tty login (PAM unlocks the default keyring with the login password)
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
-  (grimshot), `wlsunset`; the failed-units
+  (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
+  (OCR bind); the failed-units
   notifier timer is enabled by the systemd deploy (run dotfiles apply
   first — the unit files come from chezmoi); dark theme for GTK4/portal
   apps and web (dconf state, chezmoi only covers the settings.ini files):
