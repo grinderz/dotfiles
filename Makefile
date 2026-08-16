@@ -10,6 +10,40 @@ setup.pyinfra:
 setup.pyinfra.upgrade:
 	uv tool upgrade pyinfra
 
+# --- lint ---
+# shell scripts: everything with a sh/bash shebang except chezmoi
+# templates (jinja braces are false positives for shellcheck)
+
+lint.shellcheck:
+	find home/dot_local/bin install -type f ! -name '*.tmpl' \
+		-exec grep -lE '^#!/(usr/)?bin/(env )?(sh|bash)' {} + | xargs shellcheck
+
+lint.ruff:
+	uvx ruff check infra
+
+lint: lint.shellcheck lint.ruff
+
+# --- reproducible install (install/) ---
+# refresh the reference exports from the live system; subvolumes.map and
+# mkinitcpio.conf.template stay hand-maintained (see install/README.md)
+
+install.export:
+	@test "$$(uname -s)" = Linux || { echo "error: linux-only target" >&2; exit 1; }
+	pacman -Qqen >| install/export/packages-native.txt
+	pacman -Qqem >| install/export/packages-foreign.txt
+	systemctl list-unit-files --state=enabled --no-legend | awk '{print $$1}' >| install/export/enabled-units.txt
+	systemctl list-units --type=service --state=running --no-legend --plain | awk '{print $$1}' | sort >| install/export/running-services.txt
+	systemctl list-units --type=timer --state=active --no-legend --plain | awk '{print $$1}' | sort >| install/export/timers.txt
+	flatpak list --app --columns=application >| install/export/flatpaks.txt
+	cd install/export && while IFS="$$(printf '\t')" read -r _ mp _; do \
+		rmp=$${mp//@USER@/$$USER}; \
+		printf '%s\t%s\n' "$$(stat -c '%U:%G %a' "$$rmp" 2>/dev/null || echo missing)" "$$mp"; \
+	done < subvolumes.map | sed "s/\b$$USER\b/@USER@/g" >| subvolume-perms.txt
+	git diff --stat -- install/export
+
+install.validate:
+	bash install/validate.sh
+
 # --- dotfiles (chezmoi) ---
 
 dotfiles.diff:

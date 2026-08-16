@@ -38,12 +38,12 @@ function show_info(){
         echo "------------------------------"
         echo " SSD Status:   $SSD_DEVICE"
         echo "------------------------------"
-        echo " On time:      $(echo $ON_TIME | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta') hr"
+        echo " On time:      $(echo "$ON_TIME" | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta') hr"
         echo "------------------------------"
         echo " Data written:"
-        echo "           MB: $(echo $MB_WRITTEN | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
-        echo "           GB: $(echo $GB_WRITTEN | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
-        echo "           TB: $(echo $TB_WRITTEN | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
+        echo "           MB: $(echo "$MB_WRITTEN" | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
+        echo "           GB: $(echo "$GB_WRITTEN" | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
+        echo "           TB: $(echo "$TB_WRITTEN" | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
         echo "------------------------------"
         echo " Mean write rate:"
         echo "        MB/hr: $(echo "scale=3; $MB_WRITTEN / $ON_TIME" | bc | sed ':a;s/\B[0-9]\{3\}\>/,&/;ta')"
@@ -54,15 +54,15 @@ function show_info(){
 
 if [[ -n $1 ]]; then
         SSD_DEVICE=$1
-        hdparm -I $SSD_DEVICE 2>/dev/null | grep 'Nominal Media Rotation Rate: Solid State Device' > /dev/null
-        if [[ $? -ne 0 ]]; then
+        if ! hdparm -I "$SSD_DEVICE" 2>/dev/null | grep -q 'Nominal Media Rotation Rate: Solid State Device'; then
                 echo "$SSD_DEVICE is not a solid state device!" >&2
                 exit 1
         fi
         show_info
 else
         for SSD_DEVICE in /dev/sd*[^0-9]; do
-                hdparm -I $SSD_DEVICE 2>/dev/null | grep 'Nominal Media Rotation Rate: Solid State Device' > /dev/null
-                [[ $? -eq 0 ]] && show_info
+                if hdparm -I "$SSD_DEVICE" 2>/dev/null | grep -q 'Nominal Media Rotation Rate: Solid State Device'; then
+                        show_info
+                fi
         done
 fi

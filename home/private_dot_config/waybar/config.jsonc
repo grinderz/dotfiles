@@ -18,7 +18,7 @@
     "modules-right": [
         "tray",
         // "mpd",
-        // "idle_inhibitor",
+        "custom/nosuspend",
         "pulseaudio",
         "bluetooth",
         "network",
@@ -31,6 +31,7 @@
         "battery",
         "custom/conservation",
         "custom/traffic",
+        "custom/weather",
         "sway/language",
         "clock",
         "custom/power"
@@ -60,6 +61,10 @@
             "locked": "",
             "unlocked": ""
         }
+    },
+    "sway/language": {
+        "format": "{flag}",
+        "tooltip-format": "{long}"
     },
     "sway/mode": {
         "format": "<span style=\"italic\">{}</span>"
@@ -154,15 +159,15 @@
         "format-icons": ["", "", "", "", ""]
     },
     "power-profiles-daemon": {
-      "format": "{icon}",
-      "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
-      "tooltip": true,
-      "format-icons": {
+        "format": "{icon}",
+        "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+        "tooltip": true,
+        "format-icons": {
         "default": "",
         "performance": "",
         "balanced": "",
         "power-saver": ""
-      }
+        }
     },
     "network": {
         // "interface": "wlp2*", // (Optional) To force the use of this interface
@@ -176,8 +181,8 @@
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
         "format": "{volume}% {icon} {format_source}",
-        "format-bluetooth": "{volume}% {icon} {format_source}",
-        "format-bluetooth-muted": " {icon} {format_source}",
+        "format-bluetooth": "{volume}% {icon}  {format_source}",
+        "format-bluetooth-muted": " {icon}  {format_source}",
         "format-muted": " {format_source}",
         "format-source": "{volume}% ",
         "format-source-muted": "",
@@ -217,8 +222,21 @@
     "custom/traffic": {
         "exec": "$HOME/.local/bin/traffic-level",
         "return-type": "json",
+        "format": "{} ",
         "interval": 600,
         "on-click": "$HOME/.local/bin/traffic-level open"
+    },
+    "custom/weather": {
+        "exec": "$HOME/.local/bin/weather",
+        "return-type": "json",
+        "interval": 900
+    },
+    "custom/nosuspend": {
+        "exec": "$HOME/.local/bin/suspend-toggle status",
+        "return-type": "json",
+        "interval": 60,
+        "signal": 8,
+        "on-click": "$HOME/.local/bin/suspend-toggle toggle"
     },
     "custom/conservation": {
         "exec": "$HOME/.local/bin/battery-conservation status",
@@ -229,14 +247,14 @@
         "tooltip": true
     },
     "custom/power": {
-        "format" : "⏻ ",
-		"tooltip": false,
-		"menu": "on-click",
-		"menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder
-		"menu-actions": {
-			"shutdown": "$HOME/.local/bin/power poweroff",
-			"reboot": "$HOME/.local/bin/power reboot",
-			"suspend": "systemctl suspend"
-		}
+        "format": "⏻ ",
+        "tooltip": false,
+        "menu": "on-click",
+        "menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder
+        "menu-actions": {
+            "shutdown": "$HOME/.local/bin/power poweroff",
+            "reboot": "$HOME/.local/bin/power reboot",
+            "suspend": "systemctl suspend"
+        }
     }
 }

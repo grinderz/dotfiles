@@ -18,6 +18,9 @@ set $term foot
 # Your preferred application launcher
 set $menu fuzzel
 
+# Titlebars/swaynag; same face as the waybar stack (ttf-roboto)
+font pango:Roboto 10
+
 # Workspace names: number stays first so $mod+N binds and the keyboard
 # number layer keep working; the label shows up in waybar.
 set $ws1 "1:cli"
@@ -106,12 +109,18 @@ input "1452:613:Apple_Inc._Magic_Trackpad" {
 }
 
 input type:keyboard {
-    xkb_layout "eu,ru"
+    xkb_layout "us,ru"
     xkb_options grp:caps_toggle
 }
 
+# Focus stays put; stray trackpad hovers must not steal it
+focus_follows_mouse no
+
 ### Windows
 #
+# No border/titlebar edges for a lone window on an output
+hide_edge_borders smart
+
 # Volume mixer opened from the waybar pulseaudio module
 for_window [app_id="mixer"] floating enable
 
@@ -144,6 +153,10 @@ assign [app_id="foot-dev"] workspace $ws2
 assign [app_id="foot-cli"] workspace $ws1
 exec foot --app-id=foot-dev zellij attach --create main
 exec foot --app-id=foot-cli
+
+# Drop-down terminal living in the scratchpad: $mod+minus anywhere
+for_window [app_id="foot-scratch"] move scratchpad, resize set 1200 700
+exec foot --app-id=foot-scratch
 
 # Long-lived apps land on their assigned workspaces (see assign rules above)
 exec brave
@@ -202,11 +215,18 @@ bindgesture swipe:4:right workspace prev_on_output
     bindsym $mod+Up focus up
     bindsym $mod+Right focus right
 
+    # Jump to the most recent urgent window
+    bindsym $mod+x [urgent=latest] focus
+
     # Move the focused window with the same, but add Shift
     bindsym $mod+Shift+$left move left
     bindsym $mod+Shift+$down move down
     bindsym $mod+Shift+$up move up
     bindsym $mod+Shift+$right move right
+    # Move the container to the neighbouring output (the other Dell)
+    bindsym $mod+Shift+less move container to output left
+    bindsym $mod+Shift+greater move container to output right
+
     # Ditto, with arrow keys
     bindsym $mod+Shift+Left move left
     bindsym $mod+Shift+Down move down

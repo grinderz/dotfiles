@@ -11,12 +11,17 @@ if [ "$1" = open ]; then
 fi
 {{- end }}
 
-xml=$(curl -sfm 10 '{{ .desktop.traffic_url }}') || exit 0
+# On a fetch/parse failure fall back to the last good answer instead of
+# blanking the module until the next interval (waybar hides empty output)
+cache=${XDG_RUNTIME_DIR:-/tmp}/waybar-traffic.json
+bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
+
+xml=$(curl -sfm 10 '{{ .desktop.traffic_url }}') || bail
 
 get() { printf '%s\n' "$xml" | sed -n "s:.*<$1>\\(.*\\)</$1>.*:\\1:p" | head -1; }
 
 level=$(get level)
-[ -n "$level" ] || exit 0
+[ -n "$level" ] || bail
 icon=$(get icon)                                     # green | yellow | red
 hint=$(printf '%s\n' "$xml" | sed -n 's:.*<hint lang="ru">\(.*\)</hint>.*:\1:p' | head -1)
 time=$(get time)
@@ -27,6 +32,6 @@ case $(get tend) in
     *)  trend="" ;;
 esac
 
-printf '{"text": "%s %s%s", "tooltip": "%s (%s)", "class": "%s"}\n' \
-    "" "$level" "$trend" "$hint" "$time" "$icon"
+printf '{"text": "%s%s", "tooltip": "%s (%s)", "class": "%s"}\n' \
+    "$level" "$trend" "$hint" "$time" "$icon" | tee "$cache"
 {{- end }}

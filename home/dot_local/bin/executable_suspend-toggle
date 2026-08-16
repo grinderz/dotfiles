@@ -1,0 +1,19 @@
+#!/bin/sh
+# Waybar toggle inhibiting ONLY the on-battery idle suspend: swayidle's
+# suspend timeout checks this flag file, lock and display-off timeouts
+# keep working. ☕ = suspend inhibited, 💤 = normal.
+flag=${XDG_RUNTIME_DIR:-/tmp}/inhibit-idle-suspend
+
+case "${1:-status}" in
+    toggle)
+        if [ -e "$flag" ]; then rm -f "$flag"; else touch "$flag"; fi
+        pkill -SIGRTMIN+8 waybar 2>/dev/null
+        ;;
+    status)
+        if [ -e "$flag" ]; then
+            printf '{"text": "☕", "tooltip": "idle suspend inhibited (lock/screens still on)", "class": "inhibited"}\n'
+        else
+            printf '{"text": "☾", "tooltip": "idle suspend armed (30 min idle)", "class": ""}\n'
+        fi
+        ;;
+esac

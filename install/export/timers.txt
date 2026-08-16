@@ -1,0 +1,11 @@
+archlinux-keyring-wkd-sync.timer
+btrbk-snapshot.timer
+btrfs-free-check.timer
+btrfs-scrub@-.timer
+btrfs-stats-check.timer
+logrotate.timer
+man-db.timer
+paccache.timer
+shadow.timer
+snapper-cleanup.timer
+systemd-tmpfiles-clean.timer

@@ -1,0 +1,31 @@
+#!/bin/sh
+# Current weather for waybar via open-meteo (no api key); coordinates
+# come from the private chezmoi.toml ([data.desktop], same pair wlsunset
+# uses). Falls back to the last good answer on fetch errors.
+{{- if hasKey .desktop "latitude" }}
+cache=${XDG_RUNTIME_DIR:-/tmp}/waybar-weather.json
+bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
+
+url='https://api.open-meteo.com/v1/forecast?latitude={{ .desktop.latitude }}&longitude={{ .desktop.longitude }}&current=temperature_2m,weather_code,wind_speed_10m'
+data=$(curl -sfm 10 "$url") || bail
+
+temp=$(printf '%s' "$data" | jq -r '.current.temperature_2m | round')
+code=$(printf '%s' "$data" | jq -r '.current.weather_code')
+wind=$(printf '%s' "$data" | jq -r '.current.wind_speed_10m')
+[ -n "$temp" ] && [ "$temp" != null ] || bail
+
+# WMO weather codes -> icon + words
+case "$code" in
+    0)           icon="☀️"  desc="clear" ;;
+    1|2)         icon="🌤️" desc="partly cloudy" ;;
+    3)           icon="☁️"  desc="overcast" ;;
+    45|48)       icon="🌫️" desc="fog" ;;
+    5[1-7]|6[1-7]|8[0-2]) icon="🌧️" desc="rain" ;;
+    7[1-7]|85|86) icon="❄️"  desc="snow" ;;
+    9[5-9])      icon="⛈️"  desc="thunderstorm" ;;
+    *)           icon="🌡️" desc="code $code" ;;
+esac
+
+printf '{"text": "%s°C %s", "tooltip": "%s, wind %s km/h"}\n' \
+    "$temp" "$icon" "$desc" "$wind" | tee "$cache"
+{{- end }}

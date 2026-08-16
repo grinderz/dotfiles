@@ -1,2 +1,11 @@
+# without a floor ruff assumes an old python where tomllib (3.11+,
+# util.py) is not stdlib and mis-sorts it as third-party
+target-version = "py312"
+
 [format]
 quote-style = "single"
+
+[lint.isort]
+# infra/util.py is our own module; without this ruff files it as
+# third-party and wants it merged into the pyinfra import block
+known-first-party = ["util"]

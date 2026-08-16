@@ -26,9 +26,11 @@ set -um
 
 # TODO support more options: peak, footprint, sampling rate, etc.
 
-pgid=$(ps -o pgid= $$)
+# $((...)) trims the leading whitespace ps pads numeric fields with
+pgid=$(($(ps -o pgid= $$)))
+ppid=$(($(ps -o ppid= $$)))
 # make sure we're in a separate process group
-if [[ "$pgid" == "$(ps -o pgid= $(ps -o ppid= $$))" ]]; then
+if [[ "$pgid" == "$(($(ps -o pgid= "$ppid")))" ]]; then
     cmd=
     set -- "$0" "$@"
     for a; do cmd+="'${a//"'"/"'\\''"}' "; done
@@ -37,25 +39,25 @@ fi
 
 # detect operating system and prepare measurement
 case $(uname) in
-    Darwin|*BSD) sizes() { /bin/ps -o rss= -g $1; } ;;
-    Linux) sizes() { /bin/ps -o rss= -$1; } ;;
+    Darwin|*BSD) sizes() { /bin/ps -o rss= -g "$1"; } ;;
+    Linux) sizes() { /bin/ps -o rss= -"$1"; } ;;
     *) echo "$(uname): unsupported operating system" >&2; exit 2 ;;
 esac
 
 # monitor the memory usage in the background.
 (
 peak=0
-while sizes=$(sizes $pgid)
+while sizes=$(sizes "$pgid")
 do
+    # word splitting is the point: one rss value per process
+    # shellcheck disable=SC2086
     set -- $sizes
     sample=$((${@/#/+}))
-    let peak="sample > peak ? sample : peak"
+    (( peak = sample > peak ? sample : peak ))
     sleep 0.1
 done
 echo "memusg: peak=$peak" >&2
 ) &
-monpid=$!
-
 
 # run the given command
 exec "$@"

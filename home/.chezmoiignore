@@ -34,8 +34,10 @@
 .local/bin/lock
 .local/bin/power
 .local/bin/samsung-ssd.sh
+.local/bin/suspend-toggle
 .local/bin/sync-brave-wallpapers
 .local/bin/traffic-level
+.local/bin/weather
 .local/share/flatpak
 {{ end }}
 

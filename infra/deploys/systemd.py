@@ -93,6 +93,15 @@ systemd.service(
     user_mode=True,
 )
 
+# seat management for the sway session (sway runs as plain user via seatd)
+systemd.service(
+    name='enable and start seatd',
+    service='seatd',
+    enabled=True,
+    running=True,
+    _sudo=True,
+)
+
 # EPP + platform_profile switching on amd-pstate-epp laptops; requires the
 # power-profiles-daemon package
 systemd.service(

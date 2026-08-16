@@ -1,0 +1,25 @@
+/@	/
+/@home	/home
+/@btrbk_snapshots	/.btrbk_snapshots
+/@root	/root
+/@usr_local	/usr/local
+/@srv	/srv
+/@opt	/opt
+/@snapshots	/.snapshots
+/@var_machines	/var/lib/machines	+C
+/@var_portables	/var/lib/portables	+C
+/@var_postgres	/var/lib/postgres	+C
+/@var_flatpak	/var/lib/flatpak
+/@var_docker	/var/lib/docker	+C
+/@var_libvirt	/var/lib/libvirt	+C
+/@var_networkmanager	/var/lib/NetworkManager
+/@var_accountservice	/var/lib/AccountsService
+/@var_www	/var/www
+/@var_games	/var/games
+/@var_cache	/var/cache
+/@var_spool	/var/spool
+/@var_abs	/var/abs
+/@var_tmp	/var/tmp
+/@var_log	/var/log
+/@home_unbacked	/home/@USER@/.unbacked
+/	/.btrfs_pool

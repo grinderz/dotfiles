@@ -1,0 +1,13 @@
+brave-bin
+claude-code
+limine-mkinitcpio-hook
+limine-snapper-sync
+localsend-bin
+pkg_scripts
+pycharm
+sublime-merge
+sublime-text-4
+systemd-oomd-defaults
+usign
+yay-bin
+yubico-authenticator-bin

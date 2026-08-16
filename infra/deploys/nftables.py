@@ -19,6 +19,10 @@ systemd.service(
     name='enable nftables',
     service='nftables',
     enabled=True,
+    # oneshot without RemainAfterExit: inactive after success is its
+    # steady state, and pyinfra's default running=True would "start" it
+    # on every run
+    running=False,
     _sudo=True,
 )
 

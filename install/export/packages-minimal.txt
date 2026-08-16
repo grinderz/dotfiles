@@ -1,0 +1,19 @@
+# Minimum to boot the machine and run the pyinfra/chezmoi bootstrap on
+# top: base system, both kernels, boot chain, disk tooling, remote
+# access. Filesystem- and encryption-specific packages (btrfs-progs,
+# snapper, snap-pac, e2fsprogs, cryptsetup) are appended by
+# bootstrap.sh based on what disk-prep actually built.
+# Everything else arrives via `pacman -S` from the pacman
+# deploy or by hand (packages-native.txt is the full reference set).
+base
+base-devel
+linux
+linux-lts
+linux-firmware
+amd-ucode
+dosfstools
+efibootmgr
+limine
+git
+openssh
+sudo

@@ -82,6 +82,7 @@ button:hover {
 
 #clock,
 #custom-traffic,
+#custom-weather,
 #battery,
 #cpu,
 #memory,
@@ -312,7 +313,7 @@ label:focus {
 }
 
 #scratchpad.empty {
-	background-color: transparent;
+    background-color: transparent;
 }
 
 /* traffic level: class comes from the feed's color */

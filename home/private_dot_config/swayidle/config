@@ -1,5 +1,6 @@
+timeout 570 'notify-send -t 10000 -u low "locking in 30 seconds"'
 timeout 600 '$HOME/.local/bin/lock'
 timeout 900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"'
-# suspend on idle only when on battery; ACAD online = 1 means AC plugged
-timeout 900 '[ "$(cat /sys/class/power_supply/ACAD/online)" = 0 ] && systemctl suspend'
+# suspend after 30 min idle (any power source) unless inhibited from waybar
+timeout 1800 '[ ! -e "${XDG_RUNTIME_DIR:-/tmp}/inhibit-idle-suspend" ] && systemctl suspend'
 before-sleep '$HOME/.local/bin/lock'
