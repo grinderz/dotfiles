@@ -204,6 +204,40 @@ over). Add `nofail` to the `/boot` fstab options so booting from the mirror
 does not drop to emergency when the primary stick is dead — the failed
 `boot.mount` is surfaced by the `failed-units-notify` user timer instead.
 
+## Fish functions and abbreviations
+
+Autoloaded from `fish/functions/`; deps in parentheses are installed by
+hand (see the pacman/AUR notes).
+
+| Command | Does |
+|---|---|
+| `extract FILE` | unpack any archive by extension |
+| `mkcd DIR` | `mkdir -p` && `cd` |
+| `tarzst DIR` | pack a directory into `DIR.tar.zst` |
+| `rarr DIR` | rar with 10% recovery record (AUR `rar`) |
+| `parr DIR` | single par2 set (10%) over a directory — immutable exports leaving btrfs; repair with `par2 repair DIR.par2` (`par2cmdline`) |
+| `parr-each DIR` | per-file par2 sets, incremental, reports orphans — for directories that keep changing |
+| `parr-verify DIR` / `parr-repair DIR` | check / fix the per-file sets |
+| `rhashr DIR` | `DIR.sha256` integrity audit, incremental via `rhash --update` (`rhash`) |
+| `rhash-verify DIR` | verify against `DIR.sha256`, lists missing files |
+| `zl-layout NAME` | attach-or-create a zellij session |
+| `showfiles` / `hidefiles` | macOS Finder hidden-files toggle |
+
+Abbreviations (`config.fish`):
+
+| Abbr | Expands to | OS |
+|---|---|---|
+| `vim` | `nvim` | all |
+| `kk` | `kubectl` | all |
+| `ls` | `eza --icons --group-directories-first` | all |
+| `news` | `yay -Pw` (Arch news) | linux |
+| `mirrors-update` | `reflector … --save /etc/pacman.d/mirrorlist` | linux |
+| `poweroff` / `reboot` | graceful `power` wrapper (closes windows first) | linux |
+| `ql` | `qlmanage -p` (Quick Look) | macOS |
+| `cpwd` | `pwd \| pbcopy` | macOS |
+| `flushdns` | flush DNS cache + HUP mDNSResponder | macOS |
+| `ports` | `lsof -iTCP -sTCP:LISTEN -n -P` | macOS |
+
 ## Notes
 
 * fish functions live in `functions/` (autoloaded); macOS-only ones are

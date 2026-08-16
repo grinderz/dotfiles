@@ -1,0 +1,3 @@
+# progress + recognize common hash files on `rhash -c`
+percents = on
+crc-accept = .sfv,.md5,.sha1,.sha256,.sha512
