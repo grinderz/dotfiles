@@ -8,8 +8,14 @@ Name={{ net.match_name }}
 DHCP=yes
 {% if net.get("ignore_carrier_loss") %}IgnoreCarrierLoss=yes
 {% endif %}
+# UseDomains takes the search domain from the lease, so single-label host
+# names resolve without typing the suffix. Per-link, so the domain is not
+# appended on foreign networks. Requires the router to send DHCP option 15;
+# verify with `resolvectl domain` after applying.
 [DHCPv4]
 RouteMetric={{ net.metric }}
+UseDomains=yes
 
 [IPv6AcceptRA]
 RouteMetric={{ net.metric }}
+UseDomains=yes

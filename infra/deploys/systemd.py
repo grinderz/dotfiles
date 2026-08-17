@@ -46,7 +46,15 @@ resolved_conf = files.put(
     _sudo=True,
 )
 
-if resolved_conf.changed:
+no_fallback_dns = files.put(
+    name='install resolved.conf.d/00-no-fallback-dns.conf',
+    src='templates/resolved.conf.d/00-no-fallback-dns.conf',
+    dest='/etc/systemd/resolved.conf.d/00-no-fallback-dns.conf',
+    mode='644',
+    _sudo=True,
+)
+
+if resolved_conf.changed or no_fallback_dns.changed:
     systemd.service(
         name='restart systemd-resolved',
         service='systemd-resolved',
