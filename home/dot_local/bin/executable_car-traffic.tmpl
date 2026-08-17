@@ -13,7 +13,7 @@ fi
 
 # On a fetch/parse failure fall back to the last good answer instead of
 # blanking the module until the next interval (waybar hides empty output)
-cache=${XDG_RUNTIME_DIR:-/tmp}/waybar-traffic.json
+cache=${XDG_RUNTIME_DIR:-/tmp}/waybar-car-traffic.json
 bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
 
 xml=$(curl -sfm 10 '{{ .desktop.traffic_url }}') || bail

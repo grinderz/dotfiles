@@ -29,6 +29,7 @@
 # sublime keeps its mac config under ~/Library/Application Support
 .config/sublime-text
 .local/bin/battery-conservation
+.local/bin/disk-space-notify
 .local/bin/failed-units-notify
 .local/bin/fresh-workspace
 .local/bin/lock
@@ -36,7 +37,8 @@
 .local/bin/samsung-ssd.sh
 .local/bin/suspend-toggle
 .local/bin/sync-brave-wallpapers
-.local/bin/traffic-level
+.local/bin/system-stats
+.local/bin/car-traffic
 .local/bin/weather
 .local/share/flatpak
 {{ end }}

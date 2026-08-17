@@ -1,0 +1,22 @@
+#!/bin/sh
+# Warn the desktop (mako) when the btrfs root runs low on space. df lies
+# on btrfs (snapshots, metadata, allocation), so read the Overall section
+# of `btrfs filesystem usage` instead — it works without root.
+usage=$(btrfs filesystem usage -b / 2> /dev/null) || exit 0
+
+size=$(printf '%s\n' "$usage" | awk '/Device size:/ {print $3}')
+free=$(printf '%s\n' "$usage" | awk '/Free \(estimated\)/ {print $3}')
+reserve_used=$(printf '%s\n' "$usage" |
+    awk '/Global reserve:/ {gsub(/[()]/, ""); print $5}')
+[ -n "$size" ] && [ -n "$free" ] || exit 0
+
+pct=$((free * 100 / size))
+msg=""
+[ "$pct" -lt 10 ] && msg="root: ${pct}% free ($((free / 1024 / 1024 / 1024)) GiB)"
+# global reserve in use = btrfs already struggling for metadata space
+[ "${reserve_used:-0}" -gt 0 ] && msg="$msg${msg:+
+}root: global reserve in use — near ENOSPC, clean up now"
+[ -z "$msg" ] && exit 0
+
+# fixed replace-id: repeated runs update one notification instead of stacking
+notify-send -u critical -r 9991 "Low disk space" "$msg"

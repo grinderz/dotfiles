@@ -1,0 +1,42 @@
+#!/bin/sh
+# Compact system health for waybar: temperature as the always-on number,
+# cpu/load/mem/swap detail in the tooltip. Replaces the separate memory
+# and temperature modules.
+
+# k10temp Tctl; hwmon indexes shuffle between boots, find by name
+temp=0
+for h in /sys/class/hwmon/*; do
+    if [ "$(cat "$h/name" 2> /dev/null)" = k10temp ]; then
+        temp=$(($(cat "$h/temp1_input") / 1000))
+        break
+    fi
+done
+
+icon=
+[ "$temp" -ge 60 ] && icon=
+[ "$temp" -ge 80 ] && icon=
+
+# cpu% over a 0.3s window from /proc/stat
+read -r _ u1 n1 s1 i1 w1 q1 sq1 st1 _ < /proc/stat
+sleep 0.3
+read -r _ u2 n2 s2 i2 w2 q2 sq2 st2 _ < /proc/stat
+busy=$(((u2 + n2 + s2 + q2 + sq2 + st2) - (u1 + n1 + s1 + q1 + sq1 + st1)))
+total=$((busy + (i2 + w2) - (i1 + w1)))
+cpu=0
+[ "$total" -gt 0 ] && cpu=$((100 * busy / total))
+
+read -r l1 l5 l15 _ < /proc/loadavg
+
+mem=$(awk '/MemTotal/ {t=$2} /MemAvailable/ {a=$2}
+           /SwapTotal/ {st=$2} /SwapFree/ {sf=$2}
+           END {printf "mem %.1f/%.1f GiB (%d%%)\nswap %.1f/%.1f GiB",
+                (t-a)/1048576, t/1048576, (t-a)*100/t,
+                (st-sf)/1048576, st/1048576}' /proc/meminfo)
+
+class=""
+{ [ "$temp" -ge 80 ] || [ "$cpu" -ge 90 ]; } && class=critical
+
+jq -nc --arg text "${temp}°C $icon" \
+    --arg tip "cpu ${cpu}% (load $l1 $l5 $l15)
+$mem" \
+    --arg class "$class" '{text: $text, tooltip: $tip, class: $class}'

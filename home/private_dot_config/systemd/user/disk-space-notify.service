@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify when the btrfs root runs low on space
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/disk-space-notify

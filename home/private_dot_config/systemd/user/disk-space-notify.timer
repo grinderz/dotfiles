@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodic check for low disk space
+
+[Timer]
+OnStartupSec=5min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target

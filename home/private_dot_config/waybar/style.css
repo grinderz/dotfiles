@@ -9,7 +9,7 @@
 
 window#waybar {
     background-color: #285577;
-    border-bottom: 3px solid #4c7899;
+    border-top: 3px solid #4c7899;
     color: #ffffff;
     transition-property: background-color;
     transition-duration: .5s;
@@ -48,7 +48,7 @@ button {
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 button:hover {
     background: inherit;
-    box-shadow: inset 0 -3px #ffffff;
+    box-shadow: inset 0 3px #ffffff;
 }
 
 /* you can set a style on hover for any module like this */
@@ -68,7 +68,7 @@ button:hover {
 
 #workspaces button.focused, #workspaces button.active {
     background-color: #64727D;
-    box-shadow: inset 0 -3px #ffffff;
+    box-shadow: inset 0 3px #ffffff;
 }
 
 #workspaces button.urgent {
@@ -77,28 +77,23 @@ button:hover {
 
 #mode {
     background-color: #64727D;
-    box-shadow: inset 0 -3px #ffffff;
+    box-shadow: inset 0 3px #ffffff;
 }
 
 #clock,
-#custom-traffic,
+#custom-car-traffic,
 #custom-weather,
+#custom-usb,
 #battery,
-#cpu,
-#memory,
-#disk,
-#temperature,
-#backlight,
+#custom-system-stats,
 #network,
 #pulseaudio,
-#wireplumber,
-#custom-media,
 #tray,
 #mode,
-#idle_inhibitor,
 #scratchpad,
 #power-profiles-daemon,
-#mpd {
+#mpris,
+#systemd-failed-units {
     padding: 0 10px;
     color: #ffffff;
 }
@@ -120,6 +115,11 @@ button:hover {
 
 #clock {
     background-color: transparent;
+}
+
+/* plugged but not mounted: dim until a click mounts it */
+#custom-usb.plugged {
+    color: #a5c5dd;
 }
 
 #battery {
@@ -173,22 +173,8 @@ label:focus {
     background-color: #000000;
 }
 
-#cpu {
-    background-color: transparent;
-    color: #ffffff;
-}
 
-#memory {
-    background-color: transparent;
-}
 
-#disk {
-    background-color: transparent;
-}
-
-#backlight {
-    background-color: transparent;
-}
 
 #network {
     background-color: transparent;
@@ -209,36 +195,12 @@ label:focus {
     color: #90b1b1;
 }
 
-#wireplumber {
-    background-color: transparent;
-    color: #ffffff;
-}
 
-#wireplumber.muted {
-    background-color: transparent;
-    color: #f53c3c;
-}
 
-#custom-media {
-    background-color: transparent;
-    color: #ffffff;
-    min-width: 100px;
-}
 
-#custom-media.custom-spotify {
-    background-color: transparent;
-}
 
-#custom-media.custom-vlc {
-    background-color: transparent;
-}
 
-#temperature {
-    background-color: transparent;
-}
-
-#temperature.critical {
-    background-color: transparent;
+#custom-system-stats.critical {
     color: #eb4d4b;
 }
 
@@ -255,34 +217,11 @@ label:focus {
     background-color: #eb4d4b;
 }
 
-#idle_inhibitor {
-    background-color: transparent;
-}
 
-#idle_inhibitor.activated {
-    background-color: rgba(255, 255, 255, 0.2);
-    color: #ffffff;
-}
 
-#mpd {
-    background-color: transparent;
-    color: #ffffff;
-}
 
-#mpd.disconnected {
-    background-color: transparent;
-    color: #f53c3c;
-}
 
-#mpd.stopped {
-    background-color: transparent;
-    color: #90b1b1;
-}
 
-#mpd.paused {
-    background-color: transparent;
-    color: #90b1b1;
-}
 
 #language {
     background: transparent;
@@ -292,21 +231,8 @@ label:focus {
     min-width: 16px;
 }
 
-#keyboard-state {
-    background: transparent;
-    color: #ffffff;
-    padding: 0 0px;
-    margin: 0 5px;
-    min-width: 16px;
-}
 
-#keyboard-state > label {
-    padding: 0 5px;
-}
 
-#keyboard-state > label.locked {
-    background: rgba(0, 0, 0, 0.2);
-}
 
 #scratchpad {
     background: rgba(0, 0, 0, 0.2);
@@ -316,12 +242,20 @@ label:focus {
     background-color: transparent;
 }
 
+#mpris.paused {
+    color: #90b1b1;
+}
+
+#systemd-failed-units {
+    color: #f53c3c;
+}
+
 /* traffic level: class comes from the feed's color */
-#custom-traffic.yellow {
+#custom-car-traffic.yellow {
     color: #f1c40f;
 }
 
-#custom-traffic.red {
+#custom-car-traffic.red {
     color: #f53c3c;
 }
 

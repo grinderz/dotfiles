@@ -82,6 +82,15 @@ systemd.service(
     user_mode=True,
 )
 
+# user session: low-disk-space notifier for the btrfs root
+systemd.service(
+    name='enable and start disk-space-notify.timer (user)',
+    service='disk-space-notify.timer',
+    enabled=True,
+    running=True,
+    user_mode=True,
+)
+
 # user session: desktop notification while a yubikey waits for a touch
 # (config from chezmoi enables libnotify); requires the
 # yubikey-touch-detector package

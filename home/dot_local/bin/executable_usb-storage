@@ -1,0 +1,116 @@
+#!/bin/sh
+# Removable usb storage for waybar: icon appears when a stick is plugged,
+# left click mounts/unmounts via udisks2 (polkit, no sudo, no daemon),
+# right click unmounts and powers the disks off for safe removal.
+# Anything with an fstab entry (/boot stick, boot mirror, btrbk archive
+# disk) is system-managed and ignored here.
+tab=$(printf '\t')
+
+# filesystems on usb disks, minus fstab-managed ones and locked luks
+# output: name<TAB>size<TAB>label<TAB>mountpoint
+candidates() {
+    lsblk -J -o NAME,TRAN,FSTYPE,SIZE,LABEL,UUID,MOUNTPOINT |
+        jq -r '.blockdevices[] | select(.tran == "usb")
+               | recurse(.children[]?)
+               | select(.fstype != null and .fstype != "crypto_LUKS")
+               | [.name, .size, .label // "?", .uuid // "?", .mountpoint // ""]
+               | @tsv' |
+        while IFS="$tab" read -r name size label uuid mp; do
+            findmnt -sn -S "UUID=$uuid" > /dev/null 2>&1 && continue
+            printf '%s\t%s\t%s\t%s\n' "$name" "$size" "$label" "$mp"
+        done
+}
+
+refresh() { pkill -SIGRTMIN+9 waybar 2> /dev/null; }
+
+status() {
+    list=$(candidates)
+    [ -n "$list" ] || { printf '{"text": ""}\n'; exit 0; }
+    mounted=0 tip=""
+    while IFS="$tab" read -r name size label mp; do
+        if [ -n "$mp" ]; then
+            mounted=$((mounted + 1))
+            tip="$tip$name $size $label: $mp
+"
+        else
+            tip="$tip$name $size $label: not mounted
+"
+        fi
+    done <<EOF
+$list
+EOF
+    class=plugged
+    [ "$mounted" -gt 0 ] && class=mounted
+    jq -nc --arg tip "${tip%?}" --arg class "$class" \
+        '{"text": "", "tooltip": $tip, "class": $class}'
+}
+
+# mount whatever is unmounted; if everything is mounted, unmount it all
+toggle() {
+    list=$(candidates)
+    [ -n "$list" ] || exit 0
+    err=""
+    if printf '%s\n' "$list" | grep -q "$tab\$"; then
+        while IFS="$tab" read -r name size label mp; do
+            [ -z "$mp" ] || continue
+            out=$(udisksctl mount -b "/dev/$name" 2>&1) || err="$err$out
+"
+        done <<EOF
+$list
+EOF
+    else
+        unmount_all
+    fi
+    [ -z "$err" ] || notify-send -u critical "usb storage" "$err"
+    refresh
+}
+
+# only touch udisks mounts under /run/media, never system mountpoints
+unmount_all() {
+    while IFS="$tab" read -r name size label mp; do
+        case "$mp" in
+            /run/media/*)
+                out=$(udisksctl unmount -b "/dev/$name" 2>&1) || err="$err$out
+"
+                ;;
+        esac
+    done <<EOF
+$list
+EOF
+}
+
+eject() {
+    list=$(candidates)
+    [ -n "$list" ] || exit 0
+    err=""
+    unmount_all
+    disks=$(while IFS="$tab" read -r name size label mp; do
+        lsblk -sno NAME "/dev/$name" | tail -1
+    done <<EOF
+$list
+EOF
+    )
+    for disk in $(printf '%s\n' "$disks" | sort -u); do
+        # a partition still mounted somewhere (e.g. failed unmount): keep power
+        if lsblk -no MOUNTPOINT "/dev/$disk" | grep -q .; then
+            err="$err$disk: still mounted, not powering off
+"
+        else
+            out=$(udisksctl power-off -b "/dev/$disk" 2>&1) || err="$err$out
+"
+        fi
+    done
+    if [ -n "$err" ]; then
+        notify-send -u critical "usb storage" "$err"
+    else
+        notify-send "usb storage" "powered off, safe to remove"
+    fi
+    refresh
+}
+
+case "${1:-status}" in
+    status) status ;;
+    toggle) toggle ;;
+    eject) eject ;;
+    *) echo "usage: usb-storage [status|toggle|eject]" >&2; exit 1 ;;
+esac

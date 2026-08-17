@@ -171,7 +171,8 @@ Per deploy, once per host:
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
-  (OCR bind), `otf-font-awesome` + `ttf-roboto` (waybar font stack);
+  (OCR bind), `otf-font-awesome` + `ttf-roboto` (waybar font stack),
+  `udisks2` (usb-storage waybar module);
   the failed-units
   notifier timer is enabled by the systemd deploy (run dotfiles apply
   first — the unit files come from chezmoi); dark theme for GTK4/portal

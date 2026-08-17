@@ -145,13 +145,13 @@ assign [app_id="org.gnome.Evolution"] workspace $ws6
 assign [app_id="com.ayugram.desktop"] workspace $ws9
 assign [app_id="md.obsidian.Obsidian"] workspace $ws7
 
-# Autostart terminals on the primary workspaces: zellij main (2, right
+# Autostart terminals on the primary workspaces: zellij dev(2, right
 # Dell) and a plain shell (1, left Dell). Dedicated app-ids keep the assign
 # rules away from ad-hoc $mod+Return terminals and avoid the startup race a
 # `swaymsg 'workspace N; exec ...'` chain would have.
 assign [app_id="foot-dev"] workspace $ws2
 assign [app_id="foot-cli"] workspace $ws1
-exec foot --app-id=foot-dev zellij attach --create main
+exec foot --app-id=foot-dev zellij attach --create dev
 exec foot --app-id=foot-cli
 
 # Drop-down terminal living in the scratchpad: $mod+minus anywhere
