@@ -16,12 +16,11 @@
 #   --include RE      keep only projects whose group/subgroup/name path
 #                     matches the regex (GITLAB_STATUS_INCLUDE)
 #   --exclude RE      then drop matching projects (GITLAB_STATUS_EXCLUDE)
-#   --branches RE     only count pipeline runs on matching refs (tags always
-#                     pass); default empty = latest run whatever the ref,
-#                     which matches the badges on the starred projects page
-#                     (GITLAB_STATUS_BRANCHES)
 #   --count N         how many projects to list, most recently active first;
 #                     default 20, same as the starred page (GITLAB_STATUS_COUNT)
+#
+# The pipeline shown per project is the newest run on its default branch —
+# exactly the badge the starred projects page draws.
 #   --show-drafts     list draft merge requests too (GITLAB_STATUS_SHOW_DRAFTS=1)
 
 set -euo pipefail
@@ -32,7 +31,6 @@ cmd=status
 show_drafts="${GITLAB_STATUS_SHOW_DRAFTS:-0}"
 include="${GITLAB_STATUS_INCLUDE:-}"
 exclude="${GITLAB_STATUS_EXCLUDE:-}"
-branches="${GITLAB_STATUS_BRANCHES:-}"
 count="${GITLAB_STATUS_COUNT:-20}"
 while [ $# -gt 0 ]; do
     case $1 in
@@ -40,7 +38,6 @@ while [ $# -gt 0 ]; do
         pick) cmd=pick ;;
         --include) include=${2:?--include needs a regex}; shift ;;
         --exclude) exclude=${2:?--exclude needs a regex}; shift ;;
-        --branches) branches=${2:?--branches needs a regex}; shift ;;
         --count) count=${2:?--count needs a number}; shift ;;
         --show-drafts) show_drafts=1 ;;
         *) echo "gitlab-status: unknown argument: $1" >&2; exit 2 ;;
@@ -68,17 +65,12 @@ if [ "$cmd" = open ]; then
     exec xdg-open "https://$host/dashboard/merge_requests?scope=all&state=opened"
 fi
 
-# One run per project suffices, like the badge on the starred projects page;
-# a ref filter needs depth to find the newest matching run under MR noise.
-pipeline_depth=1
-[ -n "$branches" ] && pipeline_depth=10
-
 query='query {
   currentUser {
     starredProjects(first: 100, sort: LATEST_ACTIVITY_DESC) {
       nodes {
         fullPath
-        pipelines(first: '"$pipeline_depth"') { nodes { status ref refPath updatedAt path } }
+        repository { rootRef }
       }
     }
     assignedMergeRequests(state: opened, first: 20) {
@@ -101,11 +93,33 @@ query='query {
 
 data=$(timeout 25 glab api graphql --hostname "$host" -f query="$query" 2>/dev/null) || hide
 
+# Second pass: one aliased lookup per surviving project asking for the
+# newest pipeline on its default branch — the badge the starred page shows.
+# the instance caps query complexity at 250 and each aliased project costs
+# ~10, so the lookup list is bounded by $count (20 fits, ~24 is the ceiling)
+subq=$(jq -r --arg inc "$include" --arg exc "$exclude" --argjson count "$count" '
+    def wanted: (($inc == "") or test($inc)) and (($exc == "") or (test($exc) | not));
+    [.data.currentUser.starredProjects.nodes[]
+     | select(.fullPath | wanted)
+     | select(.repository.rootRef != null)]
+    | .[:$count]
+    | to_entries
+    | map("p\(.key): project(fullPath: \(.value.fullPath | @json)) {"
+        + " pipelines(ref: \(.value.repository.rootRef | @json), first: 1)"
+        + " { nodes { status ref updatedAt path } } }")
+    | join(" ")
+' <<<"$data")
+pdata='{}'
+if [ -n "$subq" ]; then
+    pdata=$(timeout 25 glab api graphql --hostname "$host" \
+        -f query="query { $subq }" 2>/dev/null) || pdata='{}'
+fi
+
 out=$(jq -rc --argjson drafts "$show_drafts" \
       --arg inc "$include" \
       --arg exc "$exclude" \
-      --arg branches "$branches" \
       --argjson count "$count" \
+      --argjson pd "$pdata" \
       --arg mode "$cmd" \
       --arg base "https://$host" '
     def age($now): ($now - fromdateiso8601) as $s
@@ -139,18 +153,16 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
 
     now as $now
     | .data.currentUser as $u
-    # like the starred projects page: the newest (matching) run per project,
-    # for the $count most recently active projects that have one
+    # like the starred projects page: the newest default-branch run per
+    # project, joined back by the p<index> aliases of the second query
     | ([$u.starredProjects.nodes[]
         | select(.fullPath | wanted)
-        | .fullPath as $fp
-        | [.pipelines.nodes[]
-           | {path: $fp, s: .status, at: .updatedAt, p: .path,
-              tag: (.refPath // "" | startswith("refs/tags/")),
-              ref: (.ref | sub("^refs/merge-requests/(?<n>[0-9]+)/head$"; "!\(.n)"))}
-           | select(.tag or ($branches == "") or (.ref | test($branches)))]
-        | .[0] // empty]
+        | select(.repository.rootRef != null)]
        | .[:$count]
+       | to_entries
+       | map(. as {key: $i, value: $proj}
+         | ($pd.data["p\($i)"].pipelines.nodes // [] | .[0] // empty)
+         | {path: $proj.fullPath, s: .status, at: .updatedAt, p: .path, ref})
        | sort_by(.at) | reverse) as $shown
     | ($u.assignedMergeRequests.nodes
        | map(select(.project.fullPath | wanted))

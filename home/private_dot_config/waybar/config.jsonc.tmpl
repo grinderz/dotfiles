@@ -1,11 +1,9 @@
 // -*- mode: jsonc -*-
-{{- /* filters for the gitlab module come from the private chezmoi.toml
-       ([data.work] gitlab_exclude, gitlab_branches), so group and branch
-       names never land in the repo */ -}}
+{{- /* project filter for the gitlab module comes from the private
+       chezmoi.toml ([data.work] gitlab_exclude), so group names never
+       land in the repo */ -}}
 {{- $gitlabExclude := "" -}}
-{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_exclude" }}{{ $gitlabExclude = .work.gitlab_exclude }}{{ end }}{{ end -}}
-{{- $gitlabBranches := "" -}}
-{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_branches" }}{{ $gitlabBranches = .work.gitlab_branches }}{{ end }}{{ end }}
+{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_exclude" }}{{ $gitlabExclude = .work.gitlab_exclude }}{{ end }}{{ end }}
 {
     // "layer": "top", // Waybar at top layer
     "position": "bottom",
@@ -204,11 +202,11 @@
         "on-click": "$HOME/.local/bin/screen-record region"
     },
     "custom/gitlab": {
-        "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}{{ if $gitlabBranches }} --branches '{{ $gitlabBranches }}'{{ end }}",
+        "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}",
         "return-type": "json",
         "format": "{}",
         "interval": 120,
-        "on-click": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}{{ if $gitlabBranches }} --branches '{{ $gitlabBranches }}'{{ end }} pick",
+        "on-click": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }} pick",
         "on-click-right": "$HOME/.local/bin/gitlab-status open"
     },
     "custom/jira": {
