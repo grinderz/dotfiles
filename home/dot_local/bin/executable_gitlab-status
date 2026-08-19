@@ -1,0 +1,212 @@
+#!/usr/bin/env bash
+# Waybar module: pipeline status of starred projects plus open merge requests
+# (assigned or review-requested) on the GitLab instance glab is logged into.
+# One GraphQL request per tick. Instance host and token both come from the
+# glab config, so nothing environment-specific lives in this file; without a
+# glab login the module prints empty text and stays hidden, which keeps the
+# config safe to apply on machines with no GitLab setup.
+#
+# Usage: gitlab-status [options]   print waybar json
+#        gitlab-status open        open the merge request dashboard in a browser
+#        gitlab-status pick        fuzzel menu of the same pipelines and merge
+#                                  requests; the chosen one opens in a browser
+#                                  (tooltips cannot take clicks, this can)
+#
+# Options (each also settable via the environment variable in parentheses):
+#   --include RE      keep only projects whose group/subgroup/name path
+#                     matches the regex (GITLAB_STATUS_INCLUDE)
+#   --exclude RE      then drop matching projects (GITLAB_STATUS_EXCLUDE)
+#   --branches RE     only count pipeline runs on matching refs (tags always
+#                     pass); default empty = latest run whatever the ref,
+#                     which matches the badges on the starred projects page
+#                     (GITLAB_STATUS_BRANCHES)
+#   --count N         how many projects to list, most recently active first;
+#                     default 20, same as the starred page (GITLAB_STATUS_COUNT)
+#   --show-drafts     list draft merge requests too (GITLAB_STATUS_SHOW_DRAFTS=1)
+
+set -euo pipefail
+
+hide() { printf '{"text": ""}\n'; exit 0; }
+
+cmd=status
+show_drafts="${GITLAB_STATUS_SHOW_DRAFTS:-0}"
+include="${GITLAB_STATUS_INCLUDE:-}"
+exclude="${GITLAB_STATUS_EXCLUDE:-}"
+branches="${GITLAB_STATUS_BRANCHES:-}"
+count="${GITLAB_STATUS_COUNT:-20}"
+while [ $# -gt 0 ]; do
+    case $1 in
+        open) cmd=open ;;
+        pick) cmd=pick ;;
+        --include) include=${2:?--include needs a regex}; shift ;;
+        --exclude) exclude=${2:?--exclude needs a regex}; shift ;;
+        --branches) branches=${2:?--branches needs a regex}; shift ;;
+        --count) count=${2:?--count needs a number}; shift ;;
+        --show-drafts) show_drafts=1 ;;
+        *) echo "gitlab-status: unknown argument: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/glab-cli/config.yml"
+command -v glab >/dev/null 2>&1 || hide
+command -v jq >/dev/null 2>&1 || hide
+[ -r "$config" ] || hide
+
+# Pick the first host in the glab config that has a user recorded, i.e. an
+# actual login; the global default host may be an instance without a token.
+# GITLAB_STATUS_HOST overrides when several hosts are logged in.
+host=$(awk '
+    /^hosts:/ { in_hosts = 1; next }
+    in_hosts && /^    [^ ]/ { cand = $1; sub(/:$/, "", cand) }
+    in_hosts && /^        user: ./ { print cand; exit }
+' "$config")
+host="${GITLAB_STATUS_HOST:-$host}"
+[ -n "$host" ] || hide
+
+if [ "$cmd" = open ]; then
+    exec xdg-open "https://$host/dashboard/merge_requests?scope=all&state=opened"
+fi
+
+# One run per project suffices, like the badge on the starred projects page;
+# a ref filter needs depth to find the newest matching run under MR noise.
+pipeline_depth=1
+[ -n "$branches" ] && pipeline_depth=10
+
+query='query {
+  currentUser {
+    starredProjects(first: 100, sort: LATEST_ACTIVITY_DESC) {
+      nodes {
+        fullPath
+        pipelines(first: '"$pipeline_depth"') { nodes { status ref refPath updatedAt path } }
+      }
+    }
+    assignedMergeRequests(state: opened, first: 20) {
+      nodes { title draft webUrl project { fullPath } headPipeline { status } }
+    }
+    reviewRequestedMergeRequests(state: opened, first: 20) {
+      nodes { title draft webUrl project { fullPath } headPipeline { status } }
+    }
+    todos(action: [mentioned, directly_addressed], state: [pending], first: 40) {
+      nodes {
+        target {
+          ... on MergeRequest {
+            state title draft webUrl project { fullPath } headPipeline { status }
+          }
+        }
+      }
+    }
+  }
+}'
+
+data=$(timeout 25 glab api graphql --hostname "$host" -f query="$query" 2>/dev/null) || hide
+
+out=$(jq -rc --argjson drafts "$show_drafts" \
+      --arg inc "$include" \
+      --arg exc "$exclude" \
+      --arg branches "$branches" \
+      --argjson count "$count" \
+      --arg mode "$cmd" \
+      --arg base "https://$host" '
+    def age($now): ($now - fromdateiso8601) as $s
+        | if $s < 3600 then "\(($s / 60) | floor)m"
+          elif $s < 86400 then "\(($s / 3600) | floor)h"
+          elif $s < 2592000 then "\(($s / 86400) | floor)d"
+          else "\(($s / 2592000) | floor)mo" end;
+
+    def icon: {SUCCESS: "✔", FAILED: "✘", RUNNING: "⟳",
+               PENDING: "…", CREATED: "…",
+               WAITING_FOR_RESOURCE: "…", SCHEDULED: "…",
+               MANUAL: "⏸", SKIPPED: "»",
+               CANCELED: "–", CANCELING: "–"}[.] // "?";
+
+    def wanted: (($inc == "") or test($inc)) and (($exc == "") or (test($exc) | not));
+
+    # pango-colored icon for the tooltip (fuzzel gets the plain one)
+    def color: {FAILED: "#f53c3c", RUNNING: "#f1c40f", PENDING: "#f1c40f",
+                CREATED: "#f1c40f", WAITING_FOR_RESOURCE: "#f1c40f",
+                SUCCESS: "#9ece6a"}[.] // "#90b1b1";
+    def cicon: "<span weight=\"bold\" size=\"large\" foreground=\"\(color)\">\(icon)</span>";
+
+    def mrline: ((.headPipeline.status // null) as $s
+        | if $s == null then "·" else ($s | icon) end)
+        + " \(.title) — \(.project.fullPath)";
+
+    def mrcline: ((.headPipeline.status // null) as $s
+        | if $s == null then "<span weight=\"bold\" size=\"large\" foreground=\"#90b1b1\">·</span>"
+          else ($s | cicon) end)
+        + " \(.title | @html) — \(.project.fullPath | @html)";
+
+    now as $now
+    | .data.currentUser as $u
+    # like the starred projects page: the newest (matching) run per project,
+    # for the $count most recently active projects that have one
+    | ([$u.starredProjects.nodes[]
+        | select(.fullPath | wanted)
+        | .fullPath as $fp
+        | [.pipelines.nodes[]
+           | {path: $fp, s: .status, at: .updatedAt, p: .path,
+              tag: (.refPath // "" | startswith("refs/tags/")),
+              ref: (.ref | sub("^refs/merge-requests/(?<n>[0-9]+)/head$"; "!\(.n)"))}
+           | select(.tag or ($branches == "") or (.ref | test($branches)))]
+        | .[0] // empty]
+       | .[:$count]
+       | sort_by(.at) | reverse) as $shown
+    | ($u.assignedMergeRequests.nodes
+       | map(select(.project.fullPath | wanted))
+       | map(select(($drafts == 1) or (.draft | not)))) as $assigned
+    | ($assigned | map(.webUrl)) as $seen
+    | ([$u.reviewRequestedMergeRequests.nodes[]
+        | select(.project.fullPath | wanted)
+        | select(($drafts == 1) or (.draft | not))
+        | select(.webUrl as $w | ($seen | index($w)) == null)]) as $review
+    # a mention sits in the todo list until dismissed there; open MRs only,
+    # minus the ones already listed as assigned or review-requested
+    | (($seen + ($review | map(.webUrl))) as $listed
+       | [$u.todos.nodes[].target
+          | select(.webUrl? and .state == "opened")
+          | select(.project.fullPath | wanted)
+          | select(($drafts == 1) or (.draft | not))
+          | select(.webUrl as $w | ($listed | index($w)) == null)]
+       | unique_by(.webUrl)) as $mentioned
+    | ($shown | map(select(.s == "RUNNING" or .s == "PENDING")) | length) as $running
+    # a failed run from months back is history, not an alert: count only <24h
+    | ($shown | map(select(.s == "FAILED"
+        and ($now - (.at | fromdateiso8601)) < 86400)) | length) as $failed
+    | (($assigned | length) + ($review | length) + ($mentioned | length)) as $mrs
+    # bar text: open MR count (the pipeline list length is a static cap)
+    | "\($mrs)" as $summary
+    | (["<b>Starred pipelines:</b>"]
+       + (if ($shown | length) == 0 then ["(none)"]
+          else ($shown
+                | map("\(.s | cicon) \(.path | @html)  \(.ref | @html)  \(.at | age($now))")) end)
+       + (if ($assigned | length) > 0
+          then ["", "<b>Assigned MRs:</b>"] + ($assigned | map(mrcline)) else [] end)
+       + (if ($review | length) > 0
+          then ["", "<b>Review requested:</b>"] + ($review | map(mrcline)) else [] end)
+       + (if ($mentioned | length) > 0
+          then ["", "<b>Mentioned:</b>"] + ($mentioned | map(mrcline)) else [] end)
+       | join("\n")) as $tooltip
+    | if $mode == "pick" then
+        (($shown
+          | map({url: ($base + .p),
+                 label: "\(.s | icon) \(.path)  \(.ref)  \(.at | age($now))"}))
+         + (($assigned + $review + $mentioned)
+            | map({url: .webUrl, label: mrline}))
+         | .[] | "\(.url)\t\(.label)")
+      else
+        {text: " \($summary)", tooltip: $tooltip,
+         class: (if $failed > 0 then "critical"
+                 elif $running > 0 then "running" else "" end)}
+      end
+' <<<"$data")
+
+if [ "$cmd" = pick ]; then
+    [ -n "$out" ] || exit 0
+    # second column is shown, the url column rides along and gets opened
+    sel=$(fuzzel --dmenu --with-nth=2 --width 100 <<<"$out") || exit 0
+    url=$(printf '%s\n' "$sel" | head -n1 | cut -f1)
+    [ -n "$url" ] && exec xdg-open "$url"
+else
+    printf '%s\n' "$out"
+fi

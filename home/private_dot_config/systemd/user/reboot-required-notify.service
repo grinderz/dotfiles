@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify when the running kernel was replaced by an upgrade
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/reboot-required-notify

@@ -3,8 +3,8 @@
 
 * {
     /* `otf-font-awesome` is required to be installed for icons */
-    font-family: FontAwesome, Roboto, Helvetica, Arial, sans-serif;
-    font-size: 13px;
+    font-family: FontAwesome, monospace;
+    font-size: 14px;
 }
 
 window#waybar {
@@ -83,9 +83,14 @@ button:hover {
 #clock,
 #custom-car-traffic,
 #custom-weather,
+#custom-gitlab,
+#custom-jira,
 #custom-usb,
 #battery,
 #custom-system-stats,
+#custom-nosuspend,
+#custom-conservation,
+#custom-power,
 #network,
 #pulseaudio,
 #tray,
@@ -202,6 +207,20 @@ label:focus {
 
 #custom-system-stats.critical {
     color: #eb4d4b;
+}
+
+#custom-gitlab.critical {
+    color: #eb4d4b;
+}
+
+#custom-recording.recording {
+    color: #f53c3c;
+    padding: 0 10px;
+}
+
+/* a pipeline is running: dim until it settles */
+#custom-gitlab.running {
+    color: #a5c5dd;
 }
 
 #tray {

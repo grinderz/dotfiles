@@ -29,12 +29,21 @@
 # sublime keeps its mac config under ~/Library/Application Support
 .config/sublime-text
 .local/bin/battery-conservation
+.local/bin/battery-low-notify
 .local/bin/disk-space-notify
 .local/bin/failed-units-notify
 .local/bin/fresh-workspace
+.local/bin/gitlab-status
+.local/bin/jira-status
 .local/bin/lock
 .local/bin/power
+.local/bin/qr-scan
+.local/bin/reboot-required-notify
+.local/bin/region-select
 .local/bin/samsung-ssd.sh
+.local/bin/screen-record
+.local/bin/smart-screenshot
+.local/bin/sway-bindings
 .local/bin/suspend-toggle
 .local/bin/sync-brave-wallpapers
 .local/bin/system-stats

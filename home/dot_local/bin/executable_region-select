@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Smart region picker for screenshots/recordings: slurp gets the rectangles
+# of all visible windows plus whole outputs on stdin, so a bare click snaps
+# to the window (or monitor) under the cursor while dragging still selects
+# freeform. Prints slurp geometry "X,Y WxH"; exits 1 when cancelled.
+
+set -euo pipefail
+
+{
+    swaymsg -t get_tree | jq -r '
+        recurse(.nodes[]?, .floating_nodes[]?)
+        | select(.type == "con" or .type == "floating_con")
+        | select(.visible == true and (.nodes | length) == 0)
+        | .rect
+        | "\(.x),\(.y) \(.width)x\(.height)"'
+    swaymsg -t get_outputs | jq -r '
+        .[] | select(.active) | .rect
+        | "\(.x),\(.y) \(.width)x\(.height)"'
+} | slurp

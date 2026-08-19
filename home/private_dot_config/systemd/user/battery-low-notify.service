@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify once per discharge cycle when the battery is low
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/battery-low-notify

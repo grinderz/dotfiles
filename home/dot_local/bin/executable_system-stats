@@ -36,7 +36,7 @@ mem=$(awk '/MemTotal/ {t=$2} /MemAvailable/ {a=$2}
 class=""
 { [ "$temp" -ge 80 ] || [ "$cpu" -ge 90 ]; } && class=critical
 
-jq -nc --arg text "${temp}°C $icon" \
+jq -nc --arg text "$icon ${temp}°C" \
     --arg tip "cpu ${cpu}% (load $l1 $l5 $l15)
 $mem" \
     --arg class "$class" '{text: $text, tooltip: $tip, class: $class}'

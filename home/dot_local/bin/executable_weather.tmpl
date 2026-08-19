@@ -26,6 +26,6 @@ case "$code" in
     *)           icon="🌡️" desc="code $code" ;;
 esac
 
-printf '{"text": "%s°C %s", "tooltip": "%s, wind %s km/h"}\n' \
-    "$temp" "$icon" "$desc" "$wind" | tee "$cache"
+printf '{"text": "%s %s°C", "tooltip": "%s, wind %s km/h"}\n' \
+    "$icon" "$temp" "$desc" "$wind" | tee "$cache"
 {{- end }}

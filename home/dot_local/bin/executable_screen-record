@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Toggle screen recording with wf-recorder: first call starts, the next one
+# stops, so a single sway binding does both. Files land in the XDG videos
+# dir as rec-YYYYmmdd-HHMMSS.mp4; start and stop raise notifications.
+# Requires wf-recorder, slurp (region mode), jq, libnotify.
+#
+# Usage: screen-record [region|output|status] [--audio] [--software]
+#   region      select an area with the mouse (default; drag = freeform,
+#               click = window or output, via region-select)
+#   output      the currently focused monitor
+#   status      waybar json for the recording indicator (signal 7)
+#   --audio     also capture the default pipewire source
+#   --software  x264 software encode even when vaapi is available
+
+set -euo pipefail
+
+state="${XDG_RUNTIME_DIR:-/tmp}/screen-record.path"
+
+# waybar indicator: red dot while wf-recorder runs (module signal 7)
+if [ "${1:-}" = status ]; then
+    if pgrep -x wf-recorder >/dev/null; then
+        printf '{"text": "REC", "tooltip": "recording — click to stop", "class": "recording"}\n'
+    else
+        printf '{"text": ""}\n'
+    fi
+    exit 0
+fi
+
+# a second invocation stops the running recording, whatever mode started it
+if pgrep -x wf-recorder >/dev/null; then
+    pkill -INT -x wf-recorder
+    # wait for the muxer to finalize the file before announcing it
+    for _ in $(seq 30); do
+        pgrep -x wf-recorder >/dev/null || break
+        sleep 0.1
+    done
+    pkill -RTMIN+7 waybar || true
+    file=$(cat "$state" 2>/dev/null || echo unknown)
+    rm -f "$state"
+    size=$(du -h "$file" 2>/dev/null | cut -f1)
+    notify-send -t 5000 "Recording saved" "$file${size:+ ($size)}"
+    exit 0
+fi
+
+mode=region
+software=0
+args=()
+for arg in "$@"; do
+    case $arg in
+        region|output) mode=$arg ;;
+        --audio) args+=(--audio) ;;
+        --software) software=1 ;;
+        *) echo "screen-record: unknown argument: $arg" >&2; exit 2 ;;
+    esac
+done
+
+# hardware H.264 encode via the mesa vaapi driver (AMD iGPU): near-zero CPU
+# cost; quality at a given bitrate is a bit below x264, fine for screencasts
+if [ "$software" = 0 ] && [ -e /usr/lib/dri/radeonsi_drv_video.so ] \
+    && [ -e /dev/dri/renderD128 ]; then
+    args+=(-c h264_vaapi -d /dev/dri/renderD128)
+fi
+
+dir=$(xdg-user-dir VIDEOS 2>/dev/null || true)
+dir="${dir:-$HOME/videos}"
+mkdir -p "$dir"
+file="$dir/rec-$(date +%Y%m%d-%H%M%S).mp4"
+
+case $mode in
+    region)
+        geom=$("$HOME/.local/bin/region-select") || exit 0   # cancelled
+        args+=(-g "$geom")
+        what=region
+        ;;
+    output)
+        out=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+        args+=(-o "$out")
+        what="$out"
+        ;;
+    *)
+        echo "screen-record: unknown mode: $mode" >&2
+        exit 2
+        ;;
+esac
+
+printf '%s\n' "$file" >"$state"
+notify-send -t 2000 "Recording started" "$what → ${file##*/}"
+# background + signal so the waybar indicator lights up while recording
+wf-recorder "${args[@]}" -f "$file" &
+pid=$!
+pkill -RTMIN+7 waybar || true
+wait "$pid"

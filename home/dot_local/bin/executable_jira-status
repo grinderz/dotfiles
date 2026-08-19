@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Waybar module: my open Jira issues via jira-cli. Server and auth type live
+# in the jira-cli config; the PAT sits in ~/.config/jira-status/token because
+# jira-cli does not persist it. Without the CLI, its config or the token the
+# module prints empty text and stays hidden, so the config is safe to apply
+# on machines without a Jira setup.
+#
+# Usage: jira-status [options]   print waybar json
+#        jira-status open        open my issues in a browser
+#        jira-status pick        fuzzel menu of the same issues; the chosen
+#                                one opens in a browser
+#
+# Options:
+#   --jql QUERY          issue filter; default: my unresolved issues
+#                        (JIRA_STATUS_JQL)
+#   --exclude-status RE  drop issues whose status name matches; default
+#                        Backlog (JIRA_STATUS_EXCLUDE_STATUS; '' disables)
+#   --sprint             only issues in an open sprint (JIRA_STATUS_SPRINT=1)
+
+set -euo pipefail
+
+hide() { printf '{"text": ""}\n'; exit 0; }
+
+cmd=status
+# no ORDER BY here: jira-cli wraps the jql and adds its own ordering
+jql="${JIRA_STATUS_JQL:-assignee = currentUser() AND statusCategory != Done}"
+exclude_status="${JIRA_STATUS_EXCLUDE_STATUS-^Backlog$}"
+sprint="${JIRA_STATUS_SPRINT:-0}"
+while [ $# -gt 0 ]; do
+    case $1 in
+        open) cmd=open ;;
+        pick) cmd=pick ;;
+        --jql) jql=${2:?--jql needs a query}; shift ;;
+        --exclude-status) exclude_status=${2?--exclude-status needs a regex}; shift ;;
+        --sprint) sprint=1 ;;
+        *) echo "jira-status: unknown argument: $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/.jira/.config.yml"
+token_file="${XDG_CONFIG_HOME:-$HOME/.config}/jira-status/token"
+command -v jira >/dev/null 2>&1 || hide
+command -v jq >/dev/null 2>&1 || hide
+[ -r "$config" ] || hide
+[ -r "$token_file" ] || hide
+
+JIRA_API_TOKEN=$(<"$token_file")
+export JIRA_API_TOKEN
+
+server=$(awk '/^server:/ { print $2; exit }' "$config")
+[ -n "$server" ] || hide
+
+if [ "$cmd" = open ]; then
+    # built-in "my open issues" filter
+    exec xdg-open "$server/issues/?filter=-1"
+fi
+
+[ "$sprint" = 1 ] && jql="$jql AND sprint in openSprints()"
+
+data=$(timeout 25 jira issue list --jql "$jql" --order-by updated --raw 2>/dev/null) || hide
+
+out=$(jq -rc --arg mode "$cmd" --arg server "$server" \
+      --arg xstatus "$exclude_status" '
+    def age($now): ($now - .) as $s
+        | if $s < 3600 then "\(($s / 60) | floor)m"
+          elif $s < 86400 then "\(($s / 3600) | floor)h"
+          elif $s < 2592000 then "\(($s / 86400) | floor)d"
+          else "\(($s / 2592000) | floor)mo" end;
+
+    # "2026-08-19T12:34:56.000+0300" -> epoch; mktime treats the struct as
+    # UTC, so the numeric offset has to be subtracted by hand
+    def ts: capture("(?<d>[0-9-]+T[0-9:]+)\\.[0-9]+(?<sign>[+-])(?<oh>[0-9]{2})(?<om>[0-9]{2})")
+        | ((.d | strptime("%Y-%m-%dT%H:%M:%S") | mktime)
+           - ((if .sign == "+" then 1 else -1 end)
+              * (((.oh | tonumber) * 3600) + ((.om | tonumber) * 60))));
+
+    # raw output carries only the status name, no category: color by name,
+    # in-work yellow, queue grey-blue, anything unknown neutral grey
+    def ccolor:
+        if IN("In Progress", "In Review", "Review", "Testing") then "#f1c40f"
+        elif IN("Open", "Backlog", "To Do", "Reopened") then "#a5c5dd"
+        else "#90b1b1" end;
+
+    now as $now
+    | [.[]?
+       | {key, summary: .fields.summary,
+          status: .fields.status.name,
+          at: (.fields.updated | ts)}
+       | select(($xstatus == "") or ((.status | test($xstatus)) | not))] as $issues
+    | ($issues | map(select(.status | test("review"; "i")))) as $review
+    | ($issues | map(select(.status | test("review"; "i") | not))) as $rest
+    | def line: "<span weight=\"bold\" size=\"large\" foreground=\"\(.status | ccolor)\">•</span> \(.key | @html)  <i>\(.status | @html)</i>  \(.summary | @html)  \(.at | age($now))";
+    if $mode == "pick" then
+        ($issues[] | "\($server)/browse/\(.key)\t\(.key)  [\(.status)]  \(.summary)")
+      else
+        {text: " \($issues | length)(\($review | length))",
+         tooltip: (if ($issues | length) == 0 then "no open issues"
+             else ((if ($review | length) > 0
+                    then ["<b>Review:</b>"] + ($review | map(line)) + [""]
+                    else [] end)
+                   + (if ($rest | length) > 0 then ["<b>In work:</b>"] else [] end)
+                   + ($rest[:20] | map(line))
+                   + (if ($rest | length) > 20
+                      then ["… \(($rest | length) - 20) more"] else [] end)
+                   | join("\n")) end),
+         class: ""}
+      end
+' <<<"$data")
+
+if [ "$cmd" = pick ]; then
+    [ -n "$out" ] || exit 0
+    # second column is shown, the url column rides along and gets opened
+    sel=$(fuzzel --dmenu --with-nth=2 --width 100 <<<"$out") || exit 0
+    url=$(printf '%s\n' "$sel" | head -n1 | cut -f1)
+    [ -n "$url" ] && exec xdg-open "$url"
+else
+    printf '%s\n' "$out"
+fi

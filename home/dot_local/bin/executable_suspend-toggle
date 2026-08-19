@@ -11,9 +11,9 @@ case "${1:-status}" in
         ;;
     status)
         if [ -e "$flag" ]; then
-            printf '{"text": " ☕ ", "tooltip": "idle suspend inhibited (lock/screens still on)", "class": "inhibited"}\n'
+            printf '{"text": "☕", "tooltip": "idle suspend inhibited (lock/screens still on)", "class": "inhibited"}\n'
         else
-            printf '{"text": " ☾ ", "tooltip": "idle suspend armed (30 min idle)", "class": ""}\n'
+            printf '{"text": "☾", "tooltip": "idle suspend armed (30 min idle)", "class": ""}\n'
         fi
         ;;
 esac

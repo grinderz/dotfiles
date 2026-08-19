@@ -1,0 +1,10 @@
+#!/bin/sh
+# Remind the desktop (mako) that the running kernel is gone: after a kernel
+# upgrade pacman removes /usr/lib/modules/$(uname -r), so module loads start
+# failing until reboot. The fixed replace-id keeps the hourly timer updating
+# one notification instead of stacking.
+
+[ -d "/usr/lib/modules/$(uname -r)" ] && exit 0
+
+notify-send -u critical -r 9993 "Reboot required" \
+    "kernel was updated: modules for $(uname -r) are gone"

@@ -1,0 +1,24 @@
+#!/bin/sh
+# Warn the desktop (mako) once per discharge cycle when the battery gets
+# low. The latch file keeps the timer from nagging every run; it resets as
+# soon as the battery stops discharging or recovers above the threshold.
+
+threshold=10
+latch="${XDG_RUNTIME_DIR:-/tmp}/battery-low-notified"
+
+bat=$(find /sys/class/power_supply -maxdepth 1 -name 'BAT*' | head -n 1)
+[ -n "$bat" ] || exit 0
+capacity=$(cat "$bat/capacity" 2>/dev/null) || exit 0
+status=$(cat "$bat/status" 2>/dev/null) || exit 0
+
+if [ "$status" != "Discharging" ] || [ "$capacity" -gt $((threshold + 5)) ]; then
+    rm -f "$latch"
+    exit 0
+fi
+
+[ -e "$latch" ] && exit 0
+if [ "$capacity" -le "$threshold" ]; then
+    notify-send -u critical -r 9992 "Battery low" \
+        "${capacity}% left — plug in or suspend"
+    touch "$latch"
+fi

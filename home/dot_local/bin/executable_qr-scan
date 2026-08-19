@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Decode a QR code from a screen region into the clipboard. Only the qrcode
+# symbology is enabled so dense screen content cannot false-positive as a
+# barcode. The decoded text goes to the clipboard with the sensitive hint
+# and is never printed or shown in the notification — QR codes routinely
+# carry otpauth and wifi secrets. Requires zbar (zbarimg), grim, slurp.
+
+set -euo pipefail
+
+geom=$("$HOME/.local/bin/region-select") || exit 0
+
+if grim -g "$geom" - \
+    | zbarimg --raw -q -Sdisable -Sqrcode.enable - 2>/dev/null \
+    | head -c 4096 | wl-copy --sensitive; then
+    notify-send -t 5000 "QR code" "decoded and copied (sensitive)"
+else
+    notify-send -u low -t 3000 "QR code" "nothing decoded in the selection"
+fi

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Area screenshot with the smart picker (drag = freeform, click = window or
+# output, via region-select): saves to the screenshots dir, copies to the
+# clipboard, raises a notification with a preview.
+
+set -euo pipefail
+
+geom=$("$HOME/.local/bin/region-select") || exit 0
+
+dir="${XDG_SCREENSHOTS_DIR:-$HOME/pictures/screenshots}"
+mkdir -p "$dir"
+file="$dir/$(date +%Y%m%d-%H%M%S).png"
+
+grim -g "$geom" "$file"
+wl-copy <"$file"
+notify-send -i "$file" "Screenshot" "${file##*/} (copied)"

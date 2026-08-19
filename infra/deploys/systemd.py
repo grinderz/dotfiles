@@ -99,6 +99,24 @@ systemd.service(
     user_mode=True,
 )
 
+# user session: low-battery notifier (once per discharge cycle)
+systemd.service(
+    name='enable and start battery-low-notify.timer (user)',
+    service='battery-low-notify.timer',
+    enabled=True,
+    running=True,
+    user_mode=True,
+)
+
+# user session: reboot reminder after a kernel upgrade
+systemd.service(
+    name='enable and start reboot-required-notify.timer (user)',
+    service='reboot-required-notify.timer',
+    enabled=True,
+    running=True,
+    user_mode=True,
+)
+
 # user session: desktop notification while a yubikey waits for a touch
 # (config from chezmoi enables libnotify); requires the
 # yubikey-touch-detector package
@@ -144,7 +162,15 @@ logind_conf = files.template(
     _sudo=True,
 )
 
-if logind_conf.changed:
+inhibit_delay = files.put(
+    name='install logind.conf.d/10-inhibit-delay.conf',
+    src='templates/logind.conf.d/10-inhibit-delay.conf',
+    dest='/etc/systemd/logind.conf.d/10-inhibit-delay.conf',
+    mode='644',
+    _sudo=True,
+)
+
+if logind_conf.changed or inhibit_delay.changed:
     systemd.service(
         name='restart systemd-logind',
         service='systemd-logind',

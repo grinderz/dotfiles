@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodic check for a low battery
+
+[Timer]
+OnStartupSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

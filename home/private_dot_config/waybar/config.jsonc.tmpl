@@ -1,4 +1,11 @@
 // -*- mode: jsonc -*-
+{{- /* filters for the gitlab module come from the private chezmoi.toml
+       ([data.work] gitlab_exclude, gitlab_branches), so group and branch
+       names never land in the repo */ -}}
+{{- $gitlabExclude := "" -}}
+{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_exclude" }}{{ $gitlabExclude = .work.gitlab_exclude }}{{ end }}{{ end -}}
+{{- $gitlabBranches := "" -}}
+{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_branches" }}{{ $gitlabBranches = .work.gitlab_branches }}{{ end }}{{ end }}
 {
     // "layer": "top", // Waybar at top layer
     "position": "bottom",
@@ -15,6 +22,7 @@
         "sway/window"
     ],
     "modules-right": [
+        "custom/recording",
         "mpris",
         "privacy",
 
@@ -22,6 +30,9 @@
 
         "custom/weather",
         "custom/car-traffic",
+
+        "custom/gitlab",
+        "custom/jira",
 
         "custom/usb",
         "bluetooth",
@@ -113,11 +124,11 @@
             "warning": 30,
             "critical": 15
         },
-        "format": "{capacity}% {icon}",
-        "format-full": "{capacity}% {icon}",
-        "format-charging": "{capacity}% ",
-        "format-plugged": "{capacity}% ",
-        "format-alt": "{time} {icon}",
+        "format": "{icon} {capacity}%",
+        "format-full": "{icon} {capacity}%",
+        "format-charging": " {capacity}%",
+        "format-plugged": " {capacity}%",
+        "format-alt": "{icon} {time}",
         // "format-good": "", // An empty format will hide the module
         // "format-full": "",
         "format-icons": ["", "", "", "", ""]
@@ -135,20 +146,20 @@
     },
     "network": {
         // "interface": "wlp2*", // (Optional) To force the use of this interface
-        "format-wifi": "{essid} ({signalStrength}%) ",
-        "format-ethernet": "{ipaddr}/{cidr} ",
+        "format-wifi": " {essid} ({signalStrength}%)",
+        "format-ethernet": " {ipaddr}/{cidr}",
         "tooltip-format": "{ifname} via {gwaddr} ",
-        "format-linked": "{ifname} (No IP) ",
-        "format-disconnected": "Disconnected ⚠",
+        "format-linked": " {ifname} (No IP)",
+        "format-disconnected": "⚠ Disconnected",
         "format-alt": "{ifname}: {ipaddr}/{cidr}"
     },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
-        "format": "{volume}% {icon} {format_source}",
-        "format-bluetooth": "{volume}% {icon}  {format_source}",
+        "format": "{icon} {volume}% {format_source}",
+        "format-bluetooth": "{icon}  {volume}% {format_source}",
         "format-bluetooth-muted": " {icon}  {format_source}",
         "format-muted": " {format_source}",
-        "format-source": "{volume}% ",
+        "format-source": " {volume}%",
         "format-source-muted": "",
         "format-icons": {
             "headphone": "",
@@ -162,8 +173,8 @@
         "on-click": "foot --app-id=mixer wiremix"
     },
     "bluetooth": {
-        "format": "{status} 󰂯",
-        "format-connected": "{num_connections} 󰂱",
+        "format": "󰂯 {status}",
+        "format-connected": "󰂱 {num_connections}",
         "format-disabled": "",
         "tooltip-format": "{controller_alias}\t{controller_address}",
         "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
@@ -174,7 +185,7 @@
     "custom/car-traffic": {
         "exec": "$HOME/.local/bin/car-traffic",
         "return-type": "json",
-        "format": "{} ",
+        "format": " {}",
         "interval": 900,
         "on-click": "$HOME/.local/bin/car-traffic open"
     },
@@ -182,6 +193,30 @@
         "exec": "$HOME/.local/bin/weather",
         "return-type": "json",
         "interval": 900
+    },
+    "custom/recording": {
+        "exec": "$HOME/.local/bin/screen-record status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 60,
+        "signal": 7,
+        "on-click": "$HOME/.local/bin/screen-record region"
+    },
+    "custom/gitlab": {
+        "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}{{ if $gitlabBranches }} --branches '{{ $gitlabBranches }}'{{ end }}",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 120,
+        "on-click": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}{{ if $gitlabBranches }} --branches '{{ $gitlabBranches }}'{{ end }} pick",
+        "on-click-right": "$HOME/.local/bin/gitlab-status open"
+    },
+    "custom/jira": {
+        "exec": "$HOME/.local/bin/jira-status --sprint",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 300,
+        "on-click": "$HOME/.local/bin/jira-status --sprint pick",
+        "on-click-right": "$HOME/.local/bin/jira-status open"
     },
     "custom/usb": {
         "exec": "$HOME/.local/bin/usb-storage status",
@@ -215,7 +250,7 @@
         "tooltip": true
     },
     "custom/power": {
-        "format": "⏻ ",
+        "format": "⏻",
         "tooltip": false,
         "menu": "on-click",
         "menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder

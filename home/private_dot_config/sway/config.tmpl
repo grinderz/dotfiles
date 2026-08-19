@@ -19,7 +19,7 @@ set $term foot
 set $menu fuzzel
 
 # Titlebars/swaynag; same face as the waybar stack (ttf-roboto)
-font pango:Roboto 10
+font pango:Monospace 10
 
 # Workspace names: number stays first so $mod+N binds and the keyboard
 # number layer keep working; the label shows up in waybar.
@@ -364,13 +364,26 @@ bindsym $mod+r mode "resize"
     # Screenshots via grimshot (sway-contrib); $mod+p variants work from
     # keyboards without a Print key. Area save first: the most used one
     # goes on the lightest chord.
-    bindsym $mod+p exec grimshot --notify save area          # area to file
+    # smart area: drag = freeform, click = window/output (region-select)
+    bindsym $mod+p exec $HOME/.local/bin/smart-screenshot    # area to file
+
     bindsym $mod+Shift+p exec grimshot copy area             # area to clipboard
     bindsym $mod+Ctrl+p exec grimshot --notify save active   # active window
     bindsym $mod+Alt+p exec grimshot --notify save output    # current monitor
 
     # OCR an area to the clipboard (eng+rus; needs tesseract-data-*)
     bindsym $mod+o exec 'grim -g "$(slurp)" - | tesseract -l eng+rus - - | wl-copy'
+
+    # Screen recording via wf-recorder; the same key stops a running
+    # recording and the notification tells where the file landed
+    bindsym $mod+Shift+o exec $HOME/.local/bin/screen-record region
+    bindsym $mod+Ctrl+o exec $HOME/.local/bin/screen-record output
+
+    # decode a QR code from a screen region into the clipboard (needs zbar)
+    bindsym $mod+Alt+o exec $HOME/.local/bin/qr-scan
+
+    # keybinding cheatsheet generated from this config
+    bindsym $mod+i exec $HOME/.local/bin/sway-bindings
 
 #
 # Status Bar:

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Keybinding cheatsheet generated from the live sway config, so it can never
+# drift from reality: every bindsym line with its trailing or preceding
+# comment, shown in fuzzel. Selection is just for browsing (nothing runs).
+
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/sway/config"
+[ -r "$config" ] || exit 0
+
+awk '
+    /^[[:space:]]*#/ {
+        comment = $0
+        sub(/^[[:space:]]*#[[:space:]]*/, "", comment)
+        next
+    }
+    /^[[:space:]]*bindsym/ {
+        line = $0
+        sub(/^[[:space:]]*bindsym[[:space:]]+/, "", line)
+        while (line ~ /^--[a-z-]+[[:space:]]+/)
+            sub(/^--[a-z-]+[[:space:]]+/, "", line)
+        keys = line
+        sub(/[[:space:]].*/, "", keys)
+        gsub(/\$mod/, "Super", keys)
+        cmd = line
+        sub(/^[^[:space:]]+[[:space:]]+/, "", cmd)
+        desc = cmd
+        if (match(cmd, /#[[:space:]]*/)) {
+            desc = substr(cmd, RSTART)
+            sub(/^#[[:space:]]*/, "", desc)
+        } else if (comment != "")
+            desc = comment
+        printf "%-28s %s\n", keys, desc
+        comment = ""
+        next
+    }
+    /^[[:space:]]*$/ { next }
+    { comment = "" }
+' "$config" | fuzzel --dmenu --width 110 >/dev/null || true

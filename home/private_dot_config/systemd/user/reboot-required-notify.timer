@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodic check whether a kernel upgrade needs a reboot
+
+[Timer]
+OnStartupSec=10min
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target
