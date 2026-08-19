@@ -1,0 +1,10 @@
+#!/bin/sh
+# PAM gate: exit 0 (success) when no YubiKey is attached, which makes the
+# `[success=1 default=ignore]` line skip pam_u2f entirely — no cue prompt
+# and no module delay when the key is simply not plugged in. Vendor 1050
+# is Yubico.
+for f in /sys/bus/usb/devices/*/idVendor; do
+    [ -r "$f" ] || continue
+    [ "$(cat "$f")" = "1050" ] && exit 1
+done
+exit 0

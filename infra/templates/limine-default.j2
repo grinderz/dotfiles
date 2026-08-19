@@ -1,3 +1,3 @@
 ENABLE_LIMINE_FALLBACK=yes
-KERNEL_CMDLINE[default]+="root=/dev/mapper/{{ conf.root_dev_mapper }} cryptdevice=UUID={{ conf.cryptdevice_uuid }}:{{ conf.root_dev_mapper }} rd.luks.name={{ conf.cryptdevice_uuid }}={{ conf.root_dev_mapper }} rd.luks.options={{ conf.cryptdevice_uuid }}=fido2-device=auto rootflags=subvol={{ conf.rootflags_subvol }} zswap.enabled=0 rw"
+KERNEL_CMDLINE[default]+="root=/dev/mapper/{{ conf.root_dev_mapper }} cryptdevice=UUID={{ conf.cryptdevice_uuid }}:{{ conf.root_dev_mapper }} rd.luks.name={{ conf.cryptdevice_uuid }}={{ conf.root_dev_mapper }} rd.luks.options={{ conf.cryptdevice_uuid }}=fido2-device=auto,token-timeout=10 rootflags=subvol={{ conf.rootflags_subvol }} zswap.enabled=0 rw"
 ROOT_SNAPSHOTS_PATH="/@snapshots"

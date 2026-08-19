@@ -8,6 +8,12 @@
 # that shutdown proceeds anyway.
 action=${1:?usage: power poweroff|reboot}
 
+# When run from a terminal, the kill loop below closes that terminal too;
+# the resulting SIGHUP must not take the script down before systemctl runs.
+# stdio moves off the dying pty for the same reason.
+trap '' HUP
+exec </dev/null >/dev/null 2>&1
+
 views() {
     swaymsg -t get_tree | jq '[.. | objects | select(.pid != null) | .id]'
 }
@@ -25,4 +31,7 @@ if [ -n "$SWAYSOCK" ]; then
     done
 fi
 
-exec systemctl "$action"
+# breadcrumb in the journal: stdio is detached and waybar swallows stderr,
+# so a failing systemctl would otherwise vanish without a trace
+systemctl "$action" 2>&1 | logger -t power
+logger -t power "systemctl $action returned without effect"

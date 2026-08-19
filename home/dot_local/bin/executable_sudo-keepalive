@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Run a long command without sudo re-prompting in the middle: validate the
+# timestamp once up front, refresh it in the background, and kill the
+# refresher when the command exits.
+#
+# Usage: sudo-keepalive <command> [args...]
+#        sudo-keepalive            keep the timestamp fresh until Ctrl-C
+
+set -euo pipefail
+
+sudo -v
+
+( while sleep 60; do sudo -n -v 2>/dev/null || exit; done ) &
+refresher=$!
+trap 'kill "$refresher" 2>/dev/null' EXIT
+
+if [ $# -eq 0 ]; then
+    echo "sudo timestamp held; Ctrl-C to stop" >&2
+    wait "$refresher"
+else
+    "$@"
+fi

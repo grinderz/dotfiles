@@ -37,6 +37,19 @@ if pgrep -x wf-recorder >/dev/null; then
     pkill -RTMIN+7 waybar || true
     file=$(cat "$state" 2>/dev/null || echo unknown)
     rm -f "$state"
+    # audio cleanup: pipewire pops when the capture stream opens — hard-mute
+    # the first 400ms, short fade-in, then normalize to streaming loudness
+    if [ -f "$file" ] && ffprobe -v quiet -select_streams a \
+        -show_entries stream=codec_type -of csv=p=0 "$file" | grep -q audio; then
+        tmp="${file%.mp4}.tmp.mp4"
+        if ffmpeg -v error -y -i "$file" -c:v copy \
+            -af "volume=enable='lt(t,0.4)':volume=0,afade=t=in:d=0.05,loudnorm=I=-14" \
+            "$tmp" 2>/dev/null; then
+            mv "$tmp" "$file"
+        else
+            rm -f "$tmp"
+        fi
+    fi
     size=$(du -h "$file" 2>/dev/null | cut -f1)
     notify-send -t 5000 "Recording saved" "$file${size:+ ($size)}"
     exit 0

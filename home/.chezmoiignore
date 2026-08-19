@@ -30,6 +30,9 @@
 .config/sublime-text
 .local/bin/battery-conservation
 .local/bin/battery-low-notify
+.local/bin/bt-power
+.local/bin/launch-or-focus
+.local/bin/sudo-keepalive
 .local/bin/disk-space-notify
 .local/bin/failed-units-notify
 .local/bin/fresh-workspace

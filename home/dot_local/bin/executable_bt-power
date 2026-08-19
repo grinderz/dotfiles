@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Bluetooth power via rfkill, not bluetoothctl: BlueZ never persists the
+# Powered state across reboots, while systemd-rfkill restores soft blocks,
+# and the block covers every controller instead of just the default one.
+# Every bluetoothctl call is bounded by timeout — it hangs on dead adapters.
+#
+# Usage: bt-power [toggle|on|off]
+
+set -euo pipefail
+
+cmd="${1:-toggle}"
+
+blocked() { rfkill list bluetooth | grep -q "Soft blocked: yes"; }
+
+case $cmd in
+    toggle) if blocked; then cmd=on; else cmd=off; fi ;;
+    on | off) ;;
+    *) echo "bt-power: unknown argument: $cmd" >&2; exit 2 ;;
+esac
+
+if [ "$cmd" = off ]; then
+    rfkill block bluetooth
+    notify-send -t 3000 -r 9994 "Bluetooth" "off"
+    exit 0
+fi
+
+rfkill unblock bluetooth
+# one shared deadline for whichever controller comes up first
+for _ in $(seq 20); do
+    if timeout 3 bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+        notify-send -t 3000 -r 9994 "Bluetooth" "on"
+        exit 0
+    fi
+    sleep 0.5
+done
+timeout 5 bluetoothctl power on >/dev/null 2>&1 || true
+notify-send -t 3000 -r 9994 "Bluetooth" "on (controller slow to power)"

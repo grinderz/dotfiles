@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Focus the window matching the pattern (app_id first, X11 class as the
+# fallback), launching the command only when no such window exists. One
+# binding then always means "show me this app".
+#
+# Usage: launch-or-focus <pattern> <command> [args...]
+
+set -euo pipefail
+
+pat="${1:?usage: launch-or-focus <pattern> <command...>}"
+shift
+[ $# -gt 0 ] || { echo "launch-or-focus: missing command" >&2; exit 2; }
+
+swaymsg "[app_id=\"(?i)$pat\"] focus" >/dev/null 2>&1 && exit 0
+swaymsg "[class=\"(?i)$pat\"] focus" >/dev/null 2>&1 && exit 0
+exec swaymsg exec -- "$@"
