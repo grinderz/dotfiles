@@ -1,0 +1,14 @@
+#!/bin/sh
+# Drop-down scratchpad terminal toggle. Spawns foot on first use — the
+# for_window rule in the sway config stashes it in the scratchpad and pops
+# it right back out sized; afterwards this is a plain scratchpad toggle
+# (which also cycles any windows stashed manually with $mod+Shift+minus).
+# Lazy spawning avoids the boot-time race where the first show of a
+# terminal that started hidden misbehaved.
+
+if swaymsg -t get_tree | jq -e \
+    '[.. | objects | select(.app_id? == "foot-scratch")] | length > 0' >/dev/null; then
+    exec swaymsg scratchpad show
+else
+    exec swaymsg exec 'foot --app-id=foot-scratch'
+fi

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Single entry point for the keybinding cheatsheets: a small fuzzel picker
+# chooses the category, the matching sheet opens, and Escape in a sheet
+# comes back here. Escape in the picker quits. New sheets are one case
+# line away.
+
+set -euo pipefail
+
+bin=$(dirname "$(readlink -f "$0")")
+
+while :; do
+    cat=$(printf '%s\n' sway zellij \
+        | fuzzel --dmenu --prompt 'cheatsheet> ' --width 30 --lines 2) || exit 0
+    case $cat in
+        sway) "$bin/sway-bindings" ;;
+        zellij) "$bin/zellij-bindings" ;;
+    esac
+done

@@ -44,9 +44,12 @@
 .local/bin/reboot-required-notify
 .local/bin/region-select
 .local/bin/samsung-ssd.sh
+.local/bin/scratch-term
 .local/bin/screen-record
 .local/bin/smart-screenshot
+.local/bin/cheatsheet
 .local/bin/sway-bindings
+.local/bin/zellij-bindings
 .local/bin/suspend-toggle
 .local/bin/sync-brave-wallpapers
 .local/bin/system-stats

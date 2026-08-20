@@ -140,6 +140,8 @@ for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 8
 # (right Dell)
 assign [app_id="brave-browser"] workspace $ws3
 assign [app_id="jetbrains-pycharm"] workspace $ws4
+assign [app_id="jetbrains-goland"] workspace $ws4
+assign [app_id="jetbrains-datagrip"] workspace $ws4
 assign [app_id="firefox"] workspace $ws5
 assign [app_id="org.gnome.Evolution"] workspace $ws6
 assign [app_id="com.ayugram.desktop"] workspace $ws9
@@ -155,8 +157,9 @@ exec foot --app-id=foot-dev zellij attach --create dev
 exec foot --app-id=foot-cli
 
 # Drop-down terminal living in the scratchpad: $mod+minus anywhere
-for_window [app_id="foot-scratch"] move scratchpad, resize set 1200 700
-exec foot --app-id=foot-scratch
+# (scratch-term). Spawned lazily on first use, then immediately shown and
+# sized — a terminal that boots hidden had a glitchy first show.
+for_window [app_id="foot-scratch"] move scratchpad, scratchpad show, resize set width 70 ppt height 65 ppt, move position center
 
 # Long-lived apps land on their assigned workspaces (see assign rules above)
 exec brave
@@ -316,7 +319,8 @@ bindgesture swipe:4:right workspace prev_on_output
 
     # Show the next scratchpad window or hide the focused scratchpad window.
     # If there are multiple scratchpad windows, this command cycles through them.
-    bindsym $mod+minus scratchpad show
+    # spawns the drop-down terminal on first use, plain toggle after
+    bindsym $mod+minus exec $HOME/.local/bin/scratch-term
 #
 # Resizing containers:
 #
@@ -382,8 +386,8 @@ bindsym $mod+r mode "resize"
     # decode a QR code from a screen region into the clipboard (needs zbar)
     bindsym $mod+Alt+o exec $HOME/.local/bin/qr-scan
 
-    # keybinding cheatsheet generated from this config
-    bindsym $mod+i exec $HOME/.local/bin/sway-bindings
+    # keybinding cheatsheets (sway, zellij, ...) behind one fuzzel picker
+    bindsym $mod+i exec $HOME/.local/bin/cheatsheet
 
     # launch-or-focus: one key always shows the app
     bindsym $mod+m exec $HOME/.local/bin/launch-or-focus evolution evolution      # mail

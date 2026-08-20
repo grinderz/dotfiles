@@ -1,3 +1,5 @@
 {
-	"theme": "Default Dark.sublime-theme"
+	"theme": "Default Dark.sublime-theme",
+	"remember_open_files": false,
+	"hot_exit": false
 }
