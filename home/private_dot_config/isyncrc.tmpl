@@ -1,0 +1,116 @@
+# mbsync: pulls every account from [[data.mail.accounts]] (private
+# chezmoi.toml) into ~/.local/share/mail/<name>/ so aerc and notmuch work
+# on local copies. Passwords come from pass; run by mbsync.timer.
+#
+# Account schema (TOML):
+#   [[data.mail.accounts]]
+#   name  = "work"            # maildir subdir, aerc tab, mbsync channel
+#   kind  = "davmail"         # davmail | gmail | gmail-oauth | yandex | mailru | imap
+#   email = "user@host.tld"
+#   user  = "login"           # optional, defaults to email
+#   pass  = "mail/work"       # optional pass entry, defaults to mail/<name>
+#   pass_dir = "/abs/path"    # optional alternate password store
+#   archive_folder = "archive"      # gmail kinds only: label that aerc's
+#                                   # :archive maps to (synced as Archive)
+#   realname = "Full Name"    # optional, defaults to data.personal.name
+#   host / port / smtp / patterns   # kind = "imap" only
+#
+# kind presets: davmail = local bridge 127.0.0.1:1143/1025 (Exchange,
+# needs data.mail.davmail_url); gmail = imap/smtp.gmail.com with
+# per-folder channels (All Mail and Important skipped — they would
+# duplicate every message); gmail-oauth = same, but XOAUTH2 via oama for
+# accounts behind SSO where app passwords are unavailable (needs oama and
+# cyrus-sasl-xoauth2, one-time browser auth: oama authorize google EMAIL);
+# yandex / mailru = known hosts, app password required; imap = generic
+# server, smtp is a full aerc outgoing URL.
+
+# Defaults for every channel below
+Create Near
+Expunge Both
+SyncState *
+{{ range .mail.accounts }}
+IMAPAccount {{ .name }}
+{{ if eq .kind "davmail" -}}
+Host 127.0.0.1
+Port 1143
+TLSType None
+AuthMechs LOGIN
+# davmail chokes on concurrent pipelined commands
+PipelineDepth 1
+{{ else if eq .kind "gmail" -}}
+Host imap.gmail.com
+Port 993
+TLSType IMAPS
+{{ else if eq .kind "gmail-oauth" -}}
+Host imap.gmail.com
+Port 993
+TLSType IMAPS
+AuthMechs XOAUTH2
+{{ else if eq .kind "yandex" -}}
+Host imap.yandex.ru
+Port 993
+TLSType IMAPS
+{{ else if eq .kind "mailru" -}}
+Host imap.mail.ru
+Port 993
+TLSType IMAPS
+{{ else -}}
+Host {{ .host }}
+Port {{ default 993 (get . "port") }}
+TLSType IMAPS
+{{ end -}}
+User {{ default .email (get . "user") }}
+{{ if eq .kind "gmail-oauth" -}}
+PassCmd "oama access {{ .email }}"
+{{ else -}}
+PassCmd "{{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}"
+{{ end }}
+IMAPStore {{ .name }}-remote
+Account {{ .name }}
+
+MaildirStore {{ .name }}-local
+Path ~/.local/share/mail/{{ .name }}/
+Inbox ~/.local/share/mail/{{ .name }}/INBOX
+SubFolders Verbatim
+{{ if hasPrefix "gmail" .kind }}
+Channel {{ .name }}-inbox
+Far :{{ .name }}-remote:INBOX
+Near :{{ .name }}-local:INBOX
+
+Channel {{ .name }}-sent
+Far :{{ .name }}-remote:"[Gmail]/Sent Mail"
+Near :{{ .name }}-local:Sent
+
+Channel {{ .name }}-drafts
+Far :{{ .name }}-remote:"[Gmail]/Drafts"
+Near :{{ .name }}-local:Drafts
+
+Channel {{ .name }}-trash
+Far :{{ .name }}-remote:"[Gmail]/Trash"
+Near :{{ .name }}-local:Trash
+
+Channel {{ .name }}-spam
+Far :{{ .name }}-remote:"[Gmail]/Spam"
+Near :{{ .name }}-local:Spam
+{{ if get . "archive_folder" }}
+# gmail has no archive folder (archiving just drops the INBOX label), so
+# aerc's :archive targets a dedicated label instead
+Channel {{ .name }}-archive
+Far :{{ .name }}-remote:"{{ get . "archive_folder" }}"
+Near :{{ .name }}-local:Archive
+{{ end }}
+Group {{ .name }}
+Channels {{ .name }}-inbox {{ .name }}-sent {{ .name }}-drafts {{ .name }}-trash {{ .name }}-spam{{ if get . "archive_folder" }} {{ .name }}-archive{{ end }}
+{{ else }}
+Channel {{ .name }}
+Far :{{ .name }}-remote:
+Near :{{ .name }}-local:
+{{ if eq .kind "davmail" -}}
+# Exchange service folders are localized per mailbox language — override
+# per account when the defaults miss (patterns field)
+Patterns {{ default "* !Calendar* !Contacts* !Tasks !Journal !Notes !\"Sync Issues*\"" (get . "patterns") }}
+{{ else -}}
+Patterns {{ default "*" (get . "patterns") }}
+{{ end -}}
+{{ end }}
+{{ end }}

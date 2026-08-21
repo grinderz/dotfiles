@@ -1,0 +1,17 @@
+[Unit]
+Description=Evolution meeting reminders (alarm notify daemon)
+
+[Service]
+# pulls evolution-data-server up via D-Bus on start. Starts with the user
+# manager, i.e. before sway has imported WAYLAND_DISPLAY into it (sway is
+# not wired to graphical-session.target here) — so hold in "activating"
+# until the env shows up instead of failing; each Exec* gets a fresh
+# manager env snapshot, so the daemon sees what the wait saw
+ExecStartPre=/bin/sh -c 'until systemctl --user show-environment | grep -q ^WAYLAND_DISPLAY=; do sleep 2; done'
+ExecStart=/usr/lib/evolution-data-server/evolution-alarm-notify
+TimeoutStartSec=2min
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=default.target

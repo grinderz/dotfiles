@@ -1,0 +1,17 @@
+# DavMail in headless server mode: bridges the self-hosted Exchange
+# (EWS URL from data.mail.davmail_url in the private chezmoi.toml) to
+# local IMAP/SMTP/CalDAV on loopback only. Run by davmail.service; used
+# by every kind = "davmail" mail account.
+davmail.server=true
+davmail.mode=EWS
+davmail.url={{ .mail.davmail_url }}
+davmail.bindAddress=127.0.0.1
+davmail.allowRemote=false
+davmail.imapPort=1143
+davmail.smtpPort=1025
+davmail.caldavPort=1080
+# unused protocols off
+davmail.popPort=
+davmail.ldapPort=
+davmail.disableUpdateCheck=true
+davmail.disableGuiNotifications=true

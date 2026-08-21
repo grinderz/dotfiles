@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Calendar (Evolution)
+Comment=Evolution opened straight in the calendar view
+Exec=evolution -c calendar
+Icon=x-office-calendar
+Terminal=false
+Categories=Calendar;Office;
+StartupNotify=true

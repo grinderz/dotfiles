@@ -26,6 +26,14 @@
 .config/yay
 .config/user-dirs.dirs
 .config/user-dirs.locale
+.config/aerc
+.config/davmail
+.config/isyncrc
+.config/notmuch
+.config/khal
+.config/vdirsyncer
+.config/oama
+.config/ewsctl
 # sublime keeps its mac config under ~/Library/Application Support
 .config/sublime-text
 .local/bin/battery-conservation
@@ -44,20 +52,51 @@
 .local/bin/reboot-required-notify
 .local/bin/region-select
 .local/bin/samsung-ssd.sh
+.local/bin/mail-addr
+.local/bin/mail-notify
+.local/bin/mail-status
+.local/bin/pass-cache
 .local/bin/scratch-term
 .local/bin/screen-record
 .local/bin/smart-screenshot
 .local/bin/cheatsheet
 .local/bin/sway-bindings
 .local/bin/zellij-bindings
+.local/bin/aerc-bindings
 .local/bin/suspend-toggle
 .local/bin/sync-brave-wallpapers
 .local/bin/system-stats
 .local/bin/car-traffic
 .local/bin/weather
+.local/share/applications
 .local/share/flatpak
 {{ end }}
 
 {{ if not (hasKey . "work") }}
 .config/git/config.work.inc
+{{ end }}
+
+# mail stack renders only when accounts are defined in the private toml
+{{ if not (hasKey . "mail") }}
+.config/aerc
+.config/isyncrc
+.config/notmuch
+.config/oama
+.config/systemd/user/mbsync.service
+.config/systemd/user/mbsync.timer
+.config/systemd/user/davmail.service
+{{ end }}
+
+# davmail only bridges Exchange accounts; ewsctl talks to the same server
+{{ if not (and (hasKey . "mail") (hasKey .mail "davmail_url")) }}
+.config/davmail
+.config/ewsctl
+{{ end }}
+
+# calendar stack renders only when accounts are defined in the private toml
+{{ if not (hasKey . "cal") }}
+.config/khal
+.config/vdirsyncer
+.config/systemd/user/vdirsyncer.service
+.config/systemd/user/vdirsyncer.timer
 {{ end }}

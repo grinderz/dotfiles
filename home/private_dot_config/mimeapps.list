@@ -1,7 +1,7 @@
 [Default Applications]
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/jetbrains=jetbrainsd.desktop
-x-scheme-handler/mailto=org.gnome.Evolution.desktop
+x-scheme-handler/mailto=aerc.desktop
 video/mp4=mpv.desktop
 video/x-matroska=mpv.desktop
 video/webm=mpv.desktop
@@ -10,4 +10,4 @@ video/quicktime=mpv.desktop
 video/x-msvideo=mpv.desktop
 
 [Added Associations]
-x-scheme-handler/mailto=org.gnome.Evolution.desktop;
+x-scheme-handler/mailto=aerc.desktop;

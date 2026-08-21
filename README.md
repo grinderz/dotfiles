@@ -179,6 +179,114 @@ Per deploy, once per host:
   apps and web (dconf state, chezmoi only covers the settings.ini files):
   `gsettings set org.gnome.desktop.interface color-scheme prefer-dark`
 
+* **mail / calendar** (chezmoi) — packages: `aerc isync notmuch pass w3m
+  dante khal vdirsyncer python-aiohttp-oauthlib keyutils`, AUR: `davmail
+  oama cyrus-sasl-xoauth2` (the last two for Google mail over XOAUTH2 —
+  the default for Google accounts, app passwords are legacy). Accounts
+  are data-driven from `[data.mail]` / `[data.cal]` in the private
+  chezmoi.toml — schema in the headers of `isyncrc.tmpl` and
+  `vdirsyncer/config.tmpl`. Secrets live in pass: `passp` (personal store,
+  `~/sync/pass`) and `passw` (work store, `~/sync/work/pass`); the shared
+  Google OAuth client sits at `oauth/google/client-id` / `client-secret`
+  (used by vdirsyncer directly and mirrored into oama's config). After
+  apply: `systemctl --user enable --now davmail.service mbsync.timer`,
+  a one-time `oama authorize google <email>` per Google mail account and
+  `vdirsyncer discover` (browser OAuth per google calendar), then
+  `enable --now vdirsyncer.timer`.
+
+### Mail password rotation
+
+The mail and calendar timers read secrets through `pass-cache`: a kernel
+user-keyring cache (24h TTL) in front of pass, so the gpg pinentry shows
+up once a day instead of on every 5-minute sync. pass remains the only
+source of truth — the cache never touches disk and dies with the session.
+
+When rotating a password (company policy or otherwise), update the store
+and flush the cache in one go:
+
+```sh
+passw insert mail/work && pass-cache drop mail/work
+```
+
+Skipping the drop leaves the timers retrying the stale password for up to
+a day — enough for an AD lockout. `pass-cache drop` with no entry flushes
+everything cached.
+
+Full Exchange rotation, zero lockout risk (davmail itself holds no
+credentials — only the clients below do):
+
+```sh
+systemctl --user stop mbsync.timer vdirsyncer.timer
+# close Evolution too — it keeps its own copy in gnome-keyring and retries
+
+# change the password in AD / the corporate portal, then:
+passw insert mail/work
+pass-cache drop mail/work
+mbsync -a -V                 # one manual run with the new password
+systemctl --user start mbsync.timer vdirsyncer.timer
+# Evolution prompts for the new password on next start
+```
+
+Strictly the stop/start is optional — between the portal change and the
+drop the timers fit at most one failed attempt, below any sane lockout
+threshold — but stopping costs nothing.
+
+### Mail account changes
+
+The first `[[data.mail.accounts]]` entry is the primary identity: notmuch
+`primary_email` (the rest become `other_email`) and the aerc tab active on
+start. Semantically it barely matters — aerc picks From per account on its
+own — so order the accounts by daily use and reorder freely; `chezmoi
+apply` regenerates everything, mail and tags untouched.
+
+Replacing an account (job change): swap its blocks in the private
+chezmoi.toml (`[data.mail]` / `[data.cal]`, new `davmail_url`), rotate the
+pass entries (`passw insert` new, `passw rm` + `pass-cache drop` old),
+`chezmoi apply`. Templates never touch data of removed accounts — clean up
+by hand: `~/.unbacked/mail/<name>` (or keep it as a dead folder, notmuch
+keeps indexing it), `~/.local/share/calendars/<name>` plus its vdirsyncer
+status, then `notmuch new` and `vdirsyncer discover`. Revoke the oama
+token if the account used one.
+
+### Mail / calendar FAQ
+
+* **How do I add a mailbox?** One `[[data.mail.accounts]]` block in the
+  private chezmoi.toml + `passp/passw insert mail/<name>` + `chezmoi
+  apply`. Commented examples for every kind sit at the bottom of the toml.
+* **How do I find the davmail url?** `curl -sk -o /dev/null -w
+  '%{http_code}' https://<owa-host>/EWS/Exchange.asmx` — 401 means the
+  endpoint exists, use that url. 404 — ask autodiscover, or hand davmail
+  the plain OWA url and let it resolve.
+* **Several Exchange accounts?** Same server — just more `kind =
+  "davmail"` accounts, credentials are per IMAP login. A second server
+  needs a second davmail instance (own ports and properties file) — not
+  wired up, extend when it actually happens.
+* **Google mail — OAuth or app password?** OAuth: `kind = "gmail-oauth"`
+  (XOAUTH2 via oama, browser login once — works for personal accounts and
+  Workspace behind SSO alike; app passwords are legacy at Google). `kind =
+  "gmail"` with an app password stays as the low-ceremony fallback. One
+  OAuth client serves every account — tokens are per account (oama's own
+  store for mail, `~/.local/state/vdirsyncer/token_<name>` for calendars);
+  enable both Gmail API and Calendar API on the client.
+  `admin_policy_enforced` means the Workspace admin blocks unverified
+  OAuth apps — that account then needs an admin-approved client (per-
+  account client override: not wired up, extend when it happens).
+* **Why does only the first line of a pass entry get used?** pass
+  convention — password first, metadata below. Everything down the chain
+  (pass-cache, okd-token, vpn.sh) trims to line one on purpose.
+* **Pinentry on every sync?** It shouldn't be: `pass-cache` keeps decrypted
+  first lines in the kernel keyring for a day. One pinentry after boot,
+  silence after. gpg-agent TTLs stay short on purpose.
+* **Timers auth-fail after a password change?** You forgot `pass-cache
+  drop` — the cache serves the stale password for up to a day.
+* **Meetings vs khal?** khal is the fast local view and personal events;
+  anything with attendees, invitations or recurring-exception edits goes
+  through Evolution (EWS handles iTIP, CalDAV via davmail does not).
+* **Why is the maildir under `~/.unbacked`?** Gigabytes, churns every 5
+  minutes, fully re-syncable from the servers — snapshot noise. OAuth
+  tokens and calendars stay backed: tokens need a browser to recreate,
+  calendars must stay consistent with their sync status.
+
 ### Boot mirror stick
 
 The `96-bootmirror.hook` rsyncs `/boot` to a second bootable stick after every

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Waybar module for unread mail, straight from the local notmuch index:
+# text is the total INBOX unread count, tooltip breaks it down per
+# account. `pick` pops a fuzzel with per-account counts and the freshest
+# unread messages — any selection just focuses (or starts) aerc. `open`
+# skips the menu. Hidden entirely while notmuch is absent or all read.
+
+set -euo pipefail
+
+maildir="$HOME/.local/share/mail"
+command -v notmuch >/dev/null && [ -d "$maildir" ] || { echo '{"text": ""}'; exit 0; }
+
+accounts() {
+    find "$maildir/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+}
+
+open_aerc() {
+    exec "$HOME/.local/bin/launch-or-focus" aerc foot --app-id=aerc aerc
+}
+
+case "${1:-}" in
+pick)
+    {
+        while read -r acc; do
+            n=$(notmuch count "tag:unread and folder:$acc/INBOX")
+            [ "$n" -gt 0 ] && printf '%-16s %3d unread\n' "$acc" "$n"
+        done < <(accounts)
+        notmuch search --output=summary --format=json --limit=15 \
+                'tag:unread and folder:/INBOX/' \
+            | jq -r '.[] | "  \(.authors) — \(.subject)"'
+    } | fuzzel --dmenu --width 90 >/dev/null && open_aerc
+    ;;
+open)
+    open_aerc
+    ;;
+*)
+    total=0
+    tooltip=""
+    while read -r acc; do
+        n=$(notmuch count "tag:unread and folder:$acc/INBOX")
+        total=$((total + n))
+        [ "$n" -gt 0 ] && tooltip="$tooltip$acc: $n unread\n"
+    done < <(accounts)
+    if [ "$total" -eq 0 ]; then
+        echo '{"text": ""}'
+    else
+        printf '{"text": " %d", "tooltip": "%s", "class": "unread"}\n' \
+            "$total" "${tooltip%\\n}"
+    fi
+    ;;
+esac

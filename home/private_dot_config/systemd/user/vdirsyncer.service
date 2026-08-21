@@ -1,0 +1,12 @@
+[Unit]
+Description=Sync calendars with vdirsyncer
+Wants=davmail.service
+After=davmail.service network-online.target
+
+[Service]
+Type=oneshot
+# a pinentry or YubiKey touch nobody answers must fail the run, not hang
+# the timer forever
+TimeoutStartSec=10min
+ExecStart=/usr/bin/vdirsyncer sync
+ExecStartPost=/usr/bin/vdirsyncer metasync

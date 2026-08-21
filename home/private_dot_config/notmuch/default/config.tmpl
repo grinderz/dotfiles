@@ -1,0 +1,25 @@
+# notmuch index over the whole mbsync maildir tree; every aerc account
+# queries it. The first entry in [[data.mail.accounts]] is the primary
+# identity. Refreshed by mbsync.service right after each sync.
+[database]
+path={{ .chezmoi.homeDir }}/.local/share/mail
+
+[user]
+name={{ default .personal.name (get (index .mail.accounts 0) "realname") }}
+primary_email={{ (index .mail.accounts 0).email }}
+{{- $others := list }}
+{{- range $i, $a := .mail.accounts }}{{ if gt $i 0 }}{{ $others = append $others $a.email }}{{ end }}{{ end }}
+{{- if $others }}
+other_email={{ join ";" $others }}
+{{- end }}
+
+[new]
+# `new` marks messages mail-notify has not announced yet
+tags=unread;inbox;new
+ignore=/.*[.](json|lock|bak)$/;.mbsyncstate;.uidvalidity
+
+[maildir]
+synchronize_flags=true
+
+[search]
+exclude_tags=deleted;spam

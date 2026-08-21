@@ -9,10 +9,11 @@ set -euo pipefail
 bin=$(dirname "$(readlink -f "$0")")
 
 while :; do
-    cat=$(printf '%s\n' sway zellij \
-        | fuzzel --dmenu --prompt 'cheatsheet> ' --width 30 --lines 2) || exit 0
+    cat=$(printf '%s\n' sway zellij aerc \
+        | fuzzel --dmenu --prompt 'cheatsheet> ' --width 30 --lines 3) || exit 0
     case $cat in
         sway) "$bin/sway-bindings" ;;
         zellij) "$bin/zellij-bindings" ;;
+        aerc) "$bin/aerc-bindings" ;;
     esac
 done

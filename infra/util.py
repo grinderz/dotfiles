@@ -58,12 +58,17 @@ def sudoers_template(name, src, dest, **kwargs):
         )
 
 
-def chezmoi_work_data():
-    """[data.work] from the machine-local chezmoi.toml (empty if absent)."""
+def chezmoi_data(key):
+    """[data.<key>] from the machine-local chezmoi.toml (empty if absent)."""
     path = pathlib.Path.home() / '.config/chezmoi/chezmoi.toml'
     if not path.exists():
         return {}
-    return tomllib.loads(path.read_text()).get('data', {}).get('work', {})
+    return tomllib.loads(path.read_text()).get('data', {}).get(key, {})
+
+
+def chezmoi_work_data():
+    """[data.work] from the machine-local chezmoi.toml (empty if absent)."""
+    return chezmoi_data('work')
 
 
 def chezmoi_infra_hosts(inventory):

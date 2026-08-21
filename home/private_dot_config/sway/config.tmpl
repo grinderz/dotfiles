@@ -144,6 +144,7 @@ assign [app_id="jetbrains-goland"] workspace $ws4
 assign [app_id="jetbrains-datagrip"] workspace $ws4
 assign [app_id="firefox"] workspace $ws5
 assign [app_id="org.gnome.Evolution"] workspace $ws6
+assign [app_id="aerc"] workspace $ws6
 assign [app_id="com.ayugram.desktop"] workspace $ws9
 assign [app_id="md.obsidian.Obsidian"] workspace $ws7
 
@@ -390,7 +391,7 @@ bindsym $mod+r mode "resize"
     bindsym $mod+i exec $HOME/.local/bin/cheatsheet
 
     # launch-or-focus: one key always shows the app
-    bindsym $mod+m exec $HOME/.local/bin/launch-or-focus evolution evolution      # mail
+    bindsym $mod+m exec $HOME/.local/bin/launch-or-focus aerc foot --app-id=aerc aerc   # mail
     bindsym $mod+t exec $HOME/.local/bin/launch-or-focus ayugram AyuGram          # telegram
     bindsym $mod+g exec $HOME/.local/bin/launch-or-focus obsidian obsidian        # notes
 

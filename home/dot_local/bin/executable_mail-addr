@@ -1,0 +1,34 @@
+#!/bin/sh
+# Address completion for aerc's compose fields (address-book-cmd):
+# harvests candidates from the notmuch index — everyone ever written to
+# or received from across all synced accounts. Output is what aerc
+# expects: address<TAB>name, best-effort match on the typed fragment.
+
+q=$1
+[ -n "$q" ] || exit 0
+
+{
+    # senders AND recipients: people only ever written to (never heard
+    # from) live in the To of sent mail and need --output=recipients
+    notmuch address --deduplicate=address --output=sender --output=recipients \
+        "from:$q* or to:$q*" 2>/dev/null
+    # corporate GAL over EWS; silently absent when ewsctl or the network
+    # is not around. Already in address<TAB>name form — normalize below
+    # is a no-op for it.
+    command -v ewsctl >/dev/null && timeout 3 ewsctl contacts "$q" 2>/dev/null \
+        | sed 's/^\([^\t]*\)\t\(.*\)$/\2 <\1>/'
+} \
+    | awk '
+        {
+            # "Some Name <addr>" or bare "addr"
+            if (match($0, /<[^>]+>$/)) {
+                addr = substr($0, RSTART + 1, RLENGTH - 2)
+                name = substr($0, 1, RSTART - 1)
+                gsub(/^[[:space:]"]+|[[:space:]"]+$/, "", name)
+            } else {
+                addr = $0
+                name = ""
+            }
+            printf "%s\t%s\n", addr, name
+        }
+    ' | sort -u | head -30

@@ -1,0 +1,23 @@
+# khal over the local calendar copies vdirsyncer maintains — one
+# discover section per [[data.cal.accounts]] entry; collection names on
+# the server become the calendar names here.
+[calendars]
+{{ range .cal.accounts }}
+[[{{ .name }}]]
+path = {{ $.chezmoi.homeDir }}/.local/share/calendars/{{ .name }}/*
+type = discover
+{{ end }}
+{{ with get .cal "default_calendar" -}}
+[default]
+# target for khal new without -a; a collection name from the server
+# (see khal printcalendars after the first sync), set in data.cal
+default_calendar = {{ . }}
+
+{{ end -}}
+[locale]
+firstweekday = 0
+timeformat = %H:%M
+dateformat = %d.%m.
+longdateformat = %d.%m.%Y
+datetimeformat = %d.%m. %H:%M
+longdatetimeformat = %d.%m.%Y %H:%M

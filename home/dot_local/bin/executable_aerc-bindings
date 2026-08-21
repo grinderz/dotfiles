@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Keybinding cheatsheet generated from the live aerc binds.conf, so it
+# can never drift from reality: every bind with its context section,
+# shown in fuzzel. Selection is just for browsing (nothing runs).
+# Companion of sway-bindings and zellij-bindings.
+
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/aerc/binds.conf"
+[ -r "$config" ] || config=/usr/share/aerc/binds.conf
+[ -r "$config" ] || exit 0
+
+awk '
+    /^\[/ {
+        section = $0
+        gsub(/[][]/, "", section)
+        next
+    }
+    # $noinherit / $ex and friends are options, not binds
+    /^[[:space:]]*(#|\$|$)/ { next }
+    /=/ {
+        key = $0
+        sub(/[[:space:]]*=.*$/, "", key)
+        cmd = $0
+        sub(/^[^=]*=[[:space:]]*/, "", cmd)
+        gsub(/<Enter>/, "", cmd)
+        printf "%-18s %-14s %s\n", (section ? section : "global"), key, cmd
+    }
+' "$config" | fuzzel --dmenu --width 110 >/dev/null || true

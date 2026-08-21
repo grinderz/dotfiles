@@ -1,0 +1,21 @@
+#!/bin/sh
+# Desktop notifications for freshly synced mail. mbsync.service runs this
+# right after `notmuch new`: every message still carrying the `new` tag
+# (set via new.tags in the notmuch config) gets announced through mako,
+# then the marker tag is dropped so each message notifies exactly once.
+# Big batches collapse into one summary to avoid a notification storm.
+
+count=$(notmuch count tag:new)
+[ "$count" -eq 0 ] && exit 0
+
+if [ "$count" -gt 5 ]; then
+    notify-send -a mail "New mail" "$count new messages"
+else
+    notmuch search --output=summary --format=json tag:new \
+        | jq -r '.[] | "\(.authors)\t\(.subject)"' \
+        | while IFS="$(printf '\t')" read -r from subject; do
+            notify-send -a mail "$from" "$subject"
+        done
+fi
+
+notmuch tag -new -- tag:new

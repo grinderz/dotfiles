@@ -1,0 +1,12 @@
+# Shadows the packaged aerc.desktop (Terminal=true relies on a terminal
+# resolver): run aerc in foot instead so mailto: links open a compose
+# window directly. A second invocation forwards to the running instance.
+[Desktop Entry]
+Type=Application
+Name=aerc
+Comment=Mail client in a terminal
+Exec=foot --app-id=aerc aerc %u
+Terminal=false
+Icon=utilities-terminal
+Categories=Network;Email;ConsoleOnly;
+MimeType=x-scheme-handler/mailto;message/rfc822;

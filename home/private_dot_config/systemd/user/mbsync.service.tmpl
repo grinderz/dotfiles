@@ -1,0 +1,14 @@
+[Unit]
+Description=Sync mail with mbsync, then refresh the notmuch index
+Wants=davmail.service
+After=davmail.service network-online.target
+
+[Service]
+Type=oneshot
+# a pinentry or YubiKey touch nobody answers must fail the run, not hang
+# the timer forever; big first syncs still fit
+TimeoutStartSec=30min
+ExecStartPre=/usr/bin/mkdir -p{{ range .mail.accounts }} %h/.local/share/mail/{{ .name }}{{ end }}
+ExecStart=/usr/bin/mbsync -a
+ExecStartPost=/usr/bin/notmuch new
+ExecStartPost=%h/.local/bin/mail-notify

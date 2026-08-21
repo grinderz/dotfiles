@@ -1,0 +1,11 @@
+[Unit]
+Description=DavMail gateway bridging Exchange to local IMAP/SMTP/CalDAV
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/davmail -notray %h/.config/davmail/davmail.properties
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

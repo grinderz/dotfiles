@@ -1,0 +1,10 @@
+# ewsctl (~/src/personal/ewsctl): one account per kind = "davmail" entry
+# in [[data.mail.accounts]] — same Exchange creds the mail stack uses.
+{{ $host := (urlParse .mail.davmail_url).host }}
+{{- range .mail.accounts }}{{ if eq .kind "davmail" }}
+[accounts.{{ .name }}]
+server = "{{ $host }}"
+email = "{{ .email }}"
+username = "{{ default .email (get . "user") }}"
+password_cmd = "{{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}"
+{{ end }}{{- end }}

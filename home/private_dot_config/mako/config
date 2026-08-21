@@ -3,6 +3,12 @@ default-timeout=15000
 # Apply default-timeout even when the app requests a persistent notification
 ignore-timeout=1
 
+# New-mail notifications hang around long enough to catch after stepping
+# away (mail-notify sends with app name "mail")
+[app-name=mail]
+default-timeout=600000
+ignore-timeout=0
+
 # Critical notifications stay until dismissed; dunst-style red
 [urgency=critical]
 default-timeout=0

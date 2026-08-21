@@ -1,0 +1,32 @@
+# One aerc account per entry in [[data.mail.accounts]] (private
+# chezmoi.toml). Every account reads the local notmuch-indexed maildir
+# tree that mbsync keeps in sync (see ~/.config/isyncrc); only sending
+# talks to a server. Account schema is documented in isyncrc.tmpl.
+{{ range .mail.accounts }}
+[{{ .name }}]
+source = notmuch://{{ $.chezmoi.homeDir }}/.local/share/mail
+maildir-store = {{ $.chezmoi.homeDir }}/.local/share/mail
+maildir-account-path = {{ .name }}
+{{ if eq .kind "davmail" -}}
+outgoing = smtp://{{ default .email (get . "user") | replace "@" "%40" }}@127.0.0.1:1025
+{{ else if eq .kind "gmail" -}}
+outgoing = smtps://{{ .email | replace "@" "%40" }}@smtp.gmail.com:465
+{{ else if eq .kind "gmail-oauth" -}}
+outgoing = smtps+xoauth2://{{ .email | replace "@" "%40" }}@smtp.gmail.com:465
+{{ else if eq .kind "yandex" -}}
+outgoing = smtps://{{ default .email (get . "user") | replace "@" "%40" }}@smtp.yandex.ru:465
+{{ else if eq .kind "mailru" -}}
+outgoing = smtps://{{ default .email (get . "user") | replace "@" "%40" }}@smtp.mail.ru:465
+{{ else -}}
+outgoing = {{ .smtp }}
+{{ end -}}
+{{ if eq .kind "gmail-oauth" -}}
+outgoing-cred-cmd = oama access {{ .email }}
+{{ else -}}
+outgoing-cred-cmd = {{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}
+{{ end -}}
+from = {{ default $.personal.name (get . "realname") }} <{{ .email }}>
+default = INBOX
+archive = Archive
+postpone = Drafts
+{{ end }}

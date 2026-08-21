@@ -1,0 +1,45 @@
+#!/bin/sh
+# In-RAM cache in front of pass so background timers (mbsync, vdirsyncer)
+# do not hit the gpg pinentry on every run: the kernel user keyring holds
+# the first line of an entry for a day, pass stays the only source of
+# truth. Works against whichever store PASSWORD_STORE_DIR names (the
+# default matches passp), entries are namespaced per store so passp and
+# passw never collide. Linux-only (keyutils).
+#
+#   pass-cache show <entry>    print it, from cache or from pass
+#   pass-cache drop [<entry>]  forget the cached copy in every store
+#                              (everything when omitted); run right after
+#                              rotating a password, or the timers keep
+#                              retrying the stale one into a lockout
+
+set -eu
+
+ttl=86400
+store=${PASSWORD_STORE_DIR:-$HOME/sync/pass}
+
+case ${1:-} in
+show)
+    desc="pass-cache:$store:$2"
+    if id=$(keyctl search @u user "$desc" 2>/dev/null); then
+        keyctl pipe "$id"
+        echo
+        exit 0
+    fi
+    secret=$(pass show "$2" | head -n1)
+    id=$(printf %s "$secret" | keyctl padd user "$desc" @u)
+    keyctl timeout "$id" "$ttl"
+    printf '%s\n' "$secret"
+    ;;
+drop)
+    for id in $(keyctl rlist @u 2>/dev/null); do
+        desc=$(keyctl rdescribe "$id" 2>/dev/null) || continue
+        case $desc in
+        "user;"*";pass-cache:"*"${2:+:$2}") keyctl unlink "$id" @u ;;
+        esac
+    done
+    ;;
+*)
+    echo "usage: pass-cache show <entry> | drop [<entry>]" >&2
+    exit 2
+    ;;
+esac

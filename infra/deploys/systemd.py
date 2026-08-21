@@ -1,6 +1,8 @@
 from pyinfra.context import host
 from pyinfra.operations import files, systemd
 
+from util import chezmoi_data
+
 files.directory(
     name='ensure /etc/systemd/journald.conf.d',
     path='/etc/systemd/journald.conf.d',
@@ -127,6 +129,49 @@ systemd.service(
     running=True,
     user_mode=True,
 )
+
+# user session: mail and calendar sync. Unit files and configs come from
+# chezmoi and render only when [data.mail] / [data.cal] exist in the
+# machine-local chezmoi.toml — gate the enables the same way so hosts
+# without mail data do not trip over missing units.
+_mail = chezmoi_data('mail')
+_cal = chezmoi_data('cal')
+
+if 'davmail_url' in _mail:
+    systemd.service(
+        name='enable and start davmail (user)',
+        service='davmail.service',
+        enabled=True,
+        running=True,
+        user_mode=True,
+    )
+
+if _mail:
+    systemd.service(
+        name='enable and start mbsync.timer (user)',
+        service='mbsync.timer',
+        enabled=True,
+        running=True,
+        user_mode=True,
+    )
+
+if _cal:
+    systemd.service(
+        name='enable and start vdirsyncer.timer (user)',
+        service='vdirsyncer.timer',
+        enabled=True,
+        running=True,
+        user_mode=True,
+    )
+
+    # meeting reminders from the EWS calendar without Evolution open
+    systemd.service(
+        name='enable and start evolution-alarm-notify (user)',
+        service='evolution-alarm-notify.service',
+        enabled=True,
+        running=True,
+        user_mode=True,
+    )
 
 # seat management for the sway session (sway runs as plain user via seatd)
 systemd.service(

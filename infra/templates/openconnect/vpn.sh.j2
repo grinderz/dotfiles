@@ -34,7 +34,8 @@ function prompt_2fa_method() {
 }
 {% endif %}
 
-VPN_PASSWORD="eval $GET_VPN_PASSWORD"
+# pass convention: the password is the first line, the rest is metadata
+VPN_PASSWORD="eval $GET_VPN_PASSWORD | head -n1"
 PIN_PASSWORD="prompt_2fa_method $PUSH_OR_PIN"
 ({{ profile.password_cmd }}) | \
 sudo "$VPN_EXEC" \

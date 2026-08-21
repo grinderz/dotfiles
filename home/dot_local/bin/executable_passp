@@ -1,0 +1,4 @@
+#!/bin/sh
+# pass against the personal store. A script rather than a shell function
+# so bash scripts, PassCmd hooks and systemd units can use it too.
+PASSWORD_STORE_DIR=$HOME/sync/pass exec pass "$@"

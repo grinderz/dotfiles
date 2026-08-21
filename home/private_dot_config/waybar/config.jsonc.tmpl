@@ -31,6 +31,7 @@
 
         "custom/gitlab",
         "custom/jira",
+        "custom/mail",
 
         "custom/usb",
         "bluetooth",
@@ -216,6 +217,14 @@
         "interval": 300,
         "on-click": "$HOME/.local/bin/jira-status --sprint pick",
         "on-click-right": "$HOME/.local/bin/jira-status open"
+    },
+    "custom/mail": {
+        "exec": "$HOME/.local/bin/mail-status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 30,
+        "on-click": "$HOME/.local/bin/mail-status pick",
+        "on-click-right": "$HOME/.local/bin/mail-status open"
     },
     "custom/usb": {
         "exec": "$HOME/.local/bin/usb-storage status",
