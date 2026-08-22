@@ -9,6 +9,11 @@ ignore-timeout=1
 default-timeout=600000
 ignore-timeout=0
 
+# Calendar reminders (birthdays, meetings) stay until dismissed
+[app-name=evolution-alarm-notify]
+default-timeout=0
+ignore-timeout=0
+
 # Critical notifications stay until dismissed; dunst-style red
 [urgency=critical]
 default-timeout=0
