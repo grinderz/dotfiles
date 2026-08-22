@@ -8,6 +8,16 @@ video/webm=mpv.desktop
 video/mpeg=mpv.desktop
 video/quicktime=mpv.desktop
 video/x-msvideo=mpv.desktop
+inode/directory=yazi.desktop
+application/zip=yazi.desktop
+application/x-7z-compressed=yazi.desktop
+application/x-tar=yazi.desktop
+application/gzip=yazi.desktop
+application/x-xz=yazi.desktop
+application/zstd=yazi.desktop
+application/x-bzip2=yazi.desktop
+application/vnd.rar=yazi.desktop
+application/x-rar=yazi.desktop
 
 [Added Associations]
 x-scheme-handler/mailto=aerc.desktop;

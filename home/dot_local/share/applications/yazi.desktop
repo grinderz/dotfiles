@@ -1,0 +1,14 @@
+# Shadows the packaged yazi.desktop (Terminal=true needs a terminal
+# resolver xdg-open lacks): run yazi in foot, started on the given
+# file, so "open" from a browser lands in the file manager. Archives
+# are claimed too; yazi previews their listing and Enter extracts
+# them next to the file (built-in extract opener, 7z).
+[Desktop Entry]
+Type=Application
+Name=Yazi
+Comment=Terminal file manager
+Exec=foot --app-id=yazi yazi %f
+Terminal=false
+Icon=yazi
+Categories=System;FileManager;
+MimeType=inode/directory;application/zip;application/x-7z-compressed;application/x-tar;application/gzip;application/x-xz;application/zstd;application/x-bzip2;application/vnd.rar;application/x-rar;
