@@ -264,6 +264,12 @@ bindgesture swipe:4:right workspace prev_on_output
     # Note: workspaces can have any name you want, not just numbers.
     # We just use 1-10 as the default.
 
+    # Keyboard-friendly workspace moves (the ZMK keymap keeps digits on a
+    # layer): previous/next on this output, and back to the last one
+    bindsym $mod+comma workspace prev_on_output
+    bindsym $mod+period workspace next_on_output
+    bindsym $mod+Tab workspace back_and_forth
+
     # Fresh empty workspace (first free number from 11) on the focused
     # output; Shift variant takes the focused window along
     bindsym $mod+n exec $HOME/.local/bin/fresh-workspace
@@ -322,6 +328,8 @@ bindgesture swipe:4:right workspace prev_on_output
     # If there are multiple scratchpad windows, this command cycles through them.
     # spawns the drop-down terminal on first use, plain toggle after
     bindsym $mod+minus exec $HOME/.local/bin/scratch-term
+    # same on $mod+grave: ` is a base-layer thumb tap on the ZMK keymap
+    bindsym $mod+grave exec $HOME/.local/bin/scratch-term
 #
 # Resizing containers:
 #
