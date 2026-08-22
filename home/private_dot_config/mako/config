@@ -14,6 +14,14 @@ ignore-timeout=0
 default-timeout=0
 ignore-timeout=0
 
+# "dnd" mode (waybar notify-toggle): hide everything but critical; the
+# later, more specific section wins. Hidden ones still land in history
+[mode=dnd]
+invisible=1
+
+[mode=dnd urgency=critical]
+invisible=0
+
 # Critical notifications stay until dismissed; dunst-style red
 [urgency=critical]
 default-timeout=0

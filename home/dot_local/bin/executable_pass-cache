@@ -16,6 +16,8 @@ set -eu
 
 ttl=86400
 store=${PASSWORD_STORE_DIR:-$HOME/sync/pass}
+# pass itself reads the variable, so the default must reach it too
+export PASSWORD_STORE_DIR=$store
 
 case ${1:-} in
 show)
@@ -25,7 +27,11 @@ show)
         echo
         exit 0
     fi
-    secret=$(pass show "$2" | head -n1)
+    # no pipe into head: a pipeline would hide a failing pass behind head's
+    # exit status and cache an empty secret
+    secret=$(pass show "$2") || exit 1
+    secret=${secret%%
+*}
     id=$(printf %s "$secret" | keyctl padd user "$desc" @u)
     keyctl timeout "$id" "$ttl"
     printf '%s\n' "$secret"

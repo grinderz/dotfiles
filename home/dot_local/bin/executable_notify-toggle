@@ -1,0 +1,18 @@
+#!/bin/sh
+# Waybar switch for mako's "dnd" mode: mutes everything except critical
+# notifications (mako/config decides what stays visible). 🔔 = normal,
+# 🔕 = muted. Muted ones still collect in makoctl history.
+
+case "${1:-status}" in
+    toggle)
+        makoctl mode -t dnd >/dev/null
+        pkill -SIGRTMIN+10 waybar 2>/dev/null
+        ;;
+    status)
+        if makoctl mode | grep -qx dnd; then
+            printf '{"text": "🔕", "tooltip": "non-critical notifications muted", "class": "dnd"}\n'
+        else
+            printf '{"text": "🔔", "tooltip": "notifications on", "class": ""}\n'
+        fi
+        ;;
+esac

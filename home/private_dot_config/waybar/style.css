@@ -91,6 +91,8 @@ button:hover {
 #custom-system-stats,
 #custom-nosuspend,
 #custom-conservation,
+#custom-notify,
+#custom-toggles-handle,
 #custom-power,
 #network,
 #pulseaudio,
@@ -98,8 +100,7 @@ button:hover {
 #mode,
 #scratchpad,
 #power-profiles-daemon,
-#mpris,
-#systemd-failed-units {
+#mpris {
     padding: 0 10px;
     color: #ffffff;
 }
@@ -266,8 +267,37 @@ label:focus {
     color: #90b1b1;
 }
 
-#systemd-failed-units {
-    color: #f53c3c;
+/* module groups: framed clusters, tighter padding inside (the tray is
+ * framed too so its assorted icons read as one cluster) */
+#media,
+#outside,
+#work,
+#devices,
+#system,
+#toggles,
+#tray {
+    margin: 0 2px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+#media > widget > *,
+#outside > widget > *,
+#work > widget > *,
+#devices > widget > *,
+#system > widget > *,
+#toggles > widget > * {
+    padding: 0 6px;
+}
+
+/* drawers (devices, toggles): children slide out of the handle on hover */
+.drawer-child {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+#custom-notify.dnd {
+    color: #f1c40f;
 }
 
 /* traffic level: class comes from the feed's color */

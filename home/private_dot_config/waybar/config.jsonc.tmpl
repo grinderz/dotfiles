@@ -20,36 +20,44 @@
         "sway/window"
     ],
     "modules-right": [
-        "custom/recording",
-        "mpris",
-        "privacy",
-
+        "group/media",
         "tray",
-
-        "custom/weather",
-        "custom/car-traffic",
-
-        "custom/gitlab",
-        "custom/jira",
-        "custom/mail",
-
-        "custom/usb",
-        "bluetooth",
-
-        "custom/nosuspend",
-        "custom/conservation",
-        "power-profiles-daemon",
-
-        "custom/system-stats",
-        
-        "systemd-failed-units",
-        "network",
-        "pulseaudio",
+        "group/outside",
+        "group/work",
+        "group/devices",
+        "group/system",
         "sway/language",
-        "battery",
         "clock",
+        "group/toggles",
         "custom/power"
     ],
+    // Framed groups (see #media/#work/#system in style.css); drawers hide
+    // quiet modules behind a handle, counters and alerts stay visible
+    "group/media": {
+        "orientation": "inherit",
+        "modules": ["custom/recording", "mpris", "privacy"]
+    },
+    "group/outside": {
+        "orientation": "inherit",
+        "modules": ["custom/weather", "custom/car-traffic"]
+    },
+    "group/work": {
+        "orientation": "inherit",
+        "modules": ["custom/gitlab", "custom/jira", "custom/mail"]
+    },
+    "group/devices": {
+        "orientation": "inherit",
+        "drawer": {
+            "transition-duration": 300,
+            "transition-left-to-right": false,
+            "children-class": "drawer-child"
+        },
+        "modules": ["bluetooth", "custom/usb"]
+    },
+    "group/system": {
+        "orientation": "inherit",
+        "modules": ["custom/system-stats", "network", "pulseaudio", "battery"]
+    },
     // Modules configuration
     // "sway/workspaces": {
     //     "disable-scroll": true,
@@ -98,10 +106,6 @@
             {"type": "screenshare"},
             {"type": "audio-in"}
         ]
-    },
-    "systemd-failed-units": {
-        "hide-on-ok": true,
-        "format": "✗ {nr_failed}"
     },
     "tray": {
         // "icon-size": 21,
@@ -240,6 +244,37 @@
         "return-type": "json",
         "format": "{}",
         "interval": 60
+    },
+    // on/off switches folded behind one icon next to the power button:
+    // hover the gear and the drawer slides the switches out, each with
+    // its live state (the first module is the always-visible handle)
+    "group/toggles": {
+        "orientation": "inherit",
+        "drawer": {
+            "transition-duration": 300,
+            "transition-left-to-right": false,
+            "children-class": "drawer-child"
+        },
+        "modules": [
+            "custom/toggles-handle",
+            "custom/nosuspend",
+            "custom/conservation",
+            "power-profiles-daemon",
+            "custom/notify"
+        ]
+    },
+    "custom/toggles-handle": {
+        "format": "⚙",
+        "tooltip": false
+    },
+    "custom/notify": {
+        "exec": "$HOME/.local/bin/notify-toggle status",
+        "return-type": "json",
+        "interval": 60,
+        "signal": 10,
+        "on-click": "$HOME/.local/bin/notify-toggle toggle",
+        "format": "{}",
+        "tooltip": true
     },
     "custom/nosuspend": {
         "exec": "$HOME/.local/bin/suspend-toggle status",
