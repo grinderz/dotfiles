@@ -12,6 +12,8 @@
 #   pass_dir = "/abs/path"    # optional alternate password store
 #   archive_folder = "archive"      # gmail kinds only: label that aerc's
 #                                   # :archive maps to (synced as Archive)
+#   folders = ["jira", "gitlab"]    # gmail kinds only: extra labels to
+#                                   # sync verbatim
 #   realname = "Full Name"    # optional, defaults to data.personal.name
 #   host / port / smtp / patterns   # kind = "imap" only
 #
@@ -99,8 +101,14 @@ Channel {{ .name }}-archive
 Far :{{ .name }}-remote:"{{ get . "archive_folder" }}"
 Near :{{ .name }}-local:Archive
 {{ end }}
+{{- $a := . }}
+{{- range $i, $f := default (list) (get . "folders") }}
+Channel {{ $a.name }}-x{{ $i }}
+Far :{{ $a.name }}-remote:"{{ $f }}"
+Near :{{ $a.name }}-local:"{{ $f | replace "[Gmail]/" "" }}"
+{{ end }}
 Group {{ .name }}
-Channels {{ .name }}-inbox {{ .name }}-sent {{ .name }}-drafts {{ .name }}-trash {{ .name }}-spam{{ if get . "archive_folder" }} {{ .name }}-archive{{ end }}
+Channels {{ .name }}-inbox {{ .name }}-sent {{ .name }}-drafts {{ .name }}-trash {{ .name }}-spam{{ if get . "archive_folder" }} {{ .name }}-archive{{ end }}{{ range $i, $f := default (list) (get . "folders") }} {{ $a.name }}-x{{ $i }}{{ end }}
 {{ else }}
 Channel {{ .name }}
 Far :{{ .name }}-remote:
