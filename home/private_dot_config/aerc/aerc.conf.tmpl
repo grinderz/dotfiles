@@ -11,8 +11,13 @@ mouse-enabled = true
 folders-sort = INBOX,Drafts,Sent,Trash
 
 [compose]
-# complete To/Cc from the notmuch index (everyone ever mailed with)
-address-book-cmd = mail-addr "%s"
+# explicit: $EDITOR is only set in interactive fish, not when launched
+# from the app launcher
+editor = nvim
+# complete To/Cc from the notmuch index (everyone ever mailed with);
+# absolute path: aerc runs this without a shell, and the sway session
+# PATH lacks ~/.local/bin
+address-book-cmd = {{ .chezmoi.homeDir }}/.local/bin/mail-addr "%s"
 
 [filters]
 text/plain = colorize

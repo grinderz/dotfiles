@@ -4,6 +4,9 @@
 # or received from across all synced accounts. Output is what aerc
 # expects: address<TAB>name, best-effort match on the typed fragment.
 
+# ewsctl lives here too; the sway session PATH misses it
+PATH="$HOME/.local/bin:$PATH"
+
 q=$1
 [ -n "$q" ] || exit 0
 
@@ -31,4 +34,4 @@ q=$1
             }
             printf "%s\t%s\n", addr, name
         }
-    ' | sort -u | head -30
+    ' | sort -u | grep -i -- "$q" | head -30
