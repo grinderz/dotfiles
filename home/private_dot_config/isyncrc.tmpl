@@ -43,10 +43,15 @@ PipelineDepth 1
 Host imap.gmail.com
 Port 993
 TLSType IMAPS
+# Gmail over TLS 1.3 ends every session with "decryption failed or bad
+# record mac" (isync 1.5.1 + OpenSSL 3); the sync itself is fine, but a
+# slow close turns into a timeout now and then. TLS 1.2 is clean.
+TLSVersions -1.3
 {{ else if eq .kind "gmail-oauth" -}}
 Host imap.gmail.com
 Port 993
 TLSType IMAPS
+TLSVersions -1.3
 AuthMechs XOAUTH2
 {{ else if eq .kind "yandex" -}}
 Host imap.yandex.ru
