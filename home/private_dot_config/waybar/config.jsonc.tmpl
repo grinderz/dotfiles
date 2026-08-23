@@ -164,8 +164,14 @@
         "format-wifi": " {essid}({signalStrength}%)",
         "format-linked": " {ifname}(No IP)",
         "format-disconnected": "",
-        "tooltip-format": "{ifname} via {gwaddr}, {signalStrength}%",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+        // waybar keeps one default route (the lowest metric, here the
+        // wired one), so {gwaddr} is always empty on this instance.
+        "tooltip-format-wifi": "{ifname} {ipaddr}/{cidr}\n{essid} {signalStrength}% ({frequency} GHz)",
+        // impala is the iwd TUI (networks, signal, connect). No format-alt
+        // here: waybar toggles it on left click and format-alt-click did
+        // not move that off the button, which swallowed the click. The
+        // interface and address it showed are in the tooltip anyway.
+        "on-click": "foot --app-id=mixer impala"
     },
     "pulseaudio": {
         // "scroll-step": 1, // %, can be a float
