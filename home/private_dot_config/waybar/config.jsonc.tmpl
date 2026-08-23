@@ -56,7 +56,7 @@
     },
     "group/system": {
         "orientation": "inherit",
-        "modules": ["custom/system-stats", "network", "pulseaudio", "battery"]
+        "modules": ["custom/system-stats", "network#eth", "network#wifi", "pulseaudio", "battery"]
     },
     // Modules configuration
     // "sway/workspaces": {
@@ -147,13 +147,24 @@
         "power-saver": ""
         }
     },
-    "network": {
-        // "interface": "wlp2*", // (Optional) To force the use of this interface
-        "format-wifi": " {essid} ({signalStrength}%)",
+    // Two instances instead of one: a single network module follows the
+    // default route, so the wired link (lower metric) always wins and the
+    // wireless one is never drawn. Each is pinned to its own interface and
+    // hides itself while that link is down.
+    "network#eth": {
+        "interface": "eth*",
         "format-ethernet": " {ipaddr}/{cidr}",
-        "tooltip-format": "{ifname} via {gwaddr} ",
-        "format-linked": " {ifname} (No IP)",
-        "format-disconnected": "⚠ Disconnected",
+        "format-linked": " {ifname}(No IP)",
+        "format-disconnected": "",
+        "tooltip-format": "{ifname} via {gwaddr}",
+        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+    },
+    "network#wifi": {
+        "interface": "wlan*",
+        "format-wifi": " {essid}({signalStrength}%)",
+        "format-linked": " {ifname}(No IP)",
+        "format-disconnected": "",
+        "tooltip-format": "{ifname} via {gwaddr}, {signalStrength}%",
         "format-alt": "{ifname}: {ipaddr}/{cidr}"
     },
     "pulseaudio": {
