@@ -20,7 +20,9 @@
         "sway/window"
     ],
     "modules-right": [
-        "group/media",
+        "custom/recording",
+        "mpris",
+        "privacy",
         "tray",
         "group/outside",
         "group/work",
@@ -31,12 +33,11 @@
         "group/toggles",
         "custom/power"
     ],
-    // Framed groups (see #media/#work/#system in style.css); drawers hide
-    // quiet modules behind a handle, counters and alerts stay visible
-    "group/media": {
-        "orientation": "inherit",
-        "modules": ["custom/recording", "mpris", "privacy"]
-    },
+    // Framed groups (see #work/#system in style.css); drawers hide quiet
+    // modules behind a handle, counters and alerts stay visible. The media
+    // modules are ungrouped on purpose: all three hide themselves when idle
+    // and waybar never hides a group, so a frame around them would be left
+    // standing empty.
     "group/outside": {
         "orientation": "inherit",
         "modules": ["custom/weather", "custom/car-traffic"]

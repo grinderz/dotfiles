@@ -269,20 +269,19 @@ label:focus {
 
 /* module groups: framed clusters, tighter padding inside (the tray is
  * framed too so its assorted icons read as one cluster) */
-#media,
 #outside,
 #work,
 #devices,
 #system,
 #toggles,
 #tray {
-    margin: 0 2px;
+    /* vertical margin keeps the frame clear of the bar's 3px top stripe */
+    margin: 2px;
     border: 1px solid rgba(255, 255, 255, 0.35);
     border-radius: 6px;
     background-color: rgba(0, 0, 0, 0.15);
 }
 
-#media > widget > *,
 #outside > widget > *,
 #work > widget > *,
 #devices > widget > *,

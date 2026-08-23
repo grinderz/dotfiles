@@ -1,0 +1,9 @@
+{{- $lock := mul .idle.lock_minutes 60 -}}
+{{- $screens := mul .idle.screens_off_minutes 60 -}}
+{{- $suspend := mul .idle.suspend_minutes 60 -}}
+timeout {{ sub $lock 30 }} 'notify-send -t 10000 -u low "locking in 30 seconds"'
+timeout {{ $lock }} '$HOME/.local/bin/lock'
+timeout {{ $screens }} 'swaymsg "output * power off"' resume 'swaymsg "output * power on"'
+# suspend on any power source unless inhibited from waybar
+timeout {{ $suspend }} '[ ! -e "${XDG_RUNTIME_DIR:-/tmp}/inhibit-idle-suspend" ] && systemctl suspend'
+before-sleep '$HOME/.local/bin/lock'

@@ -66,6 +66,10 @@ Host {{ .host }}
 Port {{ default 993 (get . "port") }}
 TLSType IMAPS
 {{ end -}}
+# The default 20 s is regularly too short here: XOAUTH2 spends a round trip
+# on the token and davmail talks to EWS before it answers, so a run failed
+# on a socket timeout every few hours even though the sync itself finished.
+Timeout 60
 User {{ default .email (get . "user") }}
 {{ if eq .kind "gmail-oauth" -}}
 PassCmd "oama access {{ .email }}"
