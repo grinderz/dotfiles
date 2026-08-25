@@ -8,7 +8,7 @@ pacman_conf_no_extract = [
     'etc/cron.hourly/snapper',
 ]
 
-systemd_journal_system_max_use = '100M'
+systemd_journal_system_max_use = '500M'
 systemd_networks = []
 # sway binds XF86PowerOff to the lock script; logind must not also react
 systemd_handle_power_key = 'ignore'

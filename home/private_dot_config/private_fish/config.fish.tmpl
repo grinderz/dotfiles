@@ -54,6 +54,8 @@ if status is-interactive
     # Close sway views gracefully before shutdown (browser profiles)
     abbr -a poweroff 'power poweroff'
     abbr -a reboot 'power reboot'
+
+    alias khal="python3 -W ignore::DeprecationWarning (which khal)"
 {{- end }}
 
     ## Plugins

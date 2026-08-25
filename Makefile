@@ -35,10 +35,20 @@ install.export:
 	systemctl list-units --type=service --state=running --no-legend --plain | awk '{print $$1}' | sort >| install/export/running-services.txt
 	systemctl list-units --type=timer --state=active --no-legend --plain | awk '{print $$1}' | sort >| install/export/timers.txt
 	flatpak list --app --columns=application >| install/export/flatpaks.txt
+	@# per-app permission overrides: the files themselves, user scope then
+	@# system scope, each under a "# <scope> <app>" header
+	{ for f in $$HOME/.local/share/flatpak/overrides/*; do \
+		[ -f "$$f" ] || continue; \
+		printf '# user %s\n' "$${f##*/}"; cat "$$f"; echo; \
+	done; for f in /var/lib/flatpak/overrides/*; do \
+		[ -f "$$f" ] || continue; \
+		printf '# system %s\n' "$${f##*/}"; cat "$$f"; echo; \
+	done; } >| install/export/flatpak-overrides.txt
 	cd install/export && while IFS="$$(printf '\t')" read -r _ mp _; do \
 		rmp=$${mp//@USER@/$$USER}; \
 		printf '%s\t%s\n' "$$(stat -c '%U:%G %a' "$$rmp" 2>/dev/null || echo missing)" "$$mp"; \
 	done < subvolumes.map | sed "s/\b$$USER\b/@USER@/g" >| subvolume-perms.txt
+	bash install/unbacked-links.sh --scan >| install/export/unbacked-links.map
 	git diff --stat -- install/export
 
 install.validate:

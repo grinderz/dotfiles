@@ -35,8 +35,9 @@ reboot
 
 After the reboot — the normal bootstrap from the top-level README:
 copy `~/.config/chezmoi/chezmoi.toml`, run every pyinfra deploy, then
-`make dotfiles.apply`, then the per-deploy one-time notes (fido2
-enrollment, u2f_keys, boot mirror stick, LUKS header backup).
+`make dotfiles.apply`, then `./unbacked-links.sh --apply` (section
+below), then the per-deploy one-time notes (fido2 enrollment, u2f_keys,
+boot mirror stick, LUKS header backup).
 
 All private values (user, hostname, timezone, disk paths) are env
 vars — nothing to copy or template, nothing private in this directory.
@@ -72,6 +73,52 @@ Then re-run the snapper deploy (it re-renders the config file over the
 generated one). Without the snapperd restart snap-pac silently creates
 no snapshots. validate.sh's "subvolume parents" section proves no
 nested `.snapshots` was left behind.
+
+## ~/.unbacked links
+
+Caches, browser profiles, toolchain stores and the maildir live on the
+`@home_unbacked` subvolume and are symlinked back into `$HOME`, so no
+btrbk snapshot ever pins their churned state.
+
+`export/unbacked-links.map` is that layout, dumped from the reference
+machine like every other file in `export/`: two tab-separated relative
+columns, no user name in it.
+
+```
+.config/BraveSoftware	config/BraveSoftware
+```
+
+`unbacked-links.sh` both produces and applies it:
+
+```sh
+./unbacked-links.sh                     # dry run against the map
+./unbacked-links.sh --apply             # create the targets and the links
+./unbacked-links.sh --apply .config     # only paths under .config
+./unbacked-links.sh --scan              # dump the live layout
+./unbacked-links.sh --add .npm npm      # move a new path out, then link it
+```
+
+On a fresh machine nothing exists yet, so `--apply` only creates targets
+and symlinks (VM-checked: a bare `$HOME` plus `~/.unbacked` reproduces
+the map exactly). Where the data is still in place — the reference
+machine — it is moved first: `cp -a --reflink=auto` (a CoW clone within
+the same filesystem, no extra space), an `rsync -n` comparison, and only
+then `rm -rf` plus the symlink. A path some process has open is skipped
+unless `--force`; anything unexpected is left alone with a warning and a
+non-zero exit. Re-running is a no-op.
+
+Grow the layout with `--add <path under $HOME> <path under ~/.unbacked>`,
+then `make install.export` to refresh the map — never by editing the map
+first, since `--add` is what moves the existing data out safely.
+`validate.sh` diffs the live layout against the map.
+
+Not chezmoi on purpose: chezmoi applies a declaration, so a `symlink_`
+entry aimed at a path that still holds data deletes that data on the
+next `chezmoi apply`. Moving data out with a verified copy is imperative
+work. The script's header lists what is deliberately left backed up
+(`~/src` needs a bind mount instead — a symlink changes `pwd -P` and
+tools keyed on the physical path lose their state; vdirsyncer state
+holds OAuth tokens; `~/.claude/projects` holds the per-project memory).
 
 ## Validation
 
@@ -145,5 +192,9 @@ chattr attributes applied to the fresh subvolume — `+C` (No_COW, at
 the cost of checksums and compression) on the rewrite-heavy homes:
 docker, libvirt, postgres, machines, portables. `/var/log/journal`'s
 `+C` needs no entry — systemd's own tmpfiles sets it on first boot. `subvolume-perms.txt` is the
-matching owners/modes dump — refreshed by `make install.export`. `mkinitcpio.conf.template`
-mirrors `/etc/mkinitcpio.conf` — update on hook changes.)
+matching owners/modes dump — refreshed by `make install.export`, which also
+regenerates `unbacked-links.map` via `unbacked-links.sh --scan` and
+`flatpak-overrides.txt`, the per-app permission overrides from both scopes
+(`flatpaks.txt` only lists what is installed, not how it is sandboxed).
+`mkinitcpio.conf.template` mirrors `/etc/mkinitcpio.conf` — update on hook
+changes.)

@@ -15,3 +15,13 @@ davmail.popPort=
 davmail.ldapPort=
 davmail.disableUpdateCheck=true
 davmail.disableGuiNotifications=true
+# DavMail always adds a file appender (it is skipped only under docker or
+# podman) and falls back to davmail.log in the working directory, which for
+# the user unit is $HOME. Point it at the unbacked subvolume instead so the
+# log stops landing in snapshots; DavMail creates the directory itself and
+# keeps its own rotation at 1MB with two backups. Everything also reaches
+# journald through the console appender: journalctl --user -u davmail.
+davmail.logFilePath={{ .chezmoi.homeDir }}/.unbacked/davmail/davmail.log
+# davmail logs at DEBUG by default, which is every IMAP command in both the
+# file and the journal.
+log4j.logger.davmail=INFO

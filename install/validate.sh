@@ -22,6 +22,15 @@ systemctl list-unit-files --state=enabled --no-legend | awk '{print $1}' \
 section "flatpaks"
 flatpak list --app --columns=application 2>/dev/null | diff flatpaks.txt - || fail=1
 
+section "flatpak permission overrides"
+{ for f in "$HOME"/.local/share/flatpak/overrides/*; do
+    [ -f "$f" ] || continue
+    printf '# user %s\n' "${f##*/}"; cat "$f"; echo
+done; for f in /var/lib/flatpak/overrides/*; do
+    [ -f "$f" ] || continue
+    printf '# system %s\n' "${f##*/}"; cat "$f"; echo
+done; } | diff flatpak-overrides.txt - || fail=1
+
 section "btrfs subvolume mounts"
 findmnt -t btrfs -rn -o TARGET,OPTIONS \
     | sed -n 's/^\([^ ]*\) .*subvol=\([^,]*\).*/\2\t\1/p' \
@@ -49,9 +58,18 @@ else
     echo "skipped (no sudo)"
 fi
 
+section "unbacked links (missing < / extra >)"
+bash ../unbacked-links.sh --scan | diff unbacked-links.map - || fail=1
+
 section "snapper + btrbk (present only after the pyinfra deploys)"
 if command -v snapper > /dev/null; then
-    sudo snapper list-configs 2>/dev/null | grep -q '^root ' || { echo "no snapper root config"; fail=1; }
+    # list-configs needs root; without a usable sudo it returns nothing and
+    # a present config would read as missing
+    if sudo -n true 2>/dev/null; then
+        sudo -n snapper list-configs 2>/dev/null | grep -q '^root ' || { echo "no snapper root config"; fail=1; }
+    else
+        echo "snapper config check skipped (no sudo)"
+    fi
     systemctl is-enabled snapper-cleanup.timer > /dev/null 2>&1 || { echo "snapper-cleanup.timer not enabled"; fail=1; }
 fi
 if [ -f /etc/btrbk/btrbk.conf ]; then
