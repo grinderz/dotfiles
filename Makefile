@@ -66,6 +66,17 @@ dotfiles.apply:
 dotfiles.add/%:
 	chezmoi add --source $(CHEZMOI_SRC) $(HOME)/$* $(args)
 
+# three-way merge for a file edited in place: source, target and the last
+# applied state go into $EDITOR (vimdiff by default), so a hand-tweaked
+# config comes back into the repo without losing template markup
+# usage: make dotfiles.merge/.config/fish/config.fish  (path relative to $HOME)
+dotfiles.merge/%:
+	chezmoi merge --source $(CHEZMOI_SRC) $(HOME)/$* $(args)
+
+# same, for every file that differs from the source
+dotfiles.merge-all:
+	chezmoi merge-all --source $(CHEZMOI_SRC) $(args)
+
 # --- infra (pyinfra) ---
 # usage: make infra.linux.tb-6-dock2-mokin-3707 deploy=pacman args="--dry"
 #

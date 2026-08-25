@@ -1,10 +1,11 @@
 #!/bin/sh
 # In-RAM cache in front of pass so background timers (mbsync, vdirsyncer)
 # do not hit the gpg pinentry on every run: the kernel user keyring holds
-# the first line of an entry for a day, pass stays the only source of
-# truth. Works against whichever store PASSWORD_STORE_DIR names (the
-# default matches passp), entries are namespaced per store so passp and
-# passw never collide. Linux-only (keyutils).
+# the first line of an entry for a day after it was last asked for, pass
+# stays the only source of truth. Works against whichever store
+# PASSWORD_STORE_DIR names (the default matches passp), entries are
+# namespaced per store so passp and passw never collide. Linux-only
+# (keyutils).
 #
 #   pass-cache show <entry>    print it, from cache or from pass
 #   pass-cache drop [<entry>]  forget the cached copy in every store
@@ -23,6 +24,10 @@ case ${1:-} in
 show)
     desc="pass-cache:$store:$2"
     if id=$(keyctl search @u user "$desc" 2>/dev/null); then
+        # sliding window: every hit pushes the expiry out, so an entry the
+        # timers keep asking for stays cached instead of expiring mid-day
+        # into a pinentry nobody is at the keyboard to answer
+        keyctl timeout "$id" "$ttl"
         keyctl pipe "$id"
         echo
         exit 0

@@ -16,6 +16,8 @@ Two tools, split by scope:
 make dotfiles.diff                                  # preview, never changes anything
 make dotfiles.apply
 make dotfiles.add/.config/foo/bar.conf              # adopt a file, path relative to $HOME
+make dotfiles.merge/.config/foo/bar.conf            # three-way merge an edited file back
+make dotfiles.merge-all                             # same, for everything that differs
 
 # system, single host/group + single deploy; --diff is always on
 make infra.local.linux.local deploy=pacman args="--dry"   # on the machine itself, no ssh
@@ -197,9 +199,11 @@ Per deploy, once per host:
 ### Mail password rotation
 
 The mail and calendar timers read secrets through `pass-cache`: a kernel
-user-keyring cache (24h TTL) in front of pass, so the gpg pinentry shows
-up once a day instead of on every 5-minute sync. pass remains the only
-source of truth — the cache never touches disk and dies with the session.
+user-keyring cache in front of pass, so the gpg pinentry does not show up
+on every 5-minute sync. The 24h TTL slides on every hit, so an entry the
+timers keep asking for expires only after the machine has been off; pass
+remains the only source of truth — the cache never touches disk and dies
+with the session.
 
 When rotating a password (company policy or otherwise), update the store
 and flush the cache in one go:
@@ -275,10 +279,12 @@ token if the account used one.
   convention — password first, metadata below. Everything down the chain
   (pass-cache, okd-token, vpn.sh) trims to line one on purpose.
 * **Pinentry on every sync?** It shouldn't be: `pass-cache` keeps decrypted
-  first lines in the kernel keyring for a day. One pinentry after boot,
-  silence after. gpg-agent TTLs stay short on purpose.
+  first lines in the kernel keyring, and every hit pushes the day-long
+  expiry out. One pinentry after boot, silence after. gpg-agent TTLs stay
+  short on purpose, so interactive gpg (commit signing) still asks.
 * **Timers auth-fail after a password change?** You forgot `pass-cache
-  drop` — the cache serves the stale password for up to a day.
+  drop` — the cache serves the stale password until the timers stop asking
+  for it.
 * **Meetings vs khal?** khal is the fast local view and personal events;
   anything with attendees, invitations or recurring-exception edits goes
   through Evolution (EWS handles iTIP, CalDAV via davmail does not).
@@ -353,6 +359,17 @@ Abbreviations (`config.fish`):
   excluded on other systems via `home/.chezmoiignore`.
 * gpg: pinentry is picked per OS in `gpg-agent.conf.tmpl` (pinentry-mac on
   macOS, `/usr/bin/pinentry` elsewhere).
+* `dotfiles.merge*` needs a merge tool: chezmoi defaults to `vimdiff`, which
+  neovim does not provide, so the private chezmoi.toml names one. A custom
+  command gets no default arguments, hence the explicit three files —
+  destination (what is in `$HOME`), source (the file in the repo), target
+  (what chezmoi would render). Edit the source one.
+
+  ```toml
+  [merge]
+  command = "nvim"
+  args = ["-d", "{{ .Destination }}", "{{ .Source }}", "{{ .Target }}"]
+  ```
 * limine: the deploy edits `/etc/default/limine` and `/boot/limine.conf` but
   does not regenerate boot entries — kernel cmdline changes take effect on the
   next kernel transaction (or run `limine-update` by hand).
