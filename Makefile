@@ -2,6 +2,10 @@ SHELL := /usr/bin/env bash -o errtrace -o pipefail -o noclobber -o errexit -o no
 
 CHEZMOI_SRC := $(CURDIR)/home
 
+# every target here is a command, not a file
+.PHONY: setup.pyinfra setup.pyinfra.upgrade lint.shellcheck lint.ruff lint \
+	install.export install.validate dotfiles.diff dotfiles.apply dotfiles.merge-all
+
 # --- setup ---
 
 setup.pyinfra:
@@ -78,7 +82,7 @@ dotfiles.merge-all:
 	chezmoi merge-all --source $(CHEZMOI_SRC) $(args)
 
 # --- infra (pyinfra) ---
-# usage: make infra.linux.tb-6-dock2-mokin-3707 deploy=pacman args="--dry"
+# usage: make infra.linux.<host> deploy=pacman args="--dry"
 #
 # paramiko cannot read ed25519-sk key files and gpg-agent refuses to host
 # them, so each run gets a throwaway OpenSSH agent with the sk key loaded

@@ -1,0 +1,138 @@
+#!/bin/sh
+# One-way push of chosen pass entries into Bitwarden, so the phone and the
+# browser see the same secret the CLI does without handing the whole store
+# over. pass stays the source of truth: each run overwrites the Bitwarden
+# copy, so an edit made in the web vault is lost on the next sync.
+#
+# Which entries travel is listed in ~/.config/pass-rbw-sync.list, rendered
+# by chezmoi from [[data.rbw.entries]] in the private toml. One entry per
+# line, six whitespace-split columns, "-" for an unset one:
+#
+#   passp  im/signal.org    Signal  anton  personal        -
+#   passp  bank/paypal.com  PayPal  -      personal/banks  https://paypal.com/login
+#   passw  oth/example.org  Example -      work            -
+#   <cmd>  <pass entry>     <name>  <user> <folder>        <uri>
+#
+# cmd is the command the entry is read with, so the store is per line:
+# passp for the personal one, passw for work, plain pass for whatever
+# PASSWORD_STORE_DIR points at. The template puts personal entries under
+# personal/ and work ones under work/, so the same name in both stores stays
+# two items; name, user and folder together are what an item is matched on.
+#
+# Line one (the password) and the rest of the entry (the note) go over, and
+# the entry's metadata fills the rest unless a list column overrides it:
+# "login:" (or "email:" when there is none) becomes the username, every
+# "url:" line a URI — pass is the source, the list only names targets.
+# rbw edit cannot touch username, URI or folder, those are set once when the
+# item is created, and a TOTP secret is not carried over at all. Items that
+# were dropped from the list are reported at the end, never deleted.
+#
+# rbw has no stdin mode: add and edit always spawn $VISUAL/$EDITOR on a temp
+# file of their own. So the script hands rbw a stand-in editor that dumps the
+# payload into that file and exits. The secret reaches it through the
+# environment rather than a second file on disk.
+#
+#   pass-rbw-sync [-n] [<list file>]
+#
+# -n shows what would be created or updated without writing to the vault.
+
+set -eu
+
+dry=
+if [ "${1:-}" = -n ]; then dry=1; shift; fi
+list=${1:-$HOME/.config/pass-rbw-sync.list}
+[ -r "$list" ] || { echo "pass-rbw-sync: no list at $list" >&2; exit 1; }
+
+editor=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rbw-editor.XXXXXX")
+seen=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/rbw-seen.XXXXXX")
+trap 'rm -f "$editor" "$seen" "$seen.vault"' EXIT INT TERM HUP
+cat >"$editor" <<'FAKE'
+#!/bin/sh
+printf '%s' "$RBW_PAYLOAD" >"$1"
+FAKE
+chmod 700 "$editor"
+
+rbw unlock
+# refresh the local db first, or an item added elsewhere looks missing here
+# and the add below collides with it
+rbw sync
+
+while read -r cmd entry name user folder uri <&3 || [ -n "${cmd:-}" ]; do
+    case ${cmd:-} in
+    ''|\#*) continue ;;
+    esac
+    [ -n "${entry:-}" ] || { echo "pass-rbw-sync: $cmd line has no pass entry" >&2; exit 1; }
+    [ -n "${name:-}" ] || { echo "pass-rbw-sync: $entry has no target name" >&2; exit 1; }
+    # the columns are positional, "-" stands for an unset one
+    if [ "${user:-}" = - ]; then user=; fi
+    if [ "${folder:-}" = - ]; then folder=; fi
+    if [ "${uri:-}" = - ]; then uri=; fi
+
+    body=$("$cmd" show "$entry")
+    password=${body%%
+*}
+    # rbw skips the blank lines between password and note when it saves, so
+    # drop them here too or the comparison below never matches
+    notes=$(printf '%s\n' "$body" | sed '1d' | sed '/./,$!d')
+    payload=$password
+    [ -z "$notes" ] || payload="$password
+$notes"
+    # username from the login: / user: / username: line, else email: (sites
+    # that log in by address usually carry only that); every url: / uri:
+    # line becomes a URI, so autofill matches each host. Any case, and the
+    # list column wins when set.
+    [ -n "$user" ] || user=$(printf '%s\n' "$notes" | sed -n 's/^[Ll][Oo][Gg][Ii][Nn]: *//p; s/^[Uu][Ss][Ee][Rr]\([Nn][Aa][Mm][Ee]\)\{0,1\}: *//p' | head -n1)
+    [ -n "$user" ] || user=$(printf '%s\n' "$notes" | sed -n 's/^[Ee][Mm][Aa][Ii][Ll]: *//p' | head -n1)
+    uris=${uri:-$(printf '%s\n' "$notes" | sed -n 's/^[Uu][Rr][LlIi]: *//p')}
+    set --
+    for u in $uris; do set -- "$@" --uri "$u"; done
+
+    # name + user + folder, in the seen list and in the item lookup alike
+    printf '%s\t%s\t%s\n' "$name" "$user" "$folder" >>"$seen"
+
+    # an unchanged item is not worth a write: the vault keeps a revision
+    # history and every push shows up on the other clients as a change
+    rc=0
+    out=$(rbw get --raw "$name" ${user:+"$user"} ${folder:+--folder "$folder"} 2>&1) || rc=$?
+    if [ "$rc" -eq 0 ]; then
+        current=$(printf '%s\n' "$out" | jq -r '[.data.password, (.notes // "")] | join("\n")')
+        if [ "$current" = "$payload" ]; then
+            printf 'unchanged %s\n' "${folder:+$folder/}$name"
+            continue
+        fi
+        if [ -n "$dry" ]; then
+            printf 'would update %s -> %s\n' "$entry" "${folder:+$folder/}$name"
+            continue
+        fi
+        RBW_PAYLOAD=$payload EDITOR=$editor VISUAL=$editor \
+            rbw edit "$name" ${user:+"$user"} ${folder:+--folder "$folder"}
+        printf 'updated   %s -> %s\n' "$entry" "${folder:+$folder/}$name"
+    else
+        case $out in
+        *"multiple entries"*)
+            # a second add would only make it worse: sort the vault out first
+            echo "pass-rbw-sync: $name is ambiguous in Bitwarden, add a user or folder: $out" >&2
+            exit 1 ;;
+        esac
+        if [ -n "$dry" ]; then
+            printf 'would create %s -> %s\n' "$entry" "${folder:+$folder/}$name"
+            continue
+        fi
+        RBW_PAYLOAD=$payload EDITOR=$editor VISUAL=$editor \
+            rbw add "$name" ${user:+"$user"} ${folder:+--folder "$folder"} "$@"
+        printf 'created   %s -> %s\n' "$entry" "${folder:+$folder/}$name"
+    fi
+done 3<"$list"
+
+# Items sitting in a synced folder (or below it) that no list line claims:
+# left over after an entry was dropped or renamed. Reported, not removed.
+roots=$(cut -f3 "$seen" | sed 's,/.*,,' | grep . | sort -u)
+[ -n "$roots" ] || exit 0
+rbw ls --fields name,user,folder | awk -F'\t' -v roots="$roots" '
+    BEGIN { n = split(roots, r, "\n") }
+    {
+        for (i = 1; i <= n; i++)
+            if ($3 == r[i] || index($3, r[i] "/") == 1) { print; break }
+    }' | sort >"$seen.vault"
+sort "$seen" | comm -13 - "$seen.vault" \
+    | awk -F'\t' '{ printf "extra     %s/%s%s\n", $3, $1, ($2 == "" ? "" : " (" $2 ")") }'

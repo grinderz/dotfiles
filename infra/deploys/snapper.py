@@ -81,12 +81,6 @@ for mount in host.data.snapper_backup_mounts:
         _sudo=True,
     )
 
-    server.shell(
-        name='validate fstab',
-        commands=['findmnt --verify'],
-        _sudo=True,
-    )
-
     files.template(
         name=f'render systemd-udev-rule-{mount["name"]}.sh',
         src='templates/snapper/udev-rule.sh.j2',
@@ -115,6 +109,13 @@ for mount in host.data.snapper_backup_mounts:
         mode='644',
         _sudo=True,
     )
+
+# one check for the whole fstab, after every mount block is in place
+server.shell(
+    name='validate fstab',
+    commands=['findmnt --verify'],
+    _sudo=True,
+)
 
 if units_changed:
     server.shell(

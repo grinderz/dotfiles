@@ -93,6 +93,12 @@
 .config/ewsctl
 {{ end }}
 
+# the pass -> Bitwarden list renders only when entries are picked in the
+# private toml; the script itself stays, it takes a list path as argument
+{{ if not (hasKey . "rbw") }}
+.config/pass-rbw-sync.list
+{{ end }}
+
 # calendar stack renders only when accounts are defined in the private toml
 {{ if not (hasKey . "cal") }}
 .config/khal

@@ -161,7 +161,7 @@ Per deploy, once per host:
   `nftables_open_udp` in host or group data
 * **battery** / **docker** — `conservation_users` / `docker_users` live in
   host data (machine-local chezmoi.toml, `[data.infra.linux.data]`); hosts
-  other than tb-6 also override `conservation_node` (ideapad sysfs path
+  other than the laptop also override `conservation_node` (ideapad sysfs path
   differs per machine)
 * **bluetooth** — before: `pacman -S bluez bluez-utils`
 * **keyring** — before: `pacman -S gnome-keyring libsecret`; takes effect on
@@ -292,6 +292,54 @@ token if the account used one.
   minutes, fully re-syncable from the servers — snapshot noise. OAuth
   tokens and calendars stay backed: tokens need a browser to recreate,
   calendars must stay consistent with their sync status.
+
+### pass into Bitwarden
+
+Some passwords have to exist outside the terminal — the phone, a browser on
+someone else's machine. `pass-rbw-sync` pushes a hand-picked subset of the
+stores into Bitwarden through `rbw` (package `rbw`, the unofficial Rust
+client — one agent, no Node startup cost per call; `jq` for the comparison):
+
+```sh
+rbw config set email <address> && rbw register && rbw login
+pass-rbw-sync -n                 # dry run: would create / would update / unchanged
+pass-rbw-sync                    # ~/.config/pass-rbw-sync.list
+pass-rbw-sync ~/.config/other.list
+```
+
+Which entries travel is data, not a hand-written file: `[[data.rbw.entries]]`
+in the private chezmoi.toml renders `~/.config/pass-rbw-sync.list` (schema in
+the header of `private_pass-rbw-sync.list.tmpl`, commented example at the
+bottom of the toml). Without the table the list is not created at all
+(`home/.chezmoiignore`) and the script only runs against a list passed as an
+argument.
+
+The store is per entry, not per run: `cmd` is the command the entry is read
+with — `passp` (default), `passw`, or plain `pass` against whatever
+`PASSWORD_STORE_DIR` says — and it also picks the Bitwarden folder: `passp`
+entries land under `personal/`, `passw` under `work/`, and the entry's pass
+directory becomes the subfolder (`bank/paypal.com` → `personal/bank`), so
+the store's layout carries over. `folder` overrides the subfolder (`"-"`
+for the root itself), roots are overridable with `[data.rbw.folders]`.
+Site-as-directory entries (`oth/example.org/password`) want `name` and `folder`
+spelled out, or the item is called `password`. Name, user and folder together identify an item, so
+`GitHub` in both stores stays two items. Username and URIs come from the
+pass entry itself — `login:` (`user:`, `username:`, falling back to
+`email:`) and every `url:` (`uri:`) line, any case — so browser and phone
+autofill work; `user` and `uri` in the toml override them. TOTP and custom
+fields stay behind: rbw cannot write them. Whether work credentials belong in a personal vault is a
+policy question, not a technical one.
+
+The sync is one-way and pass wins: each run overwrites the Bitwarden copy, so
+an edit made in the web vault is lost on the next run. Items whose password
+and note already match are skipped, so a run costs nothing on the other
+clients. `rbw edit` can only replace the password and the note — username,
+URI and folder are set once when the item is created (and TOTP secrets never
+travel), so a changed user or folder means removing the item in Bitwarden
+and letting the next run recreate it. Items under `personal/` or `work/` that
+no list line claims are printed as `extra` at the end and left alone; an
+ambiguous match aborts the run rather than creating a duplicate. There is no
+timer: `rbw unlock` wants a human, and this is a rotate-time action anyway.
 
 ### Boot mirror stick
 

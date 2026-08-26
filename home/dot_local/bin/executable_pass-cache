@@ -18,7 +18,7 @@ set -eu
 ttl=86400
 store=${PASSWORD_STORE_DIR:-$HOME/sync/pass}
 # pass itself reads the variable, so the default must reach it too
-export PASSWORD_STORE_DIR=$store
+export PASSWORD_STORE_DIR="$store"
 
 case ${1:-} in
 show)

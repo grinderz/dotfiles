@@ -9,9 +9,10 @@ bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
 url='https://api.open-meteo.com/v1/forecast?latitude={{ .desktop.latitude }}&longitude={{ .desktop.longitude }}&current=temperature_2m,weather_code,wind_speed_10m'
 data=$(curl -sfm 10 "$url") || bail
 
-temp=$(printf '%s' "$data" | jq -r '.current.temperature_2m | round')
-code=$(printf '%s' "$data" | jq -r '.current.weather_code')
-wind=$(printf '%s' "$data" | jq -r '.current.wind_speed_10m')
+# one jq pass for all three fields, one value per line
+read -r temp code wind <<EOF
+$(printf '%s' "$data" | jq -r '.current | "\(.temperature_2m | round) \(.weather_code) \(.wind_speed_10m)"')
+EOF
 [ -n "$temp" ] && [ "$temp" != null ] || bail
 
 # WMO weather codes -> icon + words

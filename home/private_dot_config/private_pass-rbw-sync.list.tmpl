@@ -1,0 +1,49 @@
+# Entries pass-rbw-sync pushes from pass into Bitwarden, generated from
+# [[data.rbw.entries]] in the private chezmoi.toml. Passwords never land
+# here — but the file still names every account that exists, so it stays
+# private (0600).
+#
+# Entry schema (TOML):
+#   [[data.rbw.entries]]
+#   entry  = "im/signal.org"  # pass entry, relative to the store
+#   cmd    = "passw"          # optional, the command the entry is read
+#                             # with: passp (default, personal store),
+#                             # passw (work store), or pass for whatever
+#                             # PASSWORD_STORE_DIR points at
+#   name   = "Signal"         # Bitwarden item name, defaults to the last
+#                             # path element of entry
+#   user   = "anton"          # optional override; by default the script
+#                             # takes the "login:" line of the pass entry,
+#                             # or "email:" when there is none.
+#                             # The item is matched on name plus user, so
+#                             # spell it out when one site has several
+#                             # logins and the entries carry none
+#   folder = "banks"          # optional subfolder under the root the cmd
+#                             # maps to (personal/banks); defaults to the
+#                             # entry's directory in pass (bank/paypal.com
+#                             # lands in personal/bank), "-" for the root
+#                             # itself; applied only when the item is
+#                             # created — rbw edit cannot move it
+#   uri    = "https://x.y"    # optional override; by default every "url:"
+#                             # line of the pass entry becomes a URI;
+#                             # creation only, like folder
+#
+# Folder roots per cmd default to passp = personal, passw = work, pass =
+# none; override any of them with [data.rbw.folders] (cmd = "root").
+#
+# Columns below: <cmd> <pass entry> <name> <user> <folder> <uri>, "-" for an
+# unset field (the fields are positional).
+{{- $roots := merge (dig "folders" (dict) .rbw) (dict "passp" "personal" "passw" "work" "pass" "") }}
+{{ range .rbw.entries }}
+{{- $cmd := dig "cmd" "passp" . }}
+{{- $base := base .entry }}
+{{- $root := dig $cmd "" $roots }}
+{{- $sub := dir .entry }}
+{{- if eq $sub "." }}{{ $sub = "" }}{{ end }}
+{{- $sub = dig "folder" $sub . }}
+{{- if eq $sub "-" }}{{ $sub = "" }}{{ end }}
+{{- $folder := $root }}
+{{- if and $root $sub }}{{ $folder = printf "%s/%s" $root $sub }}{{ else if $sub }}{{ $folder = $sub }}{{ end }}
+{{- $uri := dig "uri" "" . }}
+{{- printf "%-6s %-36s %-22s %-12s %-18s %s" $cmd .entry (dig "name" $base .) (dig "user" "-" .) (default "-" $folder) (default "-" $uri) | trim }}
+{{ end -}}
