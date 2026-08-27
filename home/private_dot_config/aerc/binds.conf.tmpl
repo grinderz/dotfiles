@@ -189,3 +189,28 @@ $ex = <C-x>
 <C-n> = :next-tab<Enter>
 <C-PgUp> = :prev-tab<Enter>
 <C-PgDn> = :next-tab<Enter>
+
+# Gmail: a folder is a label, so expunging a message from INBOX (what
+# :delete becomes once mbsync pushes it) only drops the Inbox label and the
+# message lives on in All Mail. Only [Gmail]/Trash really deletes, so on
+# gmail accounts d/D move the message to the local Trash maildir, which
+# mbsync's -trash channel mirrors there; Gmail purges it after 30 days.
+# Inside Trash itself :delete is right (expunge from the last label).
+{{- range .mail.accounts }}
+{{- if hasPrefix "gmail" .kind }}
+
+[messages:account={{ .name }}]
+d = :choose -o y 'Really trash this message' 'move Trash'<Enter>
+D = :move Trash<Enter>
+
+[messages:account={{ .name }}:folder=Trash]
+d = :choose -o y 'Really delete this message' delete-message<Enter>
+D = :delete<Enter>
+
+[view:account={{ .name }}]
+D = :move Trash<Enter>
+
+[view:account={{ .name }}:folder=Trash]
+D = :delete<Enter>
+{{- end }}
+{{- end }}

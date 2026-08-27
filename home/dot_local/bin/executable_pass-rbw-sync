@@ -6,12 +6,13 @@
 #
 # Which entries travel is listed in ~/.config/pass-rbw-sync.list, rendered
 # by chezmoi from [[data.rbw.entries]] in the private toml. One entry per
-# line, six whitespace-split columns, "-" for an unset one:
+# line, six tab-separated columns (so a name or folder may contain
+# spaces), "-" for an unset one:
 #
-#   passp  im/signal.org    Signal  anton  personal        -
-#   passp  bank/paypal.com  PayPal  -      personal/banks  https://paypal.com/login
-#   passw  oth/example.org  Example -      work            -
-#   <cmd>  <pass entry>     <name>  <user> <folder>        <uri>
+#   passp	im/signal.org	Signal	anton	personal	-
+#   passp	bank/paypal.com	PayPal	-	personal/banks	https://paypal.com/login
+#   passw	oth/example.org	Example Inc	-	work	-
+#   <cmd>	<pass entry>	<name>	<user>	<folder>	<uri>
 #
 # cmd is the command the entry is read with, so the store is per line:
 # passp for the personal one, passw for work, plain pass for whatever
@@ -57,7 +58,9 @@ rbw unlock
 # and the add below collides with it
 rbw sync
 
-while read -r cmd entry name user folder uri <&3 || [ -n "${cmd:-}" ]; do
+tab=$(printf '\t')
+while IFS=$tab read -r cmd entry name user folder uri <&3 || [ -n "${cmd:-}" ]; do
+    # comments and blank lines; "cmd" holds the whole line when it has no tab
     case ${cmd:-} in
     ''|\#*) continue ;;
     esac

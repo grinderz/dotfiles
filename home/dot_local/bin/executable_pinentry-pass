@@ -1,0 +1,38 @@
+#!/bin/sh
+# A pinentry that answers from pass instead of asking. rbw only knows how
+# to get its master password through a pinentry, so this speaks the few
+# Assuan lines it uses and hands back the first line of a pass entry; the
+# only prompt left is gpg's own, and gpg-agent caches that one. Which
+# entry, and which store, comes from the environment:
+#
+#   PINENTRY_PASS_ENTRY  entry name          (default sync/bitwarden.com)
+#   PINENTRY_PASS_CMD    pass, passp, passw  (default passp)
+#
+#   rbw config set pinentry ~/.local/bin/pinentry-pass
+#
+# Not a general pinentry: no display, no confirm dialog, no retry.
+
+set -u
+
+entry=${PINENTRY_PASS_ENTRY:-sync/bitwarden.com}
+cmd=${PINENTRY_PASS_CMD:-passp}
+
+echo "OK Pleased to meet you"
+while IFS= read -r line; do
+    case $line in
+    GETPIN*)
+        # first line of the entry, percent-escaped the way Assuan wants
+        if pin=$("$cmd" show "$entry") && [ -n "$pin" ]; then
+            pin=${pin%%
+*}
+            pin=$(printf '%s' "$pin" | sed 's/%/%25/g; s/\r/%0D/g')
+            printf 'D %s\nOK\n' "$pin"
+        else
+            echo "ERR 83886179 Operation cancelled <Pinentry>"
+        fi
+        ;;
+    BYE*) echo "OK closing connection"; exit 0 ;;
+    GETINFO*) echo "D pinentry-pass"; echo "OK" ;;
+    *) echo "OK" ;;
+    esac
+done

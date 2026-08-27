@@ -2,8 +2,11 @@
 # https://www.gnupg.org/documentation/manuals/gnupg/Agent-Options.html
 enable-ssh-support
 ttyname $GPG_TTY
-default-cache-ttl 60
-max-cache-ttl 120
+# long enough that one passphrase covers a burst of mbsync/vdirsyncer
+# timers all missing pass-cache at once (after login or the daily
+# expiry), instead of a pinentry per gpg call
+default-cache-ttl 600
+max-cache-ttl 3600
 default-cache-ttl-ssh 60
 max-cache-ttl-ssh 120
 # Select a valid program path for PIN entry prompt

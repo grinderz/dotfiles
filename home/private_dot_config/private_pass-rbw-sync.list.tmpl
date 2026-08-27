@@ -31,8 +31,9 @@
 # Folder roots per cmd default to passp = personal, passw = work, pass =
 # none; override any of them with [data.rbw.folders] (cmd = "root").
 #
-# Columns below: <cmd> <pass entry> <name> <user> <folder> <uri>, "-" for an
-# unset field (the fields are positional).
+# Columns below: <cmd> <pass entry> <name> <user> <folder> <uri>, tab
+# separated so a name may contain spaces, "-" for an unset field (the
+# fields are positional).
 {{- $roots := merge (dig "folders" (dict) .rbw) (dict "passp" "personal" "passw" "work" "pass" "") }}
 {{ range .rbw.entries }}
 {{- $cmd := dig "cmd" "passp" . }}
@@ -45,5 +46,5 @@
 {{- $folder := $root }}
 {{- if and $root $sub }}{{ $folder = printf "%s/%s" $root $sub }}{{ else if $sub }}{{ $folder = $sub }}{{ end }}
 {{- $uri := dig "uri" "" . }}
-{{- printf "%-6s %-36s %-22s %-12s %-18s %s" $cmd .entry (dig "name" $base .) (dig "user" "-" .) (default "-" $folder) (default "-" $uri) | trim }}
+{{- list $cmd .entry (dig "name" $base .) (dig "user" "-" .) (default "-" $folder) (default "-" $uri) | join "\t" }}
 {{ end -}}

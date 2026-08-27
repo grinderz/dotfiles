@@ -307,6 +307,16 @@ pass-rbw-sync                    # ~/.config/pass-rbw-sync.list
 pass-rbw-sync ~/.config/other.list
 ```
 
+`rbw` asks for the master password through a pinentry; `pinentry-pass`
+is one that reads it from pass instead (`sync/bitwarden.com` in the
+personal store by default, `PINENTRY_PASS_ENTRY` / `PINENTRY_PASS_CMD` to
+change), so unlocking costs a gpg prompt at most, and gpg-agent caches
+that one:
+
+```sh
+rbw config set pinentry ~/.local/bin/pinentry-pass
+```
+
 Which entries travel is data, not a hand-written file: `[[data.rbw.entries]]`
 in the private chezmoi.toml renders `~/.config/pass-rbw-sync.list` (schema in
 the header of `private_pass-rbw-sync.list.tmpl`, commented example at the

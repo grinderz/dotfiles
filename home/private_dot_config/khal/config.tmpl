@@ -1,11 +1,18 @@
 # khal over the local calendar copies vdirsyncer maintains — one
 # discover section per [[data.cal.accounts]] entry; collection names on
-# the server become the calendar names here.
+# the server become the calendar names here. An optional color on the
+# account (data.cal.accounts[].color, khal color name or #rrggbb) paints
+# every calendar of that account the same, which is the only way to tell
+# accounts apart in ikhal; without it khal uses the color vdirsyncer
+# copied from the server, per calendar.
 [calendars]
 {{ range .cal.accounts }}
 [[{{ .name }}]]
 path = {{ $.chezmoi.homeDir }}/.local/share/calendars/{{ .name }}/*
 type = discover
+{{- with get . "color" }}
+color = {{ . }}
+{{- end }}
 {{ end }}
 {{ with get .cal "default_calendar" -}}
 [default]
