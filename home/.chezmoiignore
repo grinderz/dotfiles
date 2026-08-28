@@ -46,6 +46,7 @@
 .local/bin/fresh-workspace
 .local/bin/gitlab-status
 .local/bin/jira-status
+.local/bin/starline-status
 .local/bin/lock
 .local/bin/power
 .local/bin/qr-scan
@@ -74,6 +75,11 @@
 
 {{ if not (hasKey . "work") }}
 .config/git/config.work.inc
+{{ end }}
+
+# car status module renders only with [data.starline] in the private toml
+{{ if not (hasKey . "starline") }}
+.config/starline-status
 {{ end }}
 
 # mail stack renders only when accounts are defined in the private toml

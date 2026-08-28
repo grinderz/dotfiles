@@ -85,6 +85,7 @@ button:hover {
 #custom-weather,
 #custom-gitlab,
 #custom-jira,
+#custom-starline,
 #custom-mail,
 #custom-usb,
 #battery,
@@ -212,6 +213,18 @@ label:focus {
 }
 
 #custom-gitlab.critical {
+    color: #eb4d4b;
+}
+
+/* disarmed / battery getting low: yellow; alarm / battery too low to
+   start: red — the later rule wins when both apply */
+#custom-starline.warning,
+#custom-starline.battery-low {
+    color: #f9c74f;
+}
+
+#custom-starline.critical,
+#custom-starline.battery-critical {
     color: #eb4d4b;
 }
 

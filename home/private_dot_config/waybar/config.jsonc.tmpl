@@ -40,7 +40,7 @@
     // standing empty.
     "group/outside": {
         "orientation": "inherit",
-        "modules": ["custom/weather", "custom/car-traffic"]
+        "modules": ["custom/weather", "custom/car-traffic", "custom/starline"]
     },
     "group/work": {
         "orientation": "inherit",
@@ -210,6 +210,14 @@
         "format": " {}",
         "interval": 900,
         "on-click": "$HOME/.local/bin/car-traffic open"
+    },
+    "custom/starline": {
+        "exec": "$HOME/.local/bin/starline-status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 300,
+        "on-click": "$HOME/.local/bin/starline-status map",
+        "on-click-right": "$HOME/.local/bin/starline-status open"
     },
     "custom/weather": {
         "exec": "$HOME/.local/bin/weather",

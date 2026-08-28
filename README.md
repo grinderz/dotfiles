@@ -351,6 +351,34 @@ no list line claims are printed as `extra` at the end and left alone; an
 ambiguous match aborts the run rather than creating a duplicate. There is no
 timer: `rbw unlock` wants a human, and this is a rotate-time action anyway.
 
+### Car status in the bar
+
+`starline-status` shows the alarm and car state from the StarLine cloud in
+waybar (`custom/starline`, read only: lock icon armed/disarmed, warning
+icon while an alarm zone is triggered, the details in the tooltip; click
+opens the last position on a map, right click the web cabinet). It speaks the developer.starline.ru API, so
+it needs an application registered at https://my.starline.ru/developer
+and the StarLine ID login, both in pass; `[data.starline]` in the private
+chezmoi.toml names the entries and renders
+`~/.config/starline-status/config.toml` (nothing renders without it):
+
+```toml
+[data.starline]
+app  = "car/starline.ru/app"        # password: app_secret, "login:" line: app_id
+user = "car/starline.ru/password"   # password: StarLine ID password, "login:" line: phone or email
+cmd  = "passp"                      # optional, the pass command the entries are read with
+```
+
+```sh
+starline-status login    # once per new place: the server sends an SMS code
+starline-status          # what waybar runs; hidden without the config
+starline-status raw      # the device json, for new tooltip fields
+```
+
+The session cookie lives in `~/.local/state/starline-status/` until the
+server expires it; the module then shows a warning and asks for `login`
+again. Needs `python-httpx`.
+
 ### Boot mirror stick
 
 The `96-bootmirror.hook` rsyncs `/boot` to a second bootable stick after every

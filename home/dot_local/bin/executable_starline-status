@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""Waybar module: the car's alarm and state from the StarLine cloud, read only.
+
+Talks to the developer.starline.ru API the way the Home Assistant
+integration does (pypi "starline"): an application code and token from
+app_id/app_secret, a StarLine ID login (sha1 of the password, an SMS code
+the first time from a new place), then the slnet cookie that the device
+calls want. Only the cookie is kept, in ~/.local/state/starline-status,
+for as long as the server says it lasts; everything else is fetched again
+on demand from pass.
+
+Config in ~/.config/starline-status/config.toml (chezmoi renders it from
+[data.starline] in the private toml), names of pass entries:
+
+    app  = "car/starline.ru/app"        # password: app_secret, login: app_id
+    user = "car/starline.ru/password"   # password: StarLine ID password, login: phone or email
+    cmd  = "passp"                       # optional, the pass command (default passp)
+
+Without the config (or python-httpx), the module prints empty text and
+stays hidden.
+
+Usage: starline-status            print waybar json
+       starline-status login      log in from a terminal (asks for the SMS
+                                  code when the server wants one)
+       starline-status map        open the car's last position on a map
+       starline-status open       open the web cabinet in a browser
+       starline-status raw        dump the device json
+"""
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import time
+import tomllib
+from pathlib import Path
+
+try:
+    import httpx
+except ImportError:  # python-httpx missing: stay hidden in the bar, say so elsewhere
+    if len(sys.argv) < 2 or sys.argv[1] == "status":
+        print('{"text": ""}')
+        sys.exit(0)
+    raise SystemExit("starline-status: needs python-httpx")
+
+XDG_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+XDG_STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+CONFIG = XDG_CONFIG / "starline-status/config.toml"
+SESSION = XDG_STATE / "starline-status/session.json"
+ID_URL = "https://id.starline.ru/apiV3"
+API_URL = "https://developer.starline.ru/json"
+CABINET_URL = "https://starline-online.ru/"
+TIMEOUT = httpx.Timeout(30, connect=10)
+
+# car_state keys worth a line in the tooltip, in display order
+STATE_LINES = [
+    ("run", "engine running"),
+    ("r_start", "remote start"),
+    ("ign", "ignition on"),
+    ("door", "door open"),
+    ("hood", "hood open"),
+    ("trunk", "trunk open"),
+    ("hbrake", "handbrake on"),
+    ("arm_auth_wait", "waiting for owner auth"),
+    ("valet", "valet mode"),
+    ("webasto", "heater on"),
+]
+MAP_URL = "https://yandex.ru/maps/?pt={lon},{lat}&z=16&l=map"
+# resting voltage of an AGM battery (VARTA Silver Dynamic AGM 68 Ah):
+# 12.8 V full, 12.5 V about 65 %, the point VARTA says to recharge at,
+# 12.2 V about 40 %, sulphation territory and a doubtful cold start
+BATTERY_LOW = 12.5
+BATTERY_CRITICAL = 12.2
+
+
+class NeedLogin(Exception):
+    pass
+
+
+def hide():
+    print(json.dumps({"text": ""}))
+    sys.exit(0)
+
+
+def pass_entry(cmd, name):
+    """First line as the secret, 'login:' line as the login."""
+    out = subprocess.run([cmd, "show", name], capture_output=True, text=True, check=True).stdout
+    lines = out.splitlines()
+    login = next((ln.split(":", 1)[1].strip() for ln in lines[1:] if ln.lower().startswith("login:")), None)
+    return lines[0] if lines else "", login
+
+
+def load_config():
+    if not CONFIG.is_file():
+        return None
+    with CONFIG.open("rb") as fh:
+        cfg = tomllib.load(fh)
+    cfg.setdefault("cmd", "passp")
+    return cfg
+
+
+def load_session():
+    try:
+        sess = json.loads(SESSION.read_text())
+    except (OSError, ValueError):
+        return None
+    if sess.get("expires", 0) - 300 < time.time():
+        return None
+    return sess
+
+
+def save_session(sess):
+    SESSION.parent.mkdir(parents=True, exist_ok=True)
+    tmp = SESSION.with_suffix(".tmp")
+    tmp.write_text(json.dumps(sess))
+    tmp.chmod(0o600)
+    tmp.replace(SESSION)
+
+
+def md5(s):
+    return hashlib.md5(s.encode()).hexdigest()
+
+
+def login(cfg, interactive):
+    """The full chain up to the slnet cookie; returns the session dict."""
+    app_secret, app_id = pass_entry(cfg["cmd"], cfg["app"])
+    password, user_login = pass_entry(cfg["cmd"], cfg["user"])
+    if not (app_id and user_login):
+        raise SystemExit("starline-status: pass entries need a 'login:' line (app_id, StarLine ID login)")
+
+    http = httpx.Client(timeout=TIMEOUT)
+    r = http.get(f"{ID_URL}/application/getCode/", params={"appId": app_id, "secret": md5(app_secret)}).json()
+    if int(r["state"]) != 1:
+        raise SystemExit(f"starline-status: getCode: {r}")
+    app_code = r["desc"]["code"]
+    r = http.get(f"{ID_URL}/application/getToken/", params={"appId": app_id, "secret": md5(app_secret + app_code)}).json()
+    if int(r["state"]) != 1:
+        raise SystemExit(f"starline-status: getToken: {r}")
+    app_token = r["desc"]["token"]
+
+    data = {"login": user_login, "pass": hashlib.sha1(password.encode()).hexdigest()}
+    while True:
+        r = http.post(f"{ID_URL}/user/login/", params={"token": app_token}, data=data).json()
+        state, desc = int(r["state"]), r.get("desc", {})
+        if state == 1:
+            slid_token = desc["user_token"]
+            break
+        if not interactive:
+            raise NeedLogin()
+        if state == 0 and "phone" in desc:
+            # the server sent an SMS to that phone; state 2 would mean the
+            # code was wrong, both go back to the same prompt
+            print(f"SMS code sent to {desc['phone']}")
+        elif state == 2:
+            print("wrong code, sent again" if "phone" in desc else "wrong code")
+        elif "captchaSid" in desc:
+            raise SystemExit(f"starline-status: captcha wanted, log in through the app first: {desc.get('captchaImg')}")
+        else:
+            raise SystemExit(f"starline-status: login: {r}")
+        data["smsCode"] = input("code: ").strip()
+
+    r = http.post(f"{API_URL}/v2/auth.slid", json={"slid_token": slid_token})
+    body = r.json()
+    if int(body["code"]) != 200:
+        raise SystemExit(f"starline-status: auth.slid: {body.get('codestring')}")
+    cookie = next((c for c in r.cookies.jar if c.name == "slnet"), None)
+    if cookie is None:
+        raise SystemExit("starline-status: no slnet cookie in the auth.slid reply")
+    sess = {"slnet": cookie.value, "expires": cookie.expires or time.time() + 4 * 3600, "user_id": body["user_id"]}
+    save_session(sess)
+    return sess
+
+
+def devices(sess):
+    r = httpx.get(f"{API_URL}/v2/user/{sess['user_id']}/user_info", cookies={"slnet": sess["slnet"]}, timeout=TIMEOUT)
+    if r.status_code in (401, 403):
+        raise NeedLogin()
+    body = r.json()
+    if int(body.get("code", 0)) != 200:
+        raise NeedLogin()
+    devs = body["devices"] + body.get("shared_devices", [])
+    for d in devs:
+        if "obd_params" in (d.get("functions") or []):
+            d["obd"] = obd_params(sess, d["device_id"])
+    return devs
+
+
+def obd_params(sess, device_id):
+    """Fuel, mileage and error count from the CAN side; {} when unavailable."""
+    try:
+        r = httpx.get(f"{API_URL}/v1/device/{device_id}/obd_params", cookies={"slnet": sess["slnet"]}, timeout=TIMEOUT)
+        body = r.json()
+    except (httpx.HTTPError, ValueError):
+        return {}
+    if int(body.get("code", 0)) != 200:
+        return {}
+    return body.get("obd_params") or {}
+
+
+def age(ts):
+    d = int(time.time() - ts)
+    if d < 90:
+        return f"{d}s"
+    if d < 5400:
+        return f"{d // 60}m"
+    if d < 172800:
+        return f"{d // 3600}h"
+    return f"{d // 86400}d"
+
+
+def render(devs):
+    """One line per car in the bar, details in the tooltip."""
+    text, tips, cls = [], [], set()
+    for d in devs:
+        cs, al = d.get("car_state") or {}, d.get("car_alr_state") or {}
+        # triggered zones, plus the summary flags the state block carries
+        alarm = [k for k, v in al.items() if v] + [k for k in ("alarm", "hijack") if cs.get(k)]
+        armed = bool(cs.get("arm"))
+        online = str(d.get("status")) == "1"
+        icon = "" if alarm else ("" if armed else "")
+        text.append(f"{icon} {d['battery']}" if d.get("battery") is not None else icon)
+        if alarm:
+            cls.add("critical")
+        elif not armed:
+            cls.add("warning")
+        if d.get("battery") is not None:
+            if d["battery"] < BATTERY_CRITICAL:
+                cls.add("battery-critical")
+            elif d["battery"] < BATTERY_LOW:
+                cls.add("battery-low")
+        head = f"<b>{d.get('alias') or d.get('typename') or d.get('device_id')}</b>"
+        head += "  " + ("armed" if armed else "disarmed") + ("" if online else "  offline")
+        lines = [head]
+        if alarm:
+            lines.append("ALARM: " + ", ".join(alarm))
+        lines += [label for key, label in STATE_LINES if cs.get(key)]
+        env = []
+        if d.get("etemp") is not None:
+            env.append(f"engine {d['etemp']}°")
+        ctemp = d.get("ctemp", d.get("mayak_temp"))
+        if ctemp is not None:
+            env.append(f"cabin {ctemp}°")
+        if d.get("battery") is not None:
+            env.append(f"battery {d['battery']} V")
+        if d.get("gsm_lvl") is not None:
+            env.append(f"gsm {d['gsm_lvl']}")
+        if env:
+            lines.append("  ".join(env))
+        obd = d.get("obd") or {}
+        car = []
+        if (obd.get("fuel") or {}).get("val") is not None:
+            unit = "L" if obd["fuel"].get("type") == "litres" else "%"
+            car.append(f"fuel {obd['fuel']['val']} {unit}")
+        if (obd.get("mileage") or {}).get("val") is not None:
+            car.append(f"{obd['mileage']['val']} km")
+        if (obd.get("errors") or {}).get("val"):
+            car.append(f"{obd['errors']['val']} DTC")
+        if car:
+            lines.append("  ".join(car))
+        pos = d.get("position") or {}
+        if pos.get("sat_qty") is not None:
+            moving = f", {pos['s']} km/h" if pos.get("s") else ""
+            lines.append(f"gps {pos['sat_qty']} sat{moving}")
+        bal = (d.get("balance") or {}).get("active") or {}
+        if bal.get("value") is not None:
+            lines.append(f"sim {bal['value']} {bal.get('currency', '')}".rstrip())
+        if d.get("ts_activity"):
+            lines.append(f"seen {age(d['ts_activity'])} ago")
+        tips.append("\n".join(lines))
+    return {"text": " ".join(text), "tooltip": "\n\n".join(tips), "class": sorted(cls)}
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if cmd == "open":
+        os.execvp("xdg-open", ["xdg-open", CABINET_URL])
+    cfg = load_config()
+    if cfg is None:
+        if cmd == "status":
+            hide()
+        raise SystemExit(f"starline-status: no config at {CONFIG}")
+
+    if cmd == "login":
+        sess = login(cfg, interactive=True)
+        print(f"logged in, session good for {age(2 * time.time() - sess['expires'])}")
+        return
+
+    sess = load_session()
+    try:
+        if sess is None:
+            sess = login(cfg, interactive=False)
+        devs = devices(sess)
+    except NeedLogin:
+        if cmd == "status":
+            print(json.dumps({"text": "", "tooltip": "StarLine: run starline-status login", "class": "warning"}))
+            return
+        raise SystemExit("starline-status: session expired, run starline-status login")
+    except httpx.HTTPError as err:
+        if cmd == "status":
+            hide()
+        raise SystemExit(f"starline-status: {err}")
+
+    if cmd == "map":
+        # position.x is the latitude, y the longitude
+        pos = next((d["position"] for d in devs if d.get("position")), None)
+        if pos is None:
+            raise SystemExit("starline-status: no position reported")
+        os.execvp("xdg-open", ["xdg-open", MAP_URL.format(lat=pos["x"], lon=pos["y"])])
+    if cmd == "raw":
+        json.dump(devs, sys.stdout, ensure_ascii=False, indent=2)
+        print()
+        return
+    if cmd != "status":
+        raise SystemExit(f"starline-status: unknown command: {cmd}")
+    print(json.dumps(render(devs), ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()

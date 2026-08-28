@@ -1,0 +1,5 @@
+# starline-status: which pass entries hold the StarLine credentials,
+# rendered from [data.starline] in the private chezmoi.toml.
+app  = "{{ .starline.app }}"
+user = "{{ .starline.user }}"
+cmd  = "{{ default "passp" (get .starline "cmd") }}"
