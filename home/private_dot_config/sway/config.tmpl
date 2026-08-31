@@ -280,11 +280,11 @@ bindgesture swipe:4:right workspace prev_on_output
     # the keyboard's number layer: odd digits live on the left half, even on
     # the right, so the hand matches the monitor side. eDP-1 is the fallback:
     # with no externals connected everything lands on the builtin screen.
-    workspace $ws1 output '{{ .desktop.output_left }}' eDP-1
-    workspace $ws3 output '{{ .desktop.output_left }}' eDP-1
-    workspace $ws5 output '{{ .desktop.output_left }}' eDP-1
-    workspace $ws7 output '{{ .desktop.output_left }}' eDP-1
-    workspace $ws9 output '{{ .desktop.output_left }}' eDP-1
+    workspace $ws1 output '{{ .desktop.output_left }}' '{{ .desktop.output_samsung }}' eDP-1
+    workspace $ws3 output '{{ .desktop.output_left }}' '{{ .desktop.output_samsung }}' eDP-1
+    workspace $ws5 output '{{ .desktop.output_left }}' '{{ .desktop.output_samsung }}' eDP-1
+    workspace $ws7 output '{{ .desktop.output_left }}' '{{ .desktop.output_samsung }}' eDP-1
+    workspace $ws9 output '{{ .desktop.output_left }}' '{{ .desktop.output_samsung }}' eDP-1
     workspace $ws2 output '{{ .desktop.output_right }}' eDP-1
     workspace $ws4 output '{{ .desktop.output_right }}' eDP-1
     workspace $ws6 output '{{ .desktop.output_right }}' eDP-1
