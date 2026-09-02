@@ -296,6 +296,14 @@ def main():
             print(json.dumps({"text": "", "tooltip": "StarLine: run starline-status login", "class": "warning"}))
             return
         raise SystemExit("starline-status: session expired, run starline-status login")
+    except subprocess.CalledProcessError as err:
+        # pass could not decrypt (cold gpg cache under waybar, cancelled
+        # pinentry): show the warning instead of dying with a traceback,
+        # which would leave the module empty until the next interval
+        if cmd == "status":
+            print(json.dumps({"text": "", "tooltip": "StarLine: pass failed, unlock gpg or run starline-status login", "class": "warning"}))
+            return
+        raise SystemExit(f"starline-status: {' '.join(err.cmd)} failed")
     except httpx.HTTPError as err:
         if cmd == "status":
             hide()
