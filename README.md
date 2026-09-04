@@ -375,9 +375,11 @@ starline-status          # what waybar runs; hidden without the config
 starline-status raw      # the device json, for new tooltip fields
 ```
 
-The session cookie lives in `~/.local/state/starline-status/` until the
-server expires it; the module then shows a warning and asks for `login`
-again. Needs `python-httpx`.
+The session cookie and the long-lived slid token live in
+`~/.local/state/starline-status/`; the daily cookie expiry is renewed with
+the token alone, so pass/gpg is only touched on a full login. The module
+shows a warning and asks for `login` when even that fails. Needs
+`python-httpx`.
 
 ### Boot mirror stick
 

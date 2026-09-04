@@ -5,9 +5,10 @@ Talks to the developer.starline.ru API the way the Home Assistant
 integration does (pypi "starline"): an application code and token from
 app_id/app_secret, a StarLine ID login (sha1 of the password, an SMS code
 the first time from a new place), then the slnet cookie that the device
-calls want. Only the cookie is kept, in ~/.local/state/starline-status,
-for as long as the server says it lasts; everything else is fetched again
-on demand from pass.
+calls want. The cookie and the long-lived slid token are kept in
+~/.local/state/starline-status: the cookie lasts about a day and is then
+renewed with the token alone, so pass (and gpg) is only needed for the
+rare full login.
 
 Config in ~/.config/starline-status/config.toml (chezmoi renders it from
 [data.starline] in the private toml), names of pass entries:
@@ -101,13 +102,15 @@ def load_config():
 
 
 def load_session():
+    """The stored session, even an expired one: it still holds the slid token."""
     try:
-        sess = json.loads(SESSION.read_text())
+        return json.loads(SESSION.read_text())
     except (OSError, ValueError):
         return None
-    if sess.get("expires", 0) - 300 < time.time():
-        return None
-    return sess
+
+
+def expired(sess):
+    return sess.get("expires", 0) - 300 < time.time()
 
 
 def save_session(sess):
@@ -160,16 +163,33 @@ def login(cfg, interactive):
             raise SystemExit(f"starline-status: login: {r}")
         data["smsCode"] = input("code: ").strip()
 
-    r = http.post(f"{API_URL}/v2/auth.slid", json={"slid_token": slid_token})
+    return slnet_auth(slid_token)
+
+
+def slnet_auth(slid_token):
+    """Trade the slid token for a fresh slnet cookie; NeedLogin when rejected."""
+    r = httpx.post(f"{API_URL}/v2/auth.slid", json={"slid_token": slid_token}, timeout=TIMEOUT)
     body = r.json()
     if int(body["code"]) != 200:
-        raise SystemExit(f"starline-status: auth.slid: {body.get('codestring')}")
+        raise NeedLogin()
     cookie = next((c for c in r.cookies.jar if c.name == "slnet"), None)
     if cookie is None:
-        raise SystemExit("starline-status: no slnet cookie in the auth.slid reply")
-    sess = {"slnet": cookie.value, "expires": cookie.expires or time.time() + 4 * 3600, "user_id": body["user_id"]}
+        raise NeedLogin()
+    sess = {"slnet": cookie.value, "expires": cookie.expires or time.time() + 4 * 3600,
+            "user_id": body["user_id"], "slid_token": slid_token}
     save_session(sess)
     return sess
+
+
+def renew(cfg, sess):
+    """A new slnet cookie: through the stored slid token when there is one
+    (the daily slnet expiry then costs no pass/gpg round), else a full login."""
+    if sess and sess.get("slid_token"):
+        try:
+            return slnet_auth(sess["slid_token"])
+        except NeedLogin:
+            pass
+    return login(cfg, interactive=False)
 
 
 def devices(sess):
@@ -282,15 +302,23 @@ def main():
         raise SystemExit(f"starline-status: no config at {CONFIG}")
 
     if cmd == "login":
-        sess = login(cfg, interactive=True)
+        try:
+            sess = login(cfg, interactive=True)
+        except NeedLogin:
+            raise SystemExit("starline-status: auth.slid rejected the fresh slid token")
         print(f"logged in, session good for {age(2 * time.time() - sess['expires'])}")
         return
 
     sess = load_session()
     try:
-        if sess is None:
-            sess = login(cfg, interactive=False)
-        devs = devices(sess)
+        if sess is None or expired(sess):
+            sess = renew(cfg, sess)
+        try:
+            devs = devices(sess)
+        except NeedLogin:
+            # the cookie looked fresh but the server had dropped it
+            sess = renew(cfg, sess)
+            devs = devices(sess)
     except NeedLogin:
         if cmd == "status":
             print(json.dumps({"text": "", "tooltip": "StarLine: run starline-status login", "class": "warning"}))
