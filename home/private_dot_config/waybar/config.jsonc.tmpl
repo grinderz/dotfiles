@@ -123,6 +123,12 @@
         "format-alt": "W{:%V %Y-%m-%d}"
     },
     "battery": {
+        // pin to the real battery and adapter: scanning all of
+        // /sys/class/power_supply hits the transient ucsi-source-psy nodes,
+        // whose disappearance mid-read crashes waybar with an uncaught
+        // ios_base::failure
+        "bat": "BAT1",
+        "adapter": "ACAD",
         "states": {
             // "good": 95,
             "warning": 30,

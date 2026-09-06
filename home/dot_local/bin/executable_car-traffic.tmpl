@@ -16,7 +16,9 @@ fi
 cache=${XDG_RUNTIME_DIR:-/tmp}/waybar-car-traffic.json
 bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
 
-xml=$(curl -sfm 10 '{{ .desktop.traffic_url }}') || bail
+# the retries ride out the no-DNS window right after session start, when
+# waybar launches before the network is up and there is no cache yet
+xml=$(curl -sfm 10 --retry 5 --retry-all-errors --retry-delay 10 '{{ .desktop.traffic_url }}') || bail
 
 get() { printf '%s\n' "$xml" | sed -n "s:.*<$1>\\(.*\\)</$1>.*:\\1:p" | head -1; }
 
