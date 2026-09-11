@@ -1,11 +1,13 @@
 # One aerc account per entry in [[data.mail.accounts]] (private
 # chezmoi.toml). Every account reads the local notmuch-indexed maildir
 # tree that mbsync keeps in sync (see ~/.config/isyncrc); only sending
-# talks to a server. Account schema is documented in isyncrc.tmpl.
+# talks to a server. Account schema is documented in isyncrc.tmpl. The
+# notmuch source carries no path: aerc 0.22 takes the database and mail
+# root from the notmuch config (maildir-store went away for the same
+# reason).
 {{ range .mail.accounts }}
 [{{ .name }}]
-source = notmuch://{{ $.chezmoi.homeDir }}/.local/share/mail
-maildir-store = {{ $.chezmoi.homeDir }}/.local/share/mail
+source = notmuch://
 maildir-account-path = {{ .name }}
 {{ if eq .kind "davmail" -}}
 outgoing = smtp://{{ default .email (get . "user") | replace "@" "%40" }}@127.0.0.1:1025

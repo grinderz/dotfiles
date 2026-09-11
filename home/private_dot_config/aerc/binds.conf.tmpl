@@ -19,6 +19,7 @@
 
 [messages]
 q = :prompt 'Quit?' quit<Enter>
+. = :repeat
 
 j = :next<Enter>
 <Down> = :next<Enter>
@@ -42,6 +43,8 @@ H = :collapse-folder<Enter>
 <C-Left> = :collapse-folder<Enter>
 L = :expand-folder<Enter>
 <C-Right> = :expand-folder<Enter>
+tf = :toggle-folder<Enter>
+<C-s> = :toggle-sidebar<Enter>
 
 v = :mark -t<Enter>
 <Space> = :mark -t<Enter>:next<Enter>
@@ -144,9 +147,7 @@ $complete = <C-o>
 <C-j> = :next-field<Enter>
 <C-Down> = :next-field<Enter>
 <A-p> = :switch-account -p<Enter>
-<C-Left> = :switch-account -p<Enter>
 <A-n> = :switch-account -n<Enter>
-<C-Right> = :switch-account -n<Enter>
 <tab> = :next-field<Enter>
 <backtab> = :prev-field<Enter>
 <C-p> = :prev-tab<Enter>
