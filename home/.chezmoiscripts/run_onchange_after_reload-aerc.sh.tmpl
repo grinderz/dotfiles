@@ -1,0 +1,8 @@
+#!/bin/sh
+# aerc 0.22 runs :reload on SIGHUP (aerc.conf, binds.conf, styleset;
+# accounts.conf still needs a restart), so a running instance picks up an
+# apply without being closed. The hashes make chezmoi run this only when
+# one of the sources changed.
+# aerc.conf: {{ include "private_dot_config/aerc/aerc.conf.tmpl" | sha256sum }}
+# binds.conf: {{ include "private_dot_config/aerc/binds.conf.tmpl" | sha256sum }}
+pkill -HUP -x aerc || true
