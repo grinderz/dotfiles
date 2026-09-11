@@ -239,11 +239,11 @@
         "on-click": "$HOME/.local/bin/screen-record region"
     },
     "custom/gitlab": {
-        "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }}",
+        "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude {{ $gitlabExclude | shellQuote }}{{ end }}",
         "return-type": "json",
         "format": "{}",
         "interval": 120,
-        "on-click": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude '{{ $gitlabExclude }}'{{ end }} pick",
+        "on-click": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude {{ $gitlabExclude | shellQuote }}{{ end }} pick",
         "on-click-right": "$HOME/.local/bin/gitlab-status open"
     },
     "custom/jira": {

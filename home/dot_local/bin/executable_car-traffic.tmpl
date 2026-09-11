@@ -7,7 +7,7 @@
 
 {{- if hasKey .desktop "traffic_map_url" }}
 if [ "$1" = open ]; then
-    exec xdg-open '{{ .desktop.traffic_map_url }}'
+    exec xdg-open {{ .desktop.traffic_map_url | shellQuote }}
 fi
 {{- end }}
 
@@ -18,7 +18,7 @@ bail() { [ -f "$cache" ] && cat "$cache"; exit 0; }
 
 # the retries ride out the no-DNS window right after session start, when
 # waybar launches before the network is up and there is no cache yet
-xml=$(curl -sfm 10 --retry 5 --retry-all-errors --retry-delay 10 '{{ .desktop.traffic_url }}') || bail
+xml=$(curl -sfm 10 --retry 5 --retry-all-errors --retry-delay 10 {{ .desktop.traffic_url | shellQuote }}) || bail
 
 get() { printf '%s\n' "$xml" | sed -n "s:.*<$1>\\(.*\\)</$1>.*:\\1:p" | head -1; }
 

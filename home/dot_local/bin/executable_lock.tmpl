@@ -2,7 +2,7 @@
 # Lock the screen: en layout, random wallpaper from the sway wallpaper dir
 swaymsg 'input type:keyboard xkb_switch_layout 0'
 
-dir="{{ .desktop.wallpaper_dir }}"
+dir={{ .desktop.wallpaper_dir | shellQuote }}
 case "$dir" in "~"*) dir="$HOME${dir#\~}" ;; esac
 
 img=$(find "$dir" -type f \( -name '*.jpg' -o -name '*.jpeg' -o -name '*.png' \) 2>/dev/null | shuf -n 1)

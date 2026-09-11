@@ -12,10 +12,10 @@ if status is-interactive
     set -x SSH_AUTH_SOCK (gpgconf --list-dirs agent-ssh-socket)
 
 {{ if hasKey . "work" }}
-    set -x OKD_TOKEN_URL "{{ .work.okd_url }}"
-    set -x OKD_TOKEN_USER_ID {{ .work.okd_user }}
-    set -x OKD_TOKEN_API_URL "{{ .work.okd_api_url }}"
-    set -x OKD_TOKEN_PASS_PATH "{{ .work.okd_pass_path }}"
+    set -x OKD_TOKEN_URL {{ .work.okd_url | shellQuote }}
+    set -x OKD_TOKEN_USER_ID {{ .work.okd_user | shellQuote }}
+    set -x OKD_TOKEN_API_URL {{ .work.okd_api_url | shellQuote }}
+    set -x OKD_TOKEN_PASS_PATH {{ .work.okd_pass_path | shellQuote }}
 
 {{ if eq .chezmoi.os "darwin" }}
     set -x OKD_TOKEN_GREP ggrep
