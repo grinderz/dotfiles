@@ -140,16 +140,20 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
     def color: {FAILED: "#f53c3c", RUNNING: "#f1c40f", PENDING: "#f1c40f",
                 CREATED: "#f1c40f", WAITING_FOR_RESOURCE: "#f1c40f",
                 SUCCESS: "#9ece6a"}[.] // "#90b1b1";
-    def cicon: "<span weight=\"bold\" size=\"large\" foreground=\"\(color)\">\(icon)</span>";
+    # no size="large" here: it lifts every line and the tooltip is height-bound
+    def cicon: "<span weight=\"bold\" foreground=\"\(color)\">\(icon)</span>";
 
     def mrline: ((.headPipeline.status // null) as $s
         | if $s == null then "·" else ($s | icon) end)
         + " \(.title) — \(.project.fullPath)";
 
+    # GTK wraps tooltip lines at 70 chars and sway drops a tooltip taller than
+    # the output, so long titles are cut here (the pick menu keeps them whole)
+    def clip: if length > 60 then .[:59] + "…" else . end;
     def mrcline: ((.headPipeline.status // null) as $s
-        | if $s == null then "<span weight=\"bold\" size=\"large\" foreground=\"#90b1b1\">·</span>"
+        | if $s == null then "<span weight=\"bold\" foreground=\"#90b1b1\">·</span>"
           else ($s | cicon) end)
-        + " \(.title | @html) — \(.project.fullPath | @html)";
+        + " \(.title | clip | @html) — \(.project.fullPath | @html)";
 
     now as $now
     | .data.currentUser as $u
@@ -188,10 +192,15 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
     | (($assigned | length) + ($review | length) + ($mentioned | length)) as $mrs
     # bar text: open MR count (the pipeline list length is a static cap)
     | "\($mrs)" as $summary
+    # green runs are noise in a height-bound tooltip: one summary line for
+    # them, a line each only for the rest
+    | ($shown | map(select(.s == "SUCCESS")) | length) as $green
     | (["<b>Starred pipelines:</b>"]
        + (if ($shown | length) == 0 then ["(none)"]
           else ($shown
-                | map("\(.s | cicon) \(.path | @html)  \(.ref | @html)  \(.at | age($now))")) end)
+                | map(select(.s != "SUCCESS"))
+                | map("\(.s | cicon) \(.path | @html)  \(.ref | @html)  \(.at | age($now))"))
+               + (if $green > 0 then ["\("SUCCESS" | cicon) \($green) passing"] else [] end) end)
        + (if ($assigned | length) > 0
           then ["", "<b>Assigned MRs:</b>"] + ($assigned | map(mrcline)) else [] end)
        + (if ($review | length) > 0

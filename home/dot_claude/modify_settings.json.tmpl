@@ -1,10 +1,16 @@
+#!/bin/sh
+# Claude Code keeps its user-level defaults in this same file (/model,
+# /config, allowlist additions, plugin toggles), so a plain template would
+# wipe them on every apply. chezmoi hands the current file on stdin; the
+# managed keys below are merged over it and everything else is kept. Keys
+# are replaced whole, hence no "allow" list here: it belongs to the machine.
+jq -n '[inputs] | (.[0] // {}) * $managed' --argjson managed "$(cat <<'JSON'
 {
   "attribution": {
     "commit": "",
     "pr": ""
   },
   "permissions": {
-    "allow": [],
     "defaultMode": "default"
   },
   "hooks": {
@@ -56,3 +62,5 @@
   "skipWorkflowUsageWarning": true,
   "theme": "dark"
 }
+JSON
+)"

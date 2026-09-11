@@ -26,6 +26,10 @@ outgoing-cred-cmd = oama access {{ .email }}
 outgoing-cred-cmd = {{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}
 {{ end -}}
 from = {{ default $.personal.name (get . "realname") }} <{{ .email }}>
+# :check-mail kicks the same unit the timer uses (mbsync -a + notmuch
+# new); systemd serializes concurrent starts, so no race with the timer
+check-mail-cmd = systemctl --user start mbsync.service
+check-mail-timeout = 60s
 default = INBOX
 archive = Archive
 postpone = Drafts
