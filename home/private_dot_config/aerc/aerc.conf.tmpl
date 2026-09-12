@@ -1,3 +1,4 @@
+[[- /* chezmoi:template:left-delimiter="[[" right-delimiter="]]" */ -]]
 # Minimal aerc setup: mail lives in local maildirs (synced by mbsync,
 # indexed by notmuch), so the UI never waits on a server. Accounts are in
 # accounts.conf.
@@ -9,15 +10,37 @@ styleset-name = catppuccin
 threading-enabled = true
 mouse-enabled = true
 folders-sort = INBOX,Drafts,Sent,Trash
+# unread/total of the inbox in the account tab and per folder in the sidebar
+tab-title-account = {{.Account}}{{if .Exists "INBOX"}} ({{.Unread "INBOX"}}/{{.Exists "INBOX"}}){{end}}
+dirlist-right = {{if .Unread}}{{humanReadable .Unread}}/{{end}}{{if .Exists}}{{humanReadable .Exists}}{{end}}
+# the other side of the mail: sender in the inbox, recipient in Sent/Drafts
+column-name = {{.Peer | names | join ", "}}
+# dates: time only today, weekday this week, no year this year
+timestamp-format = 2006-01-02
+this-day-time-format = 15:04
+this-week-time-format = Mon 15:04
+this-year-time-format = Jan 02
+fuzzy-complete = true
+completion-popovers = true
+[[- /* aerc validates column templates against an empty message at
+       startup, hence the guard around the path lookup */ -]]
+[[- $acct := printf "{{if .Filename}}{{index (.Filename | split \"/\") %d}}{{end}}" (add (len (splitList "/" .chezmoi.homeDir)) (len (splitList "/" .paths.mail))) ]]
+[[- $groups := list ]]
+[[- range .mail.accounts ]][[ if hasKey . "group" ]][[ if not (has .group $groups) ]][[ $groups = append $groups .group ]][[ end ]][[ end ]][[ end ]]
+[[- range $g := $groups ]]
+
+# group tab: which member account a message came through (see accounts.conf)
+[ui:account=[[ $g ]]]
+index-columns = flags:4,acct<12,name<20%,subject,date>=
+column-acct = [[ $acct ]]
+[[- end ]]
 
 [compose]
-# explicit: $EDITOR is only set in interactive fish, not when launched
-# from the app launcher
-editor = nvim
+editor = [[ .env.editor ]]
 # complete To/Cc from the notmuch index (everyone ever mailed with);
 # absolute path: aerc runs this without a shell, and the sway session
 # PATH lacks ~/.local/bin
-address-book-cmd = {{ .chezmoi.homeDir }}/.local/bin/mail-addr "%s"
+address-book-cmd = [[ .chezmoi.homeDir ]]/.local/bin/mail-addr "%s"
 
 [viewer]
 # images referenced as cid: from HTML mail get inlined as data: URLs, so
@@ -32,3 +55,23 @@ message/delivery-status = colorize
 message/rfc822 = colorize
 # the html filter needs w3m and dante (socksify) installed
 text/html = html | colorize
+# attachments readable in place; pdftotext is poppler
+# no ';' in the separator: aerc.conf treats it as a comment start
+.filename,~.*\.csv = column -t --separator=,
+application/pdf = pdftotext - -l 10 -nopgbrk -q - | fmt -w 100
+.filename,~.*\.pdf = pdftotext - -l 10 -nopgbrk -q - | fmt -w 100
+# docx needs pandoc-cli (a Haskell stack, ~200 MB) for a rare attachment;
+# enable when it earns its keep
+#application/vnd.openxmlformats-officedocument.wordprocessingml.document = pandoc -f docx -t markdown -
+# catch-all after the specific text/* lines above
+text/* = bat -fP --file-name="$AERC_FILENAME" --style=plain
+
+# Every local change (archive, move, delete, flags, a sent copy) starts
+# the sync unit right away instead of waiting for the timer, so the server
+# and the phone see it within seconds. --no-block keeps aerc responsive;
+# systemd folds a burst of hooks into one run.
+[hooks]
+mail-added = systemctl --user start --no-block mbsync.service
+mail-deleted = systemctl --user start --no-block mbsync.service
+mail-sent = systemctl --user start --no-block mbsync.service
+flag-changed = systemctl --user start --no-block mbsync.service

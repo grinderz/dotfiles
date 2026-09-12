@@ -1,0 +1,17 @@
+[Unit]
+Description=IMAP IDLE push that triggers mbsync
+Wants=davmail.service
+After=davmail.service network-online.target
+# goimapnotify reconnects on its own; the process only exits on a broken
+# config, so a tight restart loop means something to fix, not to retry
+StartLimitIntervalSec=1h
+StartLimitBurst=5
+
+[Service]
+# -wait batches a burst of pushes into one sync
+ExecStart=/usr/bin/goimapnotify -wait 5 -conf %h/.config/goimapnotify/config.yaml
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

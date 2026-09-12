@@ -191,7 +191,13 @@ Per deploy, once per host:
   `~/sync/pass`) and `passw` (work store, `~/sync/work/pass`); the shared
   Google OAuth client sits at `oauth/google/client-id` / `client-secret`
   (used by vdirsyncer directly and mirrored into oama's config). After
-  apply: `systemctl --user enable --now davmail.service mbsync.timer`,
+  apply: `systemctl --user enable --now davmail.service mbsync.timer
+  goimapnotify.service` (the last one is IMAP IDLE push: new mail starts
+  mbsync.service at once, the timer stays as the fallback). Sending goes
+  through `msmtp` (package) via the vendored `msmtpq`: a failed send is
+  queued under `~/.local/state/msmtpq/queue`, retried by mbsync.service
+  and counted in the waybar mail module until it leaves; sends are
+  logged to the journal (`journalctl --user -t msmtp`). Then
   a one-time `oama authorize google <email>` per Google mail account and
   `vdirsyncer discover` (browser OAuth per google calendar), then
   `enable --now vdirsyncer.timer`.

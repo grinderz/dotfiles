@@ -1,0 +1,11 @@
+{{- /* notmuch query-map for one account group: the same folder across
+       every account of the group; called with (dict "group" <name>
+       "accounts" <all accounts>). Lines are display=query. */ -}}
+{{- $members := list -}}
+{{- range .accounts }}{{ if eq (get . "group") $.group }}{{ $members = append $members .name }}{{ end }}{{ end -}}
+{{- if $members -}}
+{{- range $f := list "INBOX" "Sent" "Archive" -}}
+{{ $f }}={{ range $i, $m := $members }}{{ if $i }} or {{ end }}path:{{ $m }}/{{ $f }}/**{{ end }}
+{{ end -}}
+Recent=date:30days..today and ({{ range $i, $m := $members }}{{ if $i }} or {{ end }}path:{{ $m }}/**{{ end }}) and not ({{ range $i, $m := $members }}{{ if $i }} or {{ end }}path:{{ $m }}/Spam/** or path:{{ $m }}/Junk/** or path:{{ $m }}/Trash/**{{ end }})
+{{ end -}}

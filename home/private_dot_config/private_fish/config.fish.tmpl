@@ -5,7 +5,12 @@ if status is-interactive
 
     set -x LC_ALL en_US.UTF-8
     set -x LANG en_US.UTF-8
-    set -x EDITOR nvim
+{{- if eq .chezmoi.os "darwin" }}
+    # on linux EDITOR and the user PATH reach fish through the session
+    # (.bash_profile, environment.d); macOS has no user manager, so the
+    # same [env] values from .chezmoidata.toml are set here
+    set -x EDITOR {{ .env.editor }}
+{{- end }}
     set -x GOPATH $HOME/go
     set -x --path KUBECONFIG $HOME/.kube/config $HOME/.kube/*.conf
     set -x GPG_TTY (tty)
@@ -31,10 +36,10 @@ if status is-interactive
     fish_add_path (brew --prefix)/opt/coreutils/libexec/gnubin
     fish_add_path (brew --prefix)/bin
     fish_add_path (brew --prefix)/sbin
+{{- range .env.path }}
+    fish_add_path {{ . }}
 {{- end }}
-
-    fish_add_path (go env GOPATH)/bin
-    fish_add_path $HOME/.local/bin
+{{- end }}
 
     ## Abbr
 

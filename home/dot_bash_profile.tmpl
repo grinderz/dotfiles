@@ -1,0 +1,16 @@
+#
+# ~/.bash_profile
+#
+
+[[ -f ~/.bashrc ]] && . ~/.bashrc
+
+# PATH entries and the editor come from [env] in .chezmoidata.toml, the
+# same values ~/.config/environment.d gives the systemd user units. sway
+# is exec'd from this login shell, so waybar, aerc and every app started
+# from the launcher inherit them too.
+export PATH="{{ join ":" .env.path }}:$PATH"
+export EDITOR={{ .env.editor }} VISUAL={{ .env.editor }}
+
+if [ -z "$WAYLAND_DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ] ; then
+    exec sway
+fi

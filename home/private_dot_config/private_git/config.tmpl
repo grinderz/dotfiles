@@ -2,15 +2,17 @@
 {{ .work.git_includes }}
 {{ end -}}
 
-[includeIf "hasconfig:remote.*.url:git@github.com:grinderz/**"]
-    path = "config.github.inc"
+{{- /* remotes that get the personal identity and signing key
+       (data.personal.git_remotes, hasconfig patterns) */ -}}
+{{ range default (list) (get .personal "git_remotes") -}}
+[includeIf "hasconfig:remote.*.url:{{ . }}"]
+    path = "config.personal.inc"
 
-[includeIf "hasconfig:remote.*.url:git@gitlab.com:grinderz/**"]
-    path = "config.gitlab.inc"
+{{ end -}}
 
 [core]
 	autocrlf = input
-	editor = nvim
+	editor = {{ .env.editor }}
 	whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
 	pager = delta
 
@@ -26,7 +28,9 @@
 [diff]
 	algorithm = histogram
 	colorMoved = plain
-	renames = true
+	# moved code that only changed indentation still counts as moved
+	colorMovedWS = allow-indentation-change
+	renames = copies
 	tool = vimdiff
 
 [difftool]
@@ -35,6 +39,9 @@
 [push]
 	autoSetupRemote = true
 	followTags = true
+	# --force-with-lease also refuses when the remote tip was fetched but
+	# never integrated into the local branch
+	useForceIfIncludes = true
 
 [fetch]
 	prune = true
@@ -43,10 +50,26 @@
 
 [rebase]
 	autoSquash = true
+	autoStash = true
 	updateRefs = true
+	# a failed `exec` line is re-run after --continue instead of skipped
+	rescheduleFailedExec = true
+	# warn when a todo list silently drops commits
+	missingCommitsCheck = warn
 
 [merge]
     tool = vimdiff
+    # conflict hunks also show the merge base, with common lines trimmed
+    conflictstyle = zdiff3
+
+[pull]
+	rebase = true
+
+[log]
+	follow = true
+
+[help]
+	autocorrect = prompt
 
 [column]
 	ui = auto

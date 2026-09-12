@@ -1,12 +1,13 @@
 #!/bin/sh
-# Graceful poweroff/reboot from the sway session. A bare systemctl
-# poweroff tears the session down with SIGTERM/SIGKILL and browsers log
-# it as a crash ("Brave quit unexpectedly", session restore prompt).
-# Instead ask every sway view to close (xdg close request, same as
-# clicking the titlebar X), wait until they are gone, then hand over to
-# systemd. Apps that block on a "save changes?" prompt get 15s, after
-# that shutdown proceeds anyway.
-action=${1:?usage: power poweroff|reboot}
+# Graceful poweroff/reboot/exit from the sway session. A bare systemctl
+# poweroff, or a plain `swaymsg exit`, tears the session down with
+# SIGTERM/SIGKILL or a vanished display, and browsers log it as a crash
+# ("Brave quit unexpectedly", session restore prompt). Instead ask every
+# sway view to close (xdg close request, same as clicking the titlebar
+# X), wait until they are gone, then hand over to systemd or end the
+# sway session. Apps that block on a "save changes?" prompt get 15s,
+# after that the action proceeds anyway.
+action=${1:?usage: power poweroff|reboot|exit}
 
 # When run from a terminal, the kill loop below closes that terminal too;
 # the resulting SIGHUP must not take the script down before systemctl runs.
@@ -29,6 +30,10 @@ if [ -n "$SWAYSOCK" ]; then
         sleep 0.5
         i=$((i + 1))
     done
+fi
+
+if [ "$action" = exit ]; then
+    exec swaymsg exit
 fi
 
 # breadcrumb in the journal: stdio is detached and waybar swallows stderr,

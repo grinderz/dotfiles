@@ -5,28 +5,37 @@
 # notmuch source carries no path: aerc 0.22 takes the database and mail
 # root from the notmuch config (maildir-store went away for the same
 # reason).
+#
+# Accounts with a `group` also get a combined tab per group, listed first:
+# a notmuch query-map folds the same folder of every member into one
+# list (INBOX, Sent, Archive, plus Recent for the last 30 days). The
+# member account of a message is read from its file path, so the binds
+# in binds.conf reply, archive and trash through the right mailbox
+# (:reply -A, :mv <account>/Archive); :archive itself does not work
+# there. The first member is the tab's default identity for :compose.
+{{- $groups := list }}
+{{- range .mail.accounts }}{{ if hasKey . "group" }}{{ if not (has .group $groups) }}{{ $groups = append $groups .group }}{{ end }}{{ end }}{{ end }}
+{{- range $g := $groups }}
+{{- $first := dict }}
+{{- range $.mail.accounts }}{{ if and (eq (get . "group") $g) (not $first) }}{{ $first = . }}{{ end }}{{ end }}
+
+[{{ $g }}]
+source = notmuch://
+query-map = {{ $.chezmoi.homeDir }}/.config/aerc/querymap-{{ $g }}.conf
+# only the combined views in the sidebar, not every member's maildir
+folders = INBOX,Recent,Sent,Archive
+{{ template "aerc-outgoing" (dict "a" $first "home" $.chezmoi.homeDir) -}}
+from = {{ default $.personal.name (get $first "realname") }} <{{ $first.email }}>
+check-mail-cmd = systemctl --user start mbsync.service
+check-mail-timeout = 60s
+default = INBOX
+postpone = {{ $first.name }}/Drafts
+{{- end }}
 {{ range .mail.accounts }}
 [{{ .name }}]
 source = notmuch://
 maildir-account-path = {{ .name }}
-{{ if eq .kind "davmail" -}}
-outgoing = smtp://{{ default .email (get . "user") | replace "@" "%40" }}@127.0.0.1:1025
-{{ else if eq .kind "gmail" -}}
-outgoing = smtps://{{ .email | replace "@" "%40" }}@smtp.gmail.com:465
-{{ else if eq .kind "gmail-oauth" -}}
-outgoing = smtps+xoauth2://{{ .email | replace "@" "%40" }}@smtp.gmail.com:465
-{{ else if eq .kind "yandex" -}}
-outgoing = smtps://{{ default .email (get . "user") | replace "@" "%40" }}@smtp.yandex.ru:465
-{{ else if eq .kind "mailru" -}}
-outgoing = smtps://{{ default .email (get . "user") | replace "@" "%40" }}@smtp.mail.ru:465
-{{ else -}}
-outgoing = {{ .smtp }}
-{{ end -}}
-{{ if eq .kind "gmail-oauth" -}}
-outgoing-cred-cmd = oama access {{ .email }}
-{{ else -}}
-outgoing-cred-cmd = {{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}
-{{ end -}}
+{{ template "aerc-outgoing" (dict "a" . "home" $.chezmoi.homeDir) -}}
 from = {{ default $.personal.name (get . "realname") }} <{{ .email }}>
 # :check-mail kicks the same unit the timer uses (mbsync -a + notmuch
 # new); systemd serializes concurrent starts, so no race with the timer

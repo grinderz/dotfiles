@@ -16,10 +16,12 @@ setup.pyinfra.upgrade:
 
 # --- lint ---
 # shell scripts: everything with a sh/bash shebang except chezmoi
-# templates (jinja braces are false positives for shellcheck)
+# templates (jinja braces are false positives for shellcheck) and the
+# msmtpq scripts vendored from msmtp
 
 lint.shellcheck:
 	find home/dot_local/bin install -type f ! -name '*.tmpl' \
+		! -name 'executable_msmtpq' ! -name 'executable_msmtp-queue' \
 		-exec grep -lE '^#!/(usr/)?bin/(env )?(sh|bash)' {} + | xargs shellcheck
 
 lint.ruff:

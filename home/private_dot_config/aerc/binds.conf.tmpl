@@ -1,6 +1,9 @@
+[[- /* chezmoi:template:left-delimiter="[[" right-delimiter="]]" */ -]]
 # Copied as-is from /usr/share/aerc/binds.conf (aerc defaults) to have a
 # stable base for local tweaks; aerc-bindings renders it for the $mod+i
-# cheatsheet picker.
+# cheatsheet picker. chezmoi templating uses double square brackets here
+# (see the directive above) so that aerc's own {{ }} templates in binds
+# pass through untouched.
 
 # Binds are of the form <key sequence> = <command to run>
 # To use '=' in a key sequence, substitute it with "Eq": "<Ctrl+Eq>"
@@ -16,6 +19,7 @@
 <C-c> = :prompt 'Quit?' quit<Enter>
 <C-q> = :prompt 'Quit?' quit<Enter>
 <C-z> = :suspend<Enter>
+<C-o> = :menu -adc fzf :cf -a<Enter>
 
 [messages]
 q = :prompt 'Quit?' quit<Enter>
@@ -45,6 +49,7 @@ L = :expand-folder<Enter>
 <C-Right> = :expand-folder<Enter>
 tf = :toggle-folder<Enter>
 <C-s> = :toggle-sidebar<Enter>
+tc = :toggle-thread-context<Enter>
 
 v = :mark -t<Enter>
 <Space> = :mark -t<Enter>:next<Enter>
@@ -114,6 +119,13 @@ A = :archive flat<Enter>
 
 <C-y> = :copy-link <space>
 <C-l> = :open-link <space>
+[[- $clip := "wl-copy" ]][[ if eq .chezmoi.os "darwin" ]][[ $clip = "pbcopy" ]][[ end ]]
+# yank to the clipboard: message id (notmuch id:, message: links), sender
+# address, the message file path, the current part's text
+ym = :exec sh -c 'printf %s "{{.MessageId}}" | [[ $clip ]]'<Enter>
+yf = :exec sh -c 'printf %s "{{index (.From | emails) 0}}" | [[ $clip ]]'<Enter>
+yF = :exec sh -c 'notmuch search --output=files "id:{{.MessageId}}" | [[ $clip ]]'<Enter>
+yy = :pipe -p -b [[ $clip ]]<Enter>
 
 f = :forward<Enter>
 rr = :reply -a<Enter>
@@ -171,7 +183,8 @@ $ex = <C-x>
 [compose::review]
 # Keybindings used when reviewing a message to be sent
 # Inline comments are used as descriptions on the review screen
-y = :send<Enter> # Send
+y = :send -a flat<Enter> # Send, archive the replied-to message
+Y = :send<Enter> # Send
 n = :abort<Enter> # Abort (discard message, no confirmation)
 s = :sign<Enter> # Toggle signing
 x = :encrypt<Enter> # Toggle encryption to all recipients
@@ -179,7 +192,8 @@ v = :preview<Enter> # Preview message
 p = :postpone<Enter> # Postpone
 q = :choose -o d discard abort -o p postpone postpone<Enter> # Abort or postpone
 e = :edit<Enter> # Edit (body and headers)
-a = :attach<space> # Add attachment
+a = :menu -c 'fd . --type=f | fzf -m' attach<Enter> # Add attachments (fzf, multi-select)
+A = :attach<space> # Add attachment by path
 d = :detach<space> # Remove attachment
 
 [terminal]
@@ -197,21 +211,51 @@ $ex = <C-x>
 # gmail accounts d/D move the message to the local Trash maildir, which
 # mbsync's -trash channel mirrors there; Gmail purges it after 30 days.
 # Inside Trash itself :delete is right (expunge from the last label).
-{{- range .mail.accounts }}
-{{- if hasPrefix "gmail" .kind }}
+[[- range .mail.accounts ]]
+[[- if hasPrefix "gmail" .kind ]]
 
-[messages:account={{ .name }}]
+[messages:account=[[ .name ]]]
 d = :choose -o y 'Really trash this message' 'move Trash'<Enter>
 D = :move Trash<Enter>
 
-[messages:account={{ .name }}:folder=Trash]
+[messages:account=[[ .name ]]:folder=Trash]
 d = :choose -o y 'Really delete this message' delete-message<Enter>
 D = :delete<Enter>
 
-[view:account={{ .name }}]
+[view:account=[[ .name ]]]
 D = :move Trash<Enter>
 
-[view:account={{ .name }}:folder=Trash]
+[view:account=[[ .name ]]:folder=Trash]
 D = :delete<Enter>
-{{- end }}
-{{- end }}
+[[- end ]]
+[[- end ]]
+
+# Combined group tabs (accounts.conf): every message there belongs to some
+# member account, read from its maildir path (<paths.mail>/<name>/ is
+# segment N of the file name). Replies go out through that account
+# (-A) and archive/trash move within it, since :archive has no target on
+# a query-map folder. Trash everywhere: the gmail members need it, and
+# the others have a Trash folder too.
+[[- $acct := printf "{{index (.Filename | split \"/\") %d}}" (add (len (splitList "/" .chezmoi.homeDir)) (len (splitList "/" .paths.mail))) ]]
+[[- $groups := list ]]
+[[- range .mail.accounts ]][[ if hasKey . "group" ]][[ if not (has .group $groups) ]][[ $groups = append $groups .group ]][[ end ]][[ end ]][[ end ]]
+[[- range $g := $groups ]]
+
+[messages:account=[[ $g ]]]
+rr = :reply -a -A [[ $acct ]]<Enter>
+rq = :reply -aq -A [[ $acct ]]<Enter>
+Rr = :reply -A [[ $acct ]]<Enter>
+Rq = :reply -q -A [[ $acct ]]<Enter>
+a = :mv [[ $acct ]]/Archive<Enter>
+A = :unmark -a<Enter>:mark -T<Enter>:mv [[ $acct ]]/Archive<Enter>
+d = :choose -o y 'Really trash this message' 'mv [[ $acct ]]/Trash'<Enter>
+D = :mv [[ $acct ]]/Trash<Enter>
+
+[view:account=[[ $g ]]]
+rr = :reply -a -A [[ $acct ]]<Enter>
+rq = :reply -aq -A [[ $acct ]]<Enter>
+Rr = :reply -A [[ $acct ]]<Enter>
+Rq = :reply -q -A [[ $acct ]]<Enter>
+A = :mv [[ $acct ]]/Archive<Enter>
+D = :mv [[ $acct ]]/Trash<Enter>
+[[- end ]]

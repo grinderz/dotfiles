@@ -1,0 +1,42 @@
+# IMAP IDLE watcher, one connection per [[data.mail.accounts]] entry on its
+# INBOX. A push starts the same mbsync.service the 5-minute timer runs:
+# systemd serializes the two, so a push during a timer run just joins it
+# and nothing races on the maildir. goimapnotify also fires onNewMail
+# once at startup, which doubles as the login-time sync; --no-block lets
+# that burst of starts merge into one systemd job instead of queueing a
+# full sync per account. Accounts that fail to connect are retried in the
+# background without touching the others. Run by goimapnotify.service.
+configurations:
+{{- range .mail.accounts }}
+  - alias: {{ .name }}
+{{- if eq .kind "davmail" }}
+    host: 127.0.0.1
+    port: 1143
+    tls: false
+{{- else }}
+{{- if hasPrefix "gmail" .kind }}
+    host: imap.gmail.com
+{{- else if eq .kind "yandex" }}
+    host: imap.yandex.ru
+{{- else if eq .kind "mailru" }}
+    host: imap.mail.ru
+{{- else }}
+    host: {{ .host }}
+{{- end }}
+    port: {{ default 993 (get . "port") }}
+    tls: true
+    tlsOptions:
+      rejectUnauthorized: true
+{{- end }}
+    username: {{ default .email (get . "user") }}
+{{- if eq .kind "gmail-oauth" }}
+    xoAuth2: true
+    passwordCMD: "oama access {{ .email }}"
+{{- else }}
+    passwordCMD: "{{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}"
+{{- end }}
+    boxes:
+      - mailbox: INBOX
+        onNewMail: systemctl --user start --no-block mbsync.service
+        onNewMailPost: SKIP
+{{- end }}

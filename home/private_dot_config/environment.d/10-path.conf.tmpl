@@ -1,0 +1,8 @@
+# Environment for the systemd user manager and its units and timers
+# (mbsync, goimapnotify, vdirsyncer). Values come from [env] in
+# .chezmoidata.toml, shared with .bash_profile. Applied on the next login
+# or `systemctl --user daemon-reload`; check with
+# `systemctl --user show-environment`.
+PATH={{ join ":" .env.path }}:$PATH
+EDITOR={{ .env.editor }}
+VISUAL={{ .env.editor }}

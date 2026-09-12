@@ -2,7 +2,7 @@
 # queries it. The first entry in [[data.mail.accounts]] is the primary
 # identity. Refreshed by mbsync.service right after each sync.
 [database]
-path={{ .chezmoi.homeDir }}/.local/share/mail
+path={{ .chezmoi.homeDir }}/{{ .paths.mail }}
 
 [user]
 name={{ default .personal.name (get (index .mail.accounts 0) "realname") }}

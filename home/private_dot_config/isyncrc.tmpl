@@ -1,5 +1,5 @@
 # mbsync: pulls every account from [[data.mail.accounts]] (private
-# chezmoi.toml) into ~/.local/share/mail/<name>/ so aerc and notmuch work
+# chezmoi.toml) into ~/<paths.mail>/<name>/ so aerc and notmuch work
 # on local copies. Passwords come from pass; run by mbsync.timer.
 #
 # Account schema (TOML):
@@ -15,7 +15,12 @@
 #   folders = ["jira", "gitlab"]    # gmail kinds only: extra labels to
 #                                   # sync verbatim
 #   realname = "Full Name"    # optional, defaults to data.personal.name
-#   host / port / smtp / patterns   # kind = "imap" only
+#   group = "personal"        # optional: aerc adds a combined tab per group
+#                             # (INBOX/Sent/Archive/Recent across members)
+#   host / port / patterns    # kind = "imap" only
+#   smtp_host / smtp_port / smtp_tls  # kind = "imap" only: msmtp target,
+#                             # port defaults to 465, smtp_tls = "starttls"
+#                             # for 587-style servers
 #
 # kind presets: davmail = local bridge 127.0.0.1:1143/1025 (Exchange,
 # needs data.mail.davmail_url); gmail = imap/smtp.gmail.com with
@@ -24,7 +29,7 @@
 # accounts behind SSO where app passwords are unavailable (needs oama and
 # cyrus-sasl-xoauth2, one-time browser auth: oama authorize google EMAIL);
 # yandex / mailru = known hosts, app password required; imap = generic
-# server, smtp is a full aerc outgoing URL.
+# server. Sending goes through msmtp (~/.msmtprc, same accounts).
 
 # Defaults for every channel below
 Create Near
@@ -80,8 +85,8 @@ IMAPStore {{ .name }}-remote
 Account {{ .name }}
 
 MaildirStore {{ .name }}-local
-Path ~/.local/share/mail/{{ .name }}/
-Inbox ~/.local/share/mail/{{ .name }}/INBOX
+Path ~/{{ $.paths.mail }}/{{ .name }}/
+Inbox ~/{{ $.paths.mail }}/{{ .name }}/INBOX
 SubFolders Verbatim
 {{ if hasPrefix "gmail" .kind }}
 Channel {{ .name }}-inbox

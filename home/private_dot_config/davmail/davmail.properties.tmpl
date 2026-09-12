@@ -10,6 +10,9 @@ davmail.allowRemote=false
 davmail.imapPort=1143
 davmail.smtpPort=1025
 davmail.caldavPort=1080
+# IMAP IDLE (minutes between folder checks); 0 disables it and the push
+# watcher (goimapnotify) would drop to polling for this account
+davmail.imapIdleDelay=1
 # unused protocols off
 davmail.popPort=
 davmail.ldapPort=

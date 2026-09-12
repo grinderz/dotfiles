@@ -1,0 +1,44 @@
+# One msmtp account per [[data.mail.accounts]] entry (schema in
+# isyncrc.tmpl); aerc sends through msmtpq -a <name>, which queues the
+# message when the send fails and retries from mbsync.service. Same
+# credential sources as mbsync: oama tokens for the Google accounts,
+# pass-cache for the rest.
+defaults
+# journald keeps and rotates the log: journalctl --user -t msmtp
+syslog on
+{{- if ne .chezmoi.os "darwin" }}
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+{{- end }}
+{{ range .mail.accounts }}
+account {{ .name }}
+from {{ .email }}
+user {{ default .email (get . "user") }}
+{{- if eq .kind "davmail" }}
+host 127.0.0.1
+port 1025
+tls off
+auth login
+{{- else }}
+{{- if hasPrefix "gmail" .kind }}
+host smtp.gmail.com
+port 465
+{{- else if eq .kind "yandex" }}
+host smtp.yandex.ru
+port 465
+{{- else if eq .kind "mailru" }}
+host smtp.mail.ru
+port 465
+{{- else }}
+host {{ .smtp_host }}
+port {{ default 465 (get . "smtp_port") }}
+{{- end }}
+tls on
+tls_starttls {{ if eq (get . "smtp_tls") "starttls" }}on{{ else }}off{{ end }}
+auth {{ if eq .kind "gmail-oauth" }}xoauth2{{ else }}on{{ end }}
+{{- end }}
+{{- if eq .kind "gmail-oauth" }}
+passwordeval oama access {{ .email }}
+{{- else }}
+passwordeval {{ with get . "pass_dir" }}PASSWORD_STORE_DIR={{ . }} {{ end }}{{ $.chezmoi.homeDir }}/.local/bin/pass-cache show {{ default (printf "mail/%s" .name) (get . "pass") }}
+{{- end }}
+{{ end }}

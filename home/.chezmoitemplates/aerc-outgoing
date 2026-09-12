@@ -1,0 +1,4 @@
+{{- /* outgoing transport for one mail account: msmtpq queues what cannot
+       be sent right now (see ~/.msmtprc); called with
+       (dict "a" <account> "home" <homeDir>) from accounts.conf.tmpl */ -}}
+outgoing = {{ .home }}/.local/bin/msmtpq -a {{ .a.name }}

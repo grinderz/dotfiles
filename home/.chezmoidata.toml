@@ -1,0 +1,17 @@
+# Shared template data, committed with the repo; host-specific and private
+# values live in ~/.config/chezmoi/chezmoi.toml instead.
+
+# The one place the user PATH entries (prepended, in order) and the editor
+# are defined; rendered into ~/.config/environment.d (systemd user units),
+# .bash_profile (the login shell that exec's sway) and, on macOS, fish.
+[env]
+editor = "nvim"
+path = ["$HOME/.local/bin", "$HOME/go/bin"]
+
+# Paths relative to $HOME that several files agree on: the maildir tree
+# mbsync fills and notmuch indexes (isyncrc, notmuch, mbsync.service, the
+# aerc group tabs that read the account off a message path), and the
+# msmtpq queue (msmtpq/config; the mail scripts read MSMTPQ_Q from there).
+[paths]
+mail = ".local/share/mail"
+msmtp_queue = ".local/state/msmtpq/queue"

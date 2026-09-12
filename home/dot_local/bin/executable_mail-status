@@ -3,12 +3,18 @@
 # text is the total INBOX unread count, tooltip breaks it down per
 # account. `pick` pops a fuzzel with per-account counts and the freshest
 # unread messages — any selection just focuses (or starts) aerc. `open`
-# skips the menu. Hidden entirely while notmuch is absent or all read.
+# skips the menu. Hidden entirely while notmuch is absent or all read,
+# unless outgoing mail is stuck in the msmtpq queue.
 
 set -euo pipefail
 
-maildir="$HOME/.local/share/mail"
-command -v notmuch >/dev/null && [ -d "$maildir" ] || { echo '{"text": ""}'; exit 0; }
+command -v notmuch >/dev/null || { echo '{"text": ""}'; exit 0; }
+maildir=$(notmuch config get database.path)
+[ -d "$maildir" ] || { echo '{"text": ""}'; exit 0; }
+# the queue directory is whatever msmtpq itself uses
+MSMTPQ_Q=""
+# shellcheck source=/dev/null
+[ -f "$HOME/.config/msmtpq/config" ] && . "$HOME/.config/msmtpq/config"
 
 accounts() {
     find "$maildir/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
@@ -41,11 +47,17 @@ open)
         total=$((total + n))
         [ "$n" -gt 0 ] && tooltip="$tooltip$acc: $n unread\n"
     done < <(accounts)
-    if [ "$total" -eq 0 ]; then
+    queued=0
+    [ -d "$MSMTPQ_Q" ] && queued=$(find "$MSMTPQ_Q" -name '*.mail' | wc -l)
+    if [ "$queued" -gt 0 ]; then
+        tooltip="$tooltip$queued queued to send\n"
+    fi
+    if [ "$total" -eq 0 ] && [ "$queued" -eq 0 ]; then
         echo '{"text": ""}'
     else
-        printf '{"text": " %d", "tooltip": "%s", "class": "unread"}\n' \
-            "$total" "${tooltip%\\n}"
+        printf '{"text": "%s %d%s", "tooltip": "%s", "class": "%s"}\n' \
+            "" "$total" "$([ "$queued" -gt 0 ] && printf ' ⇡%d' "$queued")" \
+            "${tooltip%\\n}" "$([ "$queued" -gt 0 ] && echo queued || echo unread)"
     fi
     ;;
 esac

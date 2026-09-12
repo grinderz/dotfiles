@@ -8,10 +8,13 @@ Type=oneshot
 # a pinentry or YubiKey touch nobody answers must fail the run, not hang
 # the timer forever; big first syncs still fit
 TimeoutStartSec=30min
-ExecStartPre=/usr/bin/mkdir -p{{ range .mail.accounts }} %h/.local/share/mail/{{ .name }}{{ end }}
+ExecStartPre=/usr/bin/mkdir -p{{ range .mail.accounts }} %h/{{ $.paths.mail }}/{{ .name }}{{ end }}
 # One retry: a dropped connection to a single account makes mbsync exit 1
 # even when every mailbox synced, and that marked the whole run failed.
 # A real breakage (expired token, davmail down) still fails both times.
 ExecStart=/bin/sh -c '/usr/bin/mbsync -a || { sleep 30; exec /usr/bin/mbsync -a; }'
 ExecStartPost=/usr/bin/notmuch new
+# retry queued outgoing mail (msmtpq) before the notifier looks at the
+# queue; a still-failing send must not mark the sync failed
+ExecStartPost=-%h/.local/bin/msmtp-queue -r
 ExecStartPost=%h/.local/bin/mail-notify

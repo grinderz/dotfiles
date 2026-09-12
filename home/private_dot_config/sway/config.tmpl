@@ -204,7 +204,9 @@ bindgesture swipe:4:right workspace prev_on_output
     bindsym $mod+Shift+c reload
 
     # Exit sway (logs you out of your Wayland session)
-    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+    # through `power exit`: views get closed first, a bare `swaymsg exit`
+    # leaves browsers marked as crashed
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' '$HOME/.local/bin/power exit'
 #
 # Moving around:
 #

@@ -4,6 +4,27 @@
 # (set via new.tags in the notmuch config) gets announced through mako,
 # then the marker tag is dropped so each message notifies exactly once.
 # Big batches collapse into one summary to avoid a notification storm.
+# Outgoing mail still sitting in the msmtpq queue after the retry that
+# precedes this script is announced too: once when it appears, again
+# only when the count grows or an hour has passed (aerc reports a queued
+# message as sent, so this is the only sign a send did not go out).
+
+# the queue directory is whatever msmtpq itself uses
+MSMTPQ_Q=""
+# shellcheck source=/dev/null
+[ -f "$HOME/.config/msmtpq/config" ] && . "$HOME/.config/msmtpq/config"
+stamp=${XDG_RUNTIME_DIR:-/tmp}/mail-notify-queued
+queued=0
+[ -d "$MSMTPQ_Q" ] && queued=$(find "$MSMTPQ_Q" -name '*.mail' | wc -l)
+if [ "$queued" -gt 0 ]; then
+    last=$(cat "$stamp" 2>/dev/null || echo 0)
+    if [ "$queued" -gt "$last" ] || [ -z "$(find "$stamp" -mmin -60 2>/dev/null)" ]; then
+        notify-send -u critical -a mail "Mail not sent" "$queued queued, retrying every sync"
+        echo "$queued" > "$stamp"
+    fi
+else
+    rm -f "$stamp"
+fi
 
 count=$(notmuch count tag:new)
 [ "$count" -eq 0 ] && exit 0

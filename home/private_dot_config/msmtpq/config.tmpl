@@ -1,0 +1,8 @@
+# Sourced by msmtpq. Unsent mail waits under XDG state (it must survive
+# reboots). No queue log file: msmtp itself logs every send to the
+# journal (syslog on in ~/.msmtprc). No connectivity probe before a
+# send: msmtp fails fast without a network and the message is queued;
+# msmtp-queue -r from mbsync.service retries every sync.
+MSMTPQ_Q="$HOME/{{ .paths.msmtp_queue }}"
+MSMTPQ_LOG=""
+EMAIL_CONN_TEST=x
