@@ -12,9 +12,9 @@ for h in /sys/class/hwmon/*; do
     fi
 done
 
-icon=
+icon=
 [ "$temp" -ge 60 ] && icon=
-[ "$temp" -ge 80 ] && icon=
+[ "$temp" -ge 80 ] && icon=
 
 # cpu% over a 0.3s window from /proc/stat
 read -r _ u1 n1 s1 i1 w1 q1 sq1 st1 _ < /proc/stat

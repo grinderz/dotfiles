@@ -94,7 +94,7 @@ out=$(jq -rc --arg mode "$cmd" --arg server "$server" \
     if $mode == "pick" then
         ($issues[] | "\($server)/browse/\(.key)\t\(.key)  [\(.status)]  \(.summary)")
       else
-        {text: " \($issues | length)(\($review | length))",
+        {text: "<span font_family=\"sans\"> </span>\($issues | length)(\($review | length))",
          tooltip: (if ($issues | length) == 0 then "no open issues"
              else ((if ($review | length) > 0
                     then ["<b>Review:</b>"] + ($review | map(line)) + [""]

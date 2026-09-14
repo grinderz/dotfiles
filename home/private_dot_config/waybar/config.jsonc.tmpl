@@ -136,7 +136,7 @@
         },
         "format": "{icon} {capacity}%",
         "format-full": "{icon} {capacity}%",
-        "format-charging": " {capacity}%",
+        "format-charging": " {capacity}%",
         "format-plugged": " {capacity}%",
         "format-alt": "{icon} {time}",
         // "format-good": "", // An empty format will hide the module
@@ -160,8 +160,8 @@
     // hides itself while that link is down.
     "network#eth": {
         "interface": "eth*",
-        "format-ethernet": " {ipaddr}/{cidr}",
-        "format-linked": " {ifname}(No IP)",
+        "format-ethernet": " {ipaddr}/{cidr}",
+        "format-linked": " {ifname}(No IP)",
         "format-disconnected": "",
         "tooltip-format": "{ifname} via {gwaddr}",
         "format-alt": "{ifname}: {ipaddr}/{cidr}"
@@ -169,7 +169,7 @@
     "network#wifi": {
         "interface": "wlan*",
         "format-wifi": " {essid}({signalStrength}%)",
-        "format-linked": " {ifname}(No IP)",
+        "format-linked": " {ifname}(No IP)",
         "format-disconnected": "",
         // waybar keeps one default route (the lowest metric, here the
         // wired one), so {gwaddr} is always empty on this instance.
@@ -184,14 +184,14 @@
         // "scroll-step": 1, // %, can be a float
         "format": "{icon} {volume}% {format_source}",
         "format-bluetooth": "{icon}  {volume}% {format_source}",
-        "format-bluetooth-muted": " {icon}  {format_source}",
-        "format-muted": " {format_source}",
+        "format-bluetooth-muted": "<span font_family=\"sans\"> </span>{icon}  {format_source}",
+        "format-muted": "<span font_family=\"sans\"> </span>{format_source}",
         "format-source": " {volume}%",
         "format-source-muted": "",
         "format-icons": {
             "headphone": "",
-            "hands-free": "",
-            "headset": "",
+            "hands-free": "",
+            "headset": "",
             "phone": "",
             "portable": "",
             "car": "",
@@ -200,7 +200,7 @@
         "on-click": "foot --app-id=mixer wiremix"
     },
     "bluetooth": {
-        "format": "󰂯 {status}",
+        "format": " {status}",
         "format-connected": "󰂱 {num_connections}",
         "format-disabled": "",
         "tooltip-format": "{controller_alias}\t{controller_address}",
