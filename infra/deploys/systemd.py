@@ -1,4 +1,5 @@
 from pyinfra.context import host
+from pyinfra.facts.server import Home
 from pyinfra.operations import files, systemd
 
 from util import chezmoi_data
@@ -164,13 +165,14 @@ if _cal:
         user_mode=True,
     )
 
-    # meeting reminders from the EWS calendar without Evolution open
-    systemd.service(
-        name='enable and start evolution-alarm-notify (user)',
-        service='evolution-alarm-notify.service',
-        enabled=True,
-        running=True,
-        user_mode=True,
+    # meeting reminders from the EWS calendar without Evolution open: the
+    # unit has no [Install], sway-session.target starts it with the
+    # Wayland session. Only the old default.target.wants link has to go;
+    # it started the daemon before the session environment existed.
+    files.link(
+        name='drop the old evolution-alarm-notify autostart (user)',
+        path=f'{host.get_fact(Home)}/.config/systemd/user/default.target.wants/evolution-alarm-notify.service',
+        present=False,
     )
 
 # seat management for the sway session (sway runs as plain user via seatd)

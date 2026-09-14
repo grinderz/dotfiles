@@ -1,0 +1,12 @@
+[Unit]
+Description=sway session
+Documentation=man:systemd.special(7)
+# started by sway itself (see the sway config) once the Wayland
+# environment is imported; stopping it on sway shutdown takes
+# graphical-session.target and every PartOf= service down with it
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target
+# services that need the Wayland session come with it (waybar.service
+# ships in the package, the alarm notifier lives next to this file)
+Wants=waybar.service evolution-alarm-notify.service

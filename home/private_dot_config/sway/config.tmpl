@@ -406,28 +406,19 @@ bindsym $mod+r mode "resize"
     bindsym $mod+g exec $HOME/.local/bin/launch-or-focus obsidian obsidian        # notes
 
 #
-# Status Bar:
+# Session and status bar:
 #
-# Read `man 5 sway-bar` for more information about this section.
-# waybar auto-restart wrapper, kept for reference: waybar 0.15.0 segfaulted
-# in gtk when racing kanshi's output reconfiguration at session start
-# (duplicate bar on eDP-1); re-enable if the crashes come back
-# exec sh -c 'sleep 2; while :; do waybar >> "${XDG_RUNTIME_DIR:-/tmp}/waybar.log" 2>&1; sleep 2; done'
-
-bar {
-    position top
-
-    # When the status_command prints a new line to stdout, swaybar updates.
-    # The default just shows the current date and time.
-    # status_command while date +'%Y-%m-%d %X'; do sleep 1; done
-
-    swaybar_command waybar
-
-    colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
-    }
-}
+# sway brings up sway-session.target (bound to graphical-session.target),
+# which starts waybar as the packaged user service instead of a `bar {}`
+# block. sway restarts a `bar {}` waybar on every `swaymsg reload`, and
+# the fresh waybar raced the tray apps re-registering their icons and lost
+# them; as a service it outlives reloads. Restart=on-failure covers the
+# old gtk segfaults when racing kanshi at session start, and the log goes
+# to `journalctl --user -u waybar` instead of tty1. The environment goes
+# to the user manager and the D-Bus activation environment first, in the
+# same shell: the /etc/sway/config.d import is a separate exec and would
+# race the target start.
+exec 'dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP=sway; systemctl --user start sway-session.target'
+exec swaymsg -t subscribe '["shutdown"]' && systemctl --user stop sway-session.target
 
 include /etc/sway/config.d/*
