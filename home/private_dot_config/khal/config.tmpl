@@ -21,6 +21,13 @@ color = {{ . }}
 default_calendar = {{ . }}
 
 {{ end -}}
+[view]
+# the stock format plus the location (meeting links live there), before
+# the description; empty fields print nothing
+agenda_event_format = {calendar-color}{cancelled}{start-end-time-style} {title}{repeat-symbol}{alarm-symbol} {location}{description-separator}{description}{reset}
+# ikhal: the event card stays open next to the list
+event_view_always_visible = True
+
 [locale]
 firstweekday = 0
 timeformat = %H:%M
