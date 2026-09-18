@@ -37,7 +37,10 @@ if status is-interactive
     fish_add_path (brew --prefix)/bin
     fish_add_path (brew --prefix)/sbin
 {{- range .env.path }}
-    fish_add_path {{ . }}
+    # --move: these must come before the brew paths even if an older
+    # fish_user_paths already lists them further back (~/.local/bin holds
+    # the claude wrapper that has to shadow brew's binary)
+    fish_add_path --move {{ . }}
 {{- end }}
 {{- end }}
 

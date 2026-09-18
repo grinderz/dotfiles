@@ -1,0 +1,55 @@
+#!/bin/sh
+# Wrapper in front of the real claude binary. Claude Code keeps sessions,
+# auto memory and todos per project under ~/.claude/projects/<name>, and
+# derives <name> from the absolute working directory, so the same checkout
+# gets a different name on every machine (/home/... vs /Users/...). For
+# directories under the roots listed in [[data.claude.sync]] (private
+# chezmoi.toml: root and dir, both relative to $HOME) this wrapper names
+# the project after its path relative to the root's parent instead
+# (~/src/work/acme/app -> acme-app), and points that name at the root's
+# synced dir, so the state follows the project across machines.
+#
+# CLAUDE_CODE_PROJECT_DIR_NAME is only honoured when CLAUDE_CONFIG_DIR is
+# set, so the default config dir is passed explicitly. Anything outside
+# the roots runs claude untouched.
+#
+# Adding a root: another [[data.claude.sync]] entry in chezmoi.toml on
+# every machine, chezmoi apply, and move any existing
+# ~/.claude/projects/<old path-derived name> into <dir>/<new name> before
+# the first run.
+
+real=
+for dir in $(printf '%s' "$PATH" | tr ':' '\n'); do
+    [ "$dir" = "$HOME/.local/bin" ] && continue
+    if [ -x "$dir/claude" ]; then
+        real=$dir/claude
+        break
+    fi
+done
+[ -n "$real" ] || { echo 'claude wrapper: no claude binary in PATH' >&2; exit 127; }
+
+config=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
+cwd=$(pwd -P)
+
+# shellcheck disable=SC2066  # one quoted root:dir word per entry is the point
+for entry in {{ range .claude.sync }}"$HOME/{{ .root }}:$HOME/{{ .dir }}" {{ end }}; do
+    root=${entry%%:*}
+    store=${entry#*:}
+    case $cwd in
+    "$root" | "$root"/*) ;;
+    *) continue ;;
+    esac
+    # /home/u/src/work/acme/app -> acme-app; only [A-Za-z0-9_-] allowed
+    name=$(printf '%s' "${cwd#"$(dirname "$root")"/}" | tr '/' '-' | tr -c 'A-Za-z0-9_-' '_')
+    link=$config/projects/$name
+    if [ -e "$link" ] && [ ! -L "$link" ]; then
+        echo "claude wrapper: $link exists and is not a symlink, move it to $store/$name first" >&2
+        exit 1
+    fi
+    mkdir -p "$store/$name" "$config/projects"
+    [ -L "$link" ] || ln -s "$store/$name" "$link"
+    # shellcheck disable=SC2093  # exec is the exit of this branch
+    CLAUDE_CONFIG_DIR=$config CLAUDE_CODE_PROJECT_DIR_NAME=$name exec "$real" "$@"
+done
+
+exec "$real" "$@"

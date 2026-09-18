@@ -413,6 +413,45 @@ over). Add `nofail` to the `/boot` fstab options so booting from the mirror
 does not drop to emergency when the primary stick is dead — the failed
 `boot.mount` is surfaced by the `failed-units-notify` user timer instead.
 
+### Claude Code state shared between machines
+
+Claude Code keeps sessions (`--resume`), auto memory and todos per project
+under `~/.claude/projects/<name>`, and derives `<name>` from the absolute
+working directory, so the same checkout gets a different name on every
+machine. `~/.local/bin/claude` (a wrapper in front of the real binary,
+rendered only when `[[data.claude.sync]]` entries exist) names the project
+after its path relative to the root's parent instead
+(`~/src/work/acme/app` -> `acme-app`) and points that name at
+`<dir>/<name>` inside the entry's syncthing folder, so the state follows
+the project. Directories outside the roots are untouched.
+
+To share another tree, on every machine:
+
+```toml
+# ~/.config/chezmoi/chezmoi.toml — both paths relative to $HOME
+[[data.claude.sync]]
+root = "src/work/acme"
+dir  = "sync/work/claude"       # the work syncthing folder
+
+[[data.claude.sync]]
+root = "src/personal/other"
+dir  = "sync/common/claude"     # personal trees go to the common one
+```
+
+then `make dotfiles.apply`, and move any state Claude already has for that
+tree into the synced folder before the first run (the wrapper refuses to
+run while a real directory sits where its symlink goes):
+
+```sh
+mv ~/.claude/projects/-home-me-src-personal-other ~/sync/common/claude/other
+mv ~/.claude/projects/-home-me-src-personal-other-sub ~/sync/common/claude/other-sub
+```
+
+The old names are the absolute path with `/` turned into `-`; the new ones
+start at the root's basename. Working on both machines at the same time is
+fine for sessions (one file each) but can leave a syncthing conflict copy
+of `memory/MEMORY.md`.
+
 ## Fish functions and abbreviations
 
 Autoloaded from `fish/functions/`; deps in parentheses are installed by

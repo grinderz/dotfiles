@@ -1,3 +1,7 @@
+{{- /* the claude wrapper only makes sense with sync roots configured */ -}}
+{{ if not (dig "claude" "sync" false .) }}
+.local/bin/claude
+{{ end }}
 {{ if ne .chezmoi.os "darwin" }}
 .config/fish/functions/showfiles.fish
 .config/fish/functions/hidefiles.fish
