@@ -10,6 +10,13 @@ calls want. The cookie and the long-lived slid token are kept in
 renewed with the token alone, so pass (and gpg) is only needed for the
 rare full login.
 
+The account gets about 1000 API calls a day (the number the Home
+Assistant integration budgets for); past it every call answers 429
+"Exceeding limit" until the window rolls over. So a 429 is shown as such
+from the last good render, never taken for a lost session, the OBD block
+(fuel, mileage, DTC) is refreshed only every few hours, and a failed
+unattended login is not retried for an hour.
+
 Config in ~/.config/starline-status/config.toml (chezmoi renders it from
 [data.starline] in the private toml), names of pass entries:
 
@@ -49,6 +56,9 @@ XDG_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 XDG_STATE = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 CONFIG = XDG_CONFIG / "starline-status/config.toml"
 SESSION = XDG_STATE / "starline-status/session.json"
+CACHE = XDG_STATE / "starline-status/last.json"
+OBD_MAX_AGE = 3 * 3600
+LOGIN_BACKOFF = 3600
 ID_URL = "https://id.starline.ru/apiV3"
 API_URL = "https://developer.starline.ru/json"
 CABINET_URL = "https://starline-online.ru/"
@@ -76,6 +86,10 @@ BATTERY_CRITICAL = 12.2
 
 
 class NeedLogin(Exception):
+    pass
+
+
+class RateLimited(Exception):
     pass
 
 
@@ -113,12 +127,23 @@ def expired(sess):
     return sess.get("expires", 0) - 300 < time.time()
 
 
-def save_session(sess):
-    SESSION.parent.mkdir(parents=True, exist_ok=True)
-    tmp = SESSION.with_suffix(".tmp")
-    tmp.write_text(json.dumps(sess))
+def save_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False))
     tmp.chmod(0o600)
-    tmp.replace(SESSION)
+    tmp.replace(path)
+
+
+def save_session(sess):
+    save_json(SESSION, sess)
+
+
+def load_cache():
+    try:
+        return json.loads(CACHE.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 def md5(s):
@@ -183,26 +208,51 @@ def slnet_auth(slid_token):
 
 def renew(cfg, sess):
     """A new slnet cookie: through the stored slid token when there is one
-    (the daily slnet expiry then costs no pass/gpg round), else a full login."""
+    (the daily slnet expiry then costs no pass/gpg round), else a full login.
+    An unattended login that the server refused (SMS wanted) is not retried
+    for LOGIN_BACKOFF: every attempt costs three StarLine ID calls."""
     if sess and sess.get("slid_token"):
         try:
             return slnet_auth(sess["slid_token"])
         except NeedLogin:
             pass
-    return login(cfg, interactive=False)
+    if sess and time.time() - sess.get("login_failed", 0) < LOGIN_BACKOFF:
+        raise NeedLogin()
+    try:
+        return login(cfg, interactive=False)
+    except NeedLogin:
+        save_session({**(sess or {}), "login_failed": time.time()})
+        raise
 
 
-def devices(sess):
+def devices(sess, cached=None):
     r = httpx.get(f"{API_URL}/v2/user/{sess['user_id']}/user_info", cookies={"slnet": sess["slnet"]}, timeout=TIMEOUT)
+    if r.status_code == 429:
+        raise RateLimited()
     if r.status_code in (401, 403):
         raise NeedLogin()
-    body = r.json()
+    try:
+        body = r.json()
+    except ValueError:
+        # an html error page; the daily quota answers like this too
+        raise RateLimited()
+    if int(body.get("code", 0)) == 429:
+        raise RateLimited()
     if int(body.get("code", 0)) != 200:
         raise NeedLogin()
     devs = body["devices"] + body.get("shared_devices", [])
+    # the OBD block moves slowly and every fetch is another call against
+    # the daily quota: reuse the cached one while it is younger than
+    # OBD_MAX_AGE
+    old = {d["device_id"]: d for d in (cached or {}).get("devices", [])}
     for d in devs:
-        if "obd_params" in (d.get("functions") or []):
-            d["obd"] = obd_params(sess, d["device_id"])
+        if "obd_params" not in (d.get("functions") or []):
+            continue
+        prev = old.get(d["device_id"], {})
+        if time.time() - prev.get("obd_at", 0) < OBD_MAX_AGE:
+            d["obd"], d["obd_at"] = prev.get("obd"), prev["obd_at"]
+        else:
+            d["obd"], d["obd_at"] = obd_params(sess, d["device_id"]), time.time()
     return devs
 
 
@@ -310,15 +360,28 @@ def main():
         return
 
     sess = load_session()
+    cached = load_cache()
     try:
         if sess is None or expired(sess):
             sess = renew(cfg, sess)
         try:
-            devs = devices(sess)
+            devs = devices(sess, cached)
         except NeedLogin:
             # the cookie looked fresh but the server had dropped it
             sess = renew(cfg, sess)
-            devs = devices(sess)
+            devs = devices(sess, cached)
+    except RateLimited:
+        # the daily quota: keep showing the last good state, flagged, and
+        # make no further calls this tick (a renew or login would only
+        # burn more of it)
+        if cmd == "status":
+            out = cached["render"] if cached else {"text": ""}
+            out["tooltip"] = "StarLine: API quota exceeded, showing " + (
+                f"data from {age(cached['at'])} ago\n\n" + out.get("tooltip", "") if cached else "nothing")
+            out["class"] = sorted(set(out.get("class", [])) | {"warning"})
+            print(json.dumps(out, ensure_ascii=False))
+            return
+        raise SystemExit("starline-status: API quota exceeded (429), try again later")
     except NeedLogin:
         if cmd == "status":
             print(json.dumps({"text": "", "tooltip": "StarLine: run starline-status login", "class": "warning"}))
@@ -349,7 +412,9 @@ def main():
         return
     if cmd != "status":
         raise SystemExit(f"starline-status: unknown command: {cmd}")
-    print(json.dumps(render(devs), ensure_ascii=False))
+    out = render(devs)
+    save_json(CACHE, {"at": time.time(), "devices": devs, "render": out})
+    print(json.dumps(out, ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -387,6 +387,14 @@ the token alone, so pass/gpg is only touched on a full login. The module
 shows a warning and asks for `login` when even that fails. Needs
 `python-httpx`.
 
+The account gets about 1000 API calls a day; past that every call answers
+429 "Exceeding limit" until the window rolls over. The module then keeps
+showing the last good state (cached in the same directory) with a
+warning and makes no further calls that tick — a 429 is never taken for
+a lost session, since the renew and login it would trigger only burn more
+quota. Budget at the 5-minute interval: one call per tick, plus the OBD
+block (fuel, mileage, DTC) every three hours, about 300 a day.
+
 ### Boot mirror stick
 
 The `96-bootmirror.hook` rsyncs `/boot` to a second bootable stick after every
