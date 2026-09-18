@@ -65,6 +65,18 @@
 .local/bin/zellij-bindings
 .local/bin/aerc-bindings
 .local/bin/suspend-toggle
+.local/bin/usb-storage
+.local/bin/notify-toggle
+.config/starline-status
+# mail stack (aerc/mbsync/notmuch) and its helpers are linux-only here
+.config/goimapnotify
+.config/msmtpq
+.msmtprc
+.local/bin/msmtpq
+.local/bin/msmtp-queue
+.chezmoiscripts/reload-aerc.sh
+# systemd user environment; PATH and the editor come from fish on macOS
+.config/environment.d
 .local/bin/sync-brave-wallpapers
 .local/bin/system-stats
 .local/bin/car-traffic
