@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Desktop notification on macOS through terminal-notifier (notify-send on
+# sway), shared by the *-mac scripts. Silent without terminal-notifier.
+#
+# usage: notify-mac TITLE GROUP MESSAGE [IMAGE]
+#   GROUP   replaces an earlier notification of the same group
+#   IMAGE   a picture shown with the message (screenshot previews)
+
+set -euo pipefail
+
+title="${1:?usage: notify-mac TITLE GROUP MESSAGE [IMAGE]}"
+group="${2:?usage: notify-mac TITLE GROUP MESSAGE [IMAGE]}"
+message="${3:?usage: notify-mac TITLE GROUP MESSAGE [IMAGE]}"
+image="${4:-}"
+
+command -v terminal-notifier >/dev/null 2>&1 || exit 0
+terminal-notifier -title "$title" -message "$message" -group "$group" \
+    ${image:+-contentImage "$image"} >/dev/null 2>&1 || true

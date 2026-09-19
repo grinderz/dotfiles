@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Decode a QR code from a screen region into the clipboard (qr-scan on
+# sway). Only the qrcode symbology is enabled so dense screen content
+# cannot false-positive as a barcode. The decoded text goes to the
+# clipboard and is never printed or shown in the notification, QR codes
+# routinely carry otpauth and wifi secrets (pbcopy has no "sensitive"
+# flag, clipboard managers will keep it). Requires zbar (zbarimg).
+
+set -euo pipefail
+
+notify() { notify-mac "QR code" qr "$1"; }
+
+tmp=$(mktemp -t qr).png
+trap 'rm -f "$tmp"' EXIT
+
+# a cancelled picker (esc) writes nothing
+screencapture -xi "$tmp" || exit 0
+[ -s "$tmp" ] || exit 0
+
+if zbarimg --raw -q -Sdisable -Sqrcode.enable "$tmp" 2>/dev/null \
+    | head -c 4096 | pbcopy; then
+    notify "decoded and copied"
+else
+    notify "nothing decoded in the selection"
+fi

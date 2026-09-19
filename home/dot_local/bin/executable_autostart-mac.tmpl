@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# AeroSpace after-startup-command: what the sway config execs at session
+# start. A random wallpaper from the wallpaper dir (the private
+# chezmoi.toml [data.desktop], same as sway) when that dir exists here,
+# and the two long-lived terminals: zellij "dev" (workspace 2) and a
+# plain shell (workspace 1), titled so that the aerospace.toml rules can
+# place them (dynamic title off, the shell must not rename them).
+# Long-lived apps (browser, chats, notes) are Login Items instead.
+
+set -euo pipefail
+
+# the private toml writes it with a tilde, expanded on the next line
+# shellcheck disable=SC2088
+wallpapers={{ .desktop.wallpaper_dir | shellQuote }}
+wallpapers="${wallpapers/#\~/$HOME}"
+if [ -d "$wallpapers" ]; then
+    pick=$(find "$wallpapers" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.heic' \) \
+        | sort -R | head -n1)
+    if [ -n "$pick" ]; then
+        osascript -e "tell application \"System Events\" to set picture of every desktop to POSIX file \"$pick\"" \
+            >/dev/null 2>&1 || true
+    fi
+fi
+
+spawn() {
+    local title=$1
+    shift
+    # already up (a reload-config does not rerun this, but a manual run may)
+    if aerospace list-windows --monitor all --app-bundle-id org.alacritty \
+            --format '%{window-title}' 2>/dev/null | grep -qx "$title"; then
+        return 0
+    fi
+    open -na Alacritty --args -T "$title" -o window.dynamic_title=false "$@"
+}
+
+spawn dev -e zellij attach --create dev
+spawn cli
+
+# the workspace swipe app talks to AeroSpace's socket and does not retry
+# a connection that failed: started from here, after AeroSpace, instead
+# of from Login Items (where both came up in the same second)
+pgrep -x SwipeAeroSpace >/dev/null || open -a SwipeAeroSpace

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# OCR a screen region into the clipboard ($mod+o in sway: grim + slurp +
+# tesseract + wl-copy): the interactive picker, tesseract eng+rus, pbcopy.
+# The models live in ~/.local/share/tessdata (rus from tessdata_fast,
+# eng linked from the brew package, see the README) so a brew upgrade
+# does not lose them.
+
+set -euo pipefail
+
+tessdata="$HOME/.local/share/tessdata"
+[ -d "$tessdata" ] && export TESSDATA_PREFIX="$tessdata"
+
+notify() { notify-mac OCR ocr "$1"; }
+
+tmp=$(mktemp -t ocr).png
+trap 'rm -f "$tmp"' EXIT
+
+# a cancelled picker (esc) writes nothing
+screencapture -xi "$tmp" || exit 0
+[ -s "$tmp" ] || exit 0
+
+text=$(tesseract "$tmp" - -l eng+rus 2>/dev/null || true)
+if [ -z "${text//[[:space:]]/}" ]; then
+    notify "no text found"
+    exit 0
+fi
+printf '%s' "$text" | pbcopy
+notify "$(printf '%s' "$text" | head -c 120) (copied)"

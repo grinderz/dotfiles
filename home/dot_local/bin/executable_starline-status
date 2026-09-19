@@ -344,7 +344,7 @@ def render(devs):
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     if cmd == "open":
-        os.execvp("xdg-open", ["xdg-open", CABINET_URL])
+        os.execvp("open-url", ["open-url", CABINET_URL])
     cfg = load_config()
     if cfg is None:
         if cmd == "status":
@@ -405,7 +405,7 @@ def main():
         pos = next((d["position"] for d in devs if d.get("position")), None)
         if pos is None:
             raise SystemExit("starline-status: no position reported")
-        os.execvp("xdg-open", ["xdg-open", MAP_URL.format(lat=pos["x"], lon=pos["y"])])
+        os.execvp("open-url", ["open-url", MAP_URL.format(lat=pos["x"], lon=pos["y"])])
     if cmd == "raw":
         json.dump(devs, sys.stdout, ensure_ascii=False, indent=2)
         print()

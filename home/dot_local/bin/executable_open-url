@@ -1,0 +1,9 @@
+#!/bin/sh
+# Open a URL (or file) with the desktop's opener: xdg-open on Linux, open
+# on macOS. The bar scripts call this so they work under waybar and
+# sketchybar alike.
+
+if command -v xdg-open >/dev/null 2>&1; then
+    exec xdg-open "$@"
+fi
+exec open "$@"

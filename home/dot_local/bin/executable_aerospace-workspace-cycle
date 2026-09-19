@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Next/previous workspace on the focused monitor among the ones that
+# have windows (plus the focused one), with wrap-around: sway's
+# `workspace next_on_output`. AeroSpace's own `workspace next` walks the
+# empty persistent workspaces too.
+#
+# usage: aerospace-workspace-cycle next|prev
+
+set -euo pipefail
+
+dir="${1:?usage: aerospace-workspace-cycle next|prev}"
+focused=$(aerospace list-workspaces --focused)
+mapfile -t all < <(aerospace list-workspaces --monitor focused)
+mapfile -t used < <(aerospace list-workspaces --monitor focused --empty no)
+
+# the ring is the used workspaces in AeroSpace's order; a focused empty
+# one is not part of it (sway drops an empty workspace on leaving it):
+# from there, step to the nearest used one in that direction
+used_set=" ${used[*]} "
+ring=()
+pos=-1
+for ws in "${all[@]}"; do
+    case "$used_set" in *" $ws "*) ring+=("$ws") ;; esac
+    [ "$ws" = "$focused" ] && pos=$(( ${#ring[@]} - 1 ))
+done
+n=${#ring[@]}
+[ "$n" -gt 0 ] || exit 0
+
+# pos is the focused workspace's index in the ring, or, for one outside
+# the ring, the index of the last ring member before it (-1 for none):
+# next is the one after it either way, prev the one before (that very
+# member when outside)
+case "$used_set" in *" $focused "*) in_ring=1 ;; *) in_ring=0 ;; esac
+case $dir in
+    next) j=$(( (pos + 1) % n )) ;;
+    prev) j=$(( (pos + n - in_ring) % n )) ;;
+    *) echo "aerospace-workspace-cycle: next or prev" >&2; exit 2 ;;
+esac
+[ "${ring[$j]}" != "$focused" ] || exit 0
+exec aerospace workspace "${ring[$j]}"

@@ -7,6 +7,21 @@
 .config/fish/functions/hidefiles.fish
 .config/alacritty
 .docker
+# the macOS window manager and bar (sway/waybar counterparts)
+.config/aerospace
+.config/sketchybar
+.config/karabiner
+.local/bin/aerospace-focus-app
+.local/bin/aerospace-workspace-cycle
+.local/bin/screenshot-mac
+.local/bin/notify-mac
+.local/bin/ocr-mac
+.local/bin/qr-mac
+.local/bin/aerospace-bindings
+.local/bin/scratch-term-mac
+.local/bin/autostart-mac
+.local/bin/system-stats-mac
+.local/bin/screen-record-mac
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}
@@ -48,9 +63,6 @@
 .local/bin/disk-space-notify
 .local/bin/failed-units-notify
 .local/bin/fresh-workspace
-.local/bin/gitlab-status
-.local/bin/jira-status
-.local/bin/starline-status
 .local/bin/lock
 .local/bin/power
 .local/bin/qr-scan
@@ -65,13 +77,16 @@
 .local/bin/screen-record
 .local/bin/smart-screenshot
 .local/bin/cheatsheet
+# traffic and car modules stay on Linux
+.local/bin/car-traffic
+.local/bin/starline-status
+.config/starline-status
 .local/bin/sway-bindings
 .local/bin/zellij-bindings
 .local/bin/aerc-bindings
 .local/bin/suspend-toggle
 .local/bin/usb-storage
 .local/bin/notify-toggle
-.config/starline-status
 # mail stack (aerc/mbsync/notmuch) and its helpers are linux-only here
 .config/goimapnotify
 .config/msmtpq
@@ -81,10 +96,7 @@
 .chezmoiscripts/reload-aerc.sh
 # systemd user environment; PATH and the editor come from fish on macOS
 .config/environment.d
-.local/bin/sync-brave-wallpapers
 .local/bin/system-stats
-.local/bin/car-traffic
-.local/bin/weather
 .local/share/applications
 .local/share/flatpak
 {{ end }}

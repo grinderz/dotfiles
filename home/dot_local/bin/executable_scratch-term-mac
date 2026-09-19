@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Drop-down terminal (scratch-term on sway) emulated on AeroSpace, which
+# has no scratchpad: the terminal lives on the hidden workspace S when
+# put away. First use spawns an Alacritty titled "scratch" (dynamic
+# title off so the shell cannot rename it; the aerospace.toml rule floats
+# it); every later call toggles it between S and the focused workspace,
+# and every show centers it at 70% x 65% of the monitor it lands on.
+#
+# usage: scratch-term-mac          toggle
+#        scratch-term-mac count    windows parked on S (for the bar)
+
+set -euo pipefail
+
+scratch_ws=S
+
+if [ "${1:-}" = count ]; then
+    aerospace list-windows --workspace "$scratch_ws" --count 2>/dev/null || echo 0
+    exit 0
+fi
+
+# the last toggle's trace, for when a keypress does something unexpected
+log="${XDG_CACHE_HOME:-$HOME/.cache}/scratch-term-mac.log"
+mkdir -p "$(dirname "$log")"
+exec 2>"$log"
+set -x
+
+scratch_win() {
+    aerospace list-windows --monitor all --app-bundle-id org.alacritty \
+        --format '%{window-id}|%{window-title}|%{workspace}|%{app-pid}' 2>/dev/null \
+        | awk -F'|' '$2 == "scratch" { print $1 "|" $3 "|" $4; exit }'
+}
+
+# frame of the focused monitor as "x y w h" (global points, top-left
+# origin): sketchybar knows it, AeroSpace does not expose it
+monitor_frame() {
+    local screen
+    screen=$(aerospace list-monitors --focused --format '%{monitor-appkit-nsscreen-screens-id}')
+    sketchybar --query displays 2>/dev/null \
+        | jq -r --argjson id "${screen:-1}" '
+            .[] | select(.["arrangement-id"] == $id) | .frame
+            | "\(.x | floor) \(.y | floor) \(.w | floor) \(.h | floor)"' 2>/dev/null
+}
+
+# 70% x 65% of the monitor (minus the 30pt bar), centered: AeroSpace
+# cannot place floating windows, System Events can (the osascript runs
+# under AeroSpace's accessibility grant when started from a keybinding)
+place() {
+    local pid=$1 x y w h W H X Y
+    read -r x y w h < <(monitor_frame) || return 0
+    [ -n "${h:-}" ] || return 0
+    W=$((w * 70 / 100))
+    H=$(((h - 30) * 65 / 100))
+    X=$((x + (w - W) / 2))
+    Y=$((y + (h - 30 - H) / 2))
+    osascript \
+        -e "tell application \"System Events\" to tell (first application process whose unix id is $pid) to tell window 1" \
+        -e "set size to {$W, $H}" \
+        -e "set position to {$X, $Y}" \
+        -e "end tell" >/dev/null || true
+}
+
+win=$(scratch_win)
+
+if [ -z "$win" ]; then
+    # first use: spawn it roughly at the target size (Alacritty takes
+    # cells, ~9x22 pt at the font in alacritty.toml), then place it
+    read -r _ _ w h < <(monitor_frame) || true
+    cols=$(( ${w:-1512} * 70 / 100 / 9 ))
+    lines=$(( (${h:-982} - 30) * 65 / 100 / 22 ))
+    open -na Alacritty --args -T scratch \
+        -o window.dynamic_title=false \
+        -o "window.dimensions.columns=$cols" \
+        -o "window.dimensions.lines=$lines"
+    for _ in $(seq 1 25); do
+        sleep 0.2
+        win=$(scratch_win)
+        [ -n "$win" ] && break
+    done
+    [ -n "$win" ] || exit 0
+    place "${win##*|}"
+    exit 0
+fi
+
+IFS='|' read -r id ws pid <<<"$win"
+focused=$(aerospace list-workspaces --focused)
+
+if [ "$ws" = "$scratch_ws" ] || [ "$ws" != "$focused" ]; then
+    # bring it here (a scratch window left on another workspace counts as
+    # hidden too, like sway's scratchpad show), center it, focus it
+    aerospace move-node-to-workspace --window-id "$id" "$focused"
+    place "$pid"
+    aerospace focus --window-id "$id"
+else
+    # AeroSpace tends to bring S up on the other monitor once a window
+    # lands there (S is not visible before, it is after): remember what
+    # each monitor shows, park the window, and put that workspace back
+    before=$(aerospace list-workspaces --monitor all --visible \
+        --format '%{workspace}|%{monitor-id}')
+    aerospace move-node-to-workspace --window-id "$id" "$scratch_ws"
+    if aerospace list-workspaces --monitor all --visible | grep -qx "$scratch_ws"; then
+        smon=$(aerospace list-workspaces --monitor all --format '%{workspace}|%{monitor-id}' \
+            | awk -F'|' -v s="$scratch_ws" '$1 == s { print $2; exit }')
+        prev=$(awk -F'|' -v m="$smon" '$2 == m { print $1; exit }' <<<"$before")
+        if [ -n "$prev" ] && [ "$prev" != "$scratch_ws" ]; then
+            aerospace workspace "$prev"
+            aerospace workspace "$focused"
+        fi
+    fi
+fi

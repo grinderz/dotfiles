@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# dmenu-style picker: lines on stdin, the chosen line on stdout, exit 1
+# when nothing was picked. fuzzel under sway; on macOS, where no launcher
+# is installed, an AppleScript "choose from list" dialog.
+#
+# usage: menu-pick [--with-nth=N] [--prompt=TEXT]
+#   --with-nth=N   show only the N-th tab-separated column; the whole
+#                  line is still what comes back (fuzzel semantics)
+
+set -euo pipefail
+
+nth=""
+prompt=""
+for arg in "$@"; do
+    case $arg in
+        --with-nth=*) nth=${arg#*=} ;;
+        --prompt=*) prompt=${arg#*=} ;;
+        *) echo "menu-pick: unknown argument: $arg" >&2; exit 2 ;;
+    esac
+done
+
+if command -v fuzzel >/dev/null 2>&1; then
+    args=(--dmenu --width 100)
+    [ -n "$nth" ] && args+=("--with-nth=$nth")
+    [ -n "$prompt" ] && args+=("--prompt=$prompt")
+    exec fuzzel "${args[@]}"
+fi
+
+mapfile -t lines
+[ ${#lines[@]} -gt 0 ] || exit 1
+
+shown=()
+for line in "${lines[@]}"; do
+    if [ -n "$nth" ]; then
+        shown+=("$(cut -f "$nth" <<<"$line")")
+    else
+        shown+=("$line")
+    fi
+done
+
+# AppleScript list literal: backslashes and quotes escaped
+list=""
+for s in "${shown[@]}"; do
+    s=${s//\\/\\\\}
+    s=${s//\"/\\\"}
+    list+="\"$s\", "
+done
+list=${list%, }
+
+sel=$(osascript -e "choose from list {$list} with prompt \"${prompt:-pick}\" with title \"menu-pick\"") || exit 1
+[ "$sel" != false ] || exit 1
+
+for i in "${!shown[@]}"; do
+    if [ "${shown[$i]}" = "$sel" ]; then
+        printf '%s\n' "${lines[$i]}"
+        exit 0
+    fi
+done
+exit 1

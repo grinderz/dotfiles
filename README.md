@@ -460,6 +460,173 @@ start at the root's basename. Working on both machines at the same time is
 fine for sessions (one file each) but can leave a syncthing conflict copy
 of `memory/MEMORY.md`.
 
+### macOS window manager and bar
+
+AeroSpace and SketchyBar stand in for sway and waybar: same keys, same
+workspace numbers and labels, same app-to-workspace assignments, the bar
+at the bottom in the same blue. Same finger too: sway's `$mod` is Super,
+physically the Cmd key, so Karabiner-Elements swaps Cmd and Ctrl on the
+external keyboard (`.config/karabiner/karabiner.json`, rules scoped to
+that device) and AeroSpace binds `ctrl`. The physical Ctrl then carries
+the app shortcuts (Cmd+C/V under the Ctrl key, Linux-style, Cmd+Tab
+under Ctrl+Tab), and `alacritty.toml` turns the Cmd+<key> the terminal
+now sees back into control characters, so `^C`, `^R`, `^W` work as
+before (a real ctrl in the terminal is no option: AeroSpace grabs its
+ctrl keys globally and would take `^R` for resize mode); copy/paste in
+the terminal is Cmd+Shift+C/V, physically Ctrl+Shift+C/V like foot.
+AeroSpace grabs its keys globally: native Ctrl shortcuts of macOS apps
+(Ctrl+Tab tab cycling,
+Emacs keys in text fields) now sit on the physical Super and the bound
+ones (`ctrl-tab`, `ctrl-hjkl`, ...) are gone; browser tabs cycle with
+Cmd+Shift+[ ] instead. The builtin keyboard has no swap: physical Ctrl
+drives the windows there. Karabiner sits below WindowServer, so it is
+also the place to swallow a system shortcut macOS will not let go of
+(Cmd+Tab, Cmd+Alt+Esc): a manipulator with an empty `to`.
+Configs: `.config/aerospace/aerospace.toml` (chezmoi template) and
+`.config/sketchybar/`. Once per machine:
+
+```sh
+brew tap FelixKratz/formulae
+brew install sketchybar jq blueutil tesseract zbar macmon
+brew tap ungive/media-control && brew install media-control   # now playing
+brew install --cask nikitabobko/tap/aerospace sf-symbols font-sketchybar-app-font raycast
+brew install --cask karabiner-elements    # pkg: run in a real terminal, asks sudo
+brew tap mediosz/tap && brew trust mediosz/tap && brew install --cask swipeaerospace
+make dotfiles.apply
+brew services start sketchybar    # launchd, survives aerospace reloads
+open -a AeroSpace                 # registers itself as a login item
+```
+
+Run that `open` from a plain terminal, never from a shell inside Claude
+Code (or any tool that marks its children): `open` hands its environment
+to the app and AeroSpace hands it to every terminal it spawns
+(`inherit-env-vars`), so a `claude` started there sees
+`CLAUDE_CODE_CHILD_SESSION` and stops saving transcripts ("Transcript
+saving is off"). Relaunch with a clean environment when in doubt:
+
+```sh
+pkill -x AeroSpace
+launchctl submit -l aerospace-relaunch -- /usr/bin/open -a AeroSpace
+launchctl remove aerospace-relaunch
+```
+
+OCR (`ctrl-o`, `ocr-mac`) wants the Russian model next to the English
+one in a dir that survives brew upgrades:
+
+```sh
+mkdir -p ~/.local/share/tessdata
+curl -sfL -o ~/.local/share/tessdata/rus.traineddata \
+    https://github.com/tesseract-ocr/tessdata_fast/raw/main/rus.traineddata
+ln -sf /opt/homebrew/opt/tesseract/share/tessdata/eng.traineddata ~/.local/share/tessdata/
+```
+
+then in System Settings:
+
+* Karabiner-Elements (`brew install --cask karabiner-elements`, a pkg,
+  needs sudo in a real terminal): approve its driver extension and
+  grant what its settings window asks for. Karabiner owns
+  `karabiner.json` and rewrites it on every settings change, so the
+  rules come from a chezmoi `modify_` script that merges them into
+  whatever is there (no diff after a round trip, no `--force`). No
+  Modifier Keys swap in macOS on top of it
+* Privacy & Security → Accessibility: allow AeroSpace (it asks on first run)
+* optional: Control Center → "Automatically hide and show the menu
+  bar": Always (the bar carries the same information, the input source
+  in the `keyboard` item; AeroSpace keeps the windows clear of the
+  native menu bar either way)
+* Desktop & Dock: "Automatically rearrange Spaces based on most recent
+  use" off, "Displays have separate Spaces" on
+* SwipeAeroSpace is sway's four-finger workspace swipe, on three
+  fingers here (four land unevenly on the Magic Trackpad and every
+  other swipe was missed): allow it under Accessibility (not a Login
+  Item: `autostart-mac` starts it after AeroSpace is up, started
+  alongside it never connected), and set three fingers, natural direction, wrap-around,
+  skipping empty workspaces, no multi-workspace swipe (its menu bar
+  item, or `defaults write club.mediosz.SwipeAeroSpace fingers -string
+  Three`, `naturalSwipe -bool true`, `wrap -bool true`, `skip-empty
+  -bool true`, `multiSwipe -bool false`, then relaunch); three-finger
+  drag is off (it ate the first fingers of a swipe); macOS's own three-
+  and four-finger swipes
+  (Spaces, Mission Control, App Exposé) are switched off for both
+  trackpads (`TrackpadFourFingerHorizSwipeGesture` and friends = 0,
+  applied after a re-login)
+* Low Power Mode from the bar (`lowpower` toggle) needs `pmset` without
+  a password, `sudo visudo -f /etc/sudoers.d/lowpower`:
+  `<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1`;
+  without it the click opens the Battery settings
+* The Focus toggle in the bar (`focus`, waybar's notify/DND) works
+  through the Focus menu bar item, which has to be shown always:
+  `defaults -currentHost write com.apple.controlcenter FocusModes -int 18`
+  and `killall ControlCenter` (Control Center → Focus → "Always Show in
+  Menu Bar"). The bar clones that item's picture (the only readable
+  state, its accessibility attributes never change), a click opens its
+  popover and flips the Do Not Disturb checkbox, so
+  sketchybar goes under Privacy & Security → Accessibility (without it
+  the click opens the Focus settings) and under Full Disk Access for
+  the bell's color and popup, which read the DoNotDisturb assertions
+  store under ~/Library (re-grant after a brew upgrade moves the
+  binary). A Shortcut would be cleaner, but importing one needs an
+  iCloud login, and the system DND hotkey ignores synthetic key
+  events.
+
+Optional overrides in the private `chezmoi.toml`, all under
+`[data.desktop]`:
+
+```toml
+aerospace_mod = "alt"                            # default "ctrl" (see above)
+aerospace_monitor_odd  = ["dell.*", "samsung.*", "main"]  # 1 3 5 7 9: as sway,
+aerospace_monitor_even = ["2", "main"]                    # 2 4 6 8 10: right Dell
+```
+
+The bar runs the same module scripts as waybar (`weather`,
+`gitlab-status`, `jira-status`; the traffic and car modules stay on
+Linux): they
+print waybar JSON and `sketchybar/plugins/waybar.sh` paints it, text as
+the label, class as the color from `waybar/style.css`, tooltip as a popup
+under the mouse. The scripts stay portable through two helpers in
+`~/.local/bin`: `open-url` (xdg-open / open) and `menu-pick` (fuzzel /
+an AppleScript list dialog) for the pick menus. Each module hides itself
+without its setup, so on the Mac gitlab needs `glab auth login` and jira
+the `jira-cli` config and token. Bluetooth comes from `blueutil` (brew), what is
+playing from `media-control` (the mediaremote-adapter; sketchybar's own
+`media_change` event is dead on macOS 15.4+ where Apple locked
+MediaRemote down), polled every 5 s, a click toggles play/pause. The tray:
+sketchybar clones menu bar extras as read-only images
+(`TRAY_ALIASES` in `sketchybar/env.sh`, names from `sketchybar --query
+default_menu_items`, which needs Screen Recording for sketchybar);
+clicks do not reach the apps, the native menu bar is one mouse move to
+the top edge away, and the clones sit on the widest display only (the
+builtin screen has no room next to the centered window title). The
+wired link, the toggles (keep-awake via `caffeinate`, Low Power Mode,
+Focus), the power menu, the recording indicator, the system health
+(`system-stats-mac`: temperature on the bar, cpu/load/mem in the popup,
+sensors read by macmon without root) and the calendar / battery-time /
+Wi-Fi-signal popups are small plugins of their own.
+
+The sway session extras have macOS scripts of their own, all under
+`~/.local/bin` and bound in `aerospace.toml` (notifications through
+`notify-mac`, terminal-notifier in place of notify-send): `screenshot-mac` (area,
+clipboard, window, monitor; files land in `XDG_SCREENSHOTS_DIR`, the
+same path as on Linux), `ocr-mac`, `qr-mac`, `aerospace-bindings` (the
+cheatsheet, fzf in a floating terminal), `screen-record-mac` (one key
+starts and stops; the focused window's frame or the monitor, since
+screencapture has no interactive video area), `scratch-term-mac` (the
+drop-down terminal, parked on the hidden workspace S and centered with
+System Events on every show) and `autostart-mac` (after-startup-command:
+a random wallpaper when the wallpaper dir exists on the machine, the
+`dev` zellij and `cli` terminals on workspaces 2 and 1). Browser, chats
+and notes start as Login Items and the window rules place them. The
+launcher (`ctrl-d`) is Raycast; Spotlight is switched off on this
+machine, indexing (`sudo mdutil -a -i off && sudo mdutil -a -E`) and
+both shortcuts under Keyboard > Keyboard Shortcuts > Spotlight. The
+lock (`ctrl-esc`) is the system Lock Screen as a synthetic keystroke,
+Sequoia has no CGSession any more.
+
+Not carried over: focus-parent and mod+drag of tiles (AeroSpace has
+neither), media/brightness keys (macOS handles them natively), the mail
+stack, usb-storage (MountMate sits in the tray) and the battery charge
+limit (no CLI on macOS, AlDente if ever).
+
 ## Fish functions and abbreviations
 
 Autoloaded from `fish/functions/`; deps in parentheses are installed by

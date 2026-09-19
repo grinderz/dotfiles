@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# launch-or-focus for AeroSpace (the macOS side of launch-or-focus, which
+# speaks swaymsg): focus the first window of the app with the given bundle
+# id, launch the app when none is open.
+#
+# usage: aerospace-focus-app <bundle-id>
+
+set -euo pipefail
+
+id="${1:?usage: aerospace-focus-app <bundle-id>}"
+
+win="$(aerospace list-windows --monitor all --app-bundle-id "$id" \
+    --format '%{window-id}' | head -n1)"
+if [ -n "$win" ]; then
+    aerospace focus --window-id "$win"
+else
+    open -b "$id"
+fi

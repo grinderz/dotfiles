@@ -1,0 +1,298 @@
+{{- /* project filter for the gitlab module comes from the private
+       chezmoi.toml ([data.work] gitlab_exclude), same as waybar */ -}}
+{{- $gitlabExclude := "" -}}
+{{- if hasKey . "work" }}{{ if hasKey .work "gitlab_exclude" }}{{ $gitlabExclude = .work.gitlab_exclude }}{{ end }}{{ end -}}
+{{- $gitlab := "gitlab-status" -}}
+{{- if $gitlabExclude }}{{ $gitlab = printf "gitlab-status --exclude %s" ($gitlabExclude | shellQuote) }}{{ end -}}
+#!/usr/bin/env bash
+# sketchybar config: the waybar bar for macOS. Same placement (bottom,
+# 30px, the #285577 blue), same reading order: workspaces and mode on the
+# left, the focused window in the middle, status on the right. Started by
+# launchd (`brew services start sketchybar`) so it outlives AeroSpace
+# reloads; the workspace row follows AeroSpace through the
+# aerospace_workspace_change event (exec-on-workspace-change in
+# aerospace.toml).
+
+set -euo pipefail
+
+PLUGIN_DIR="$CONFIG_DIR/plugins"
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=env.sh
+. "$CONFIG_DIR/env.sh"
+
+# a reload drops every popup row while popup_lines' row counts (env.sh)
+# would survive in the cache: start them over
+rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar/popup-"*.rows
+
+sketchybar --bar position=bottom height=30 color=$BAR_COLOR sticky=on \
+    padding_left=4 padding_right=4 shadow=off
+
+sketchybar --default \
+    padding_left=2 padding_right=2 \
+    icon.font="Hack Nerd Font:Regular:14.0" \
+    label.font="Hack Nerd Font:Regular:14.0" \
+    icon.color=0xffffffff label.color=0xffffffff \
+    icon.padding_left=4 icon.padding_right=2 \
+    label.padding_left=2 label.padding_right=4 \
+    background.height=24 background.corner_radius=4
+
+# (click_script runs with sketchybar's own PATH, which has brew but not
+# ~/.local/bin: scripts from there are named with their full path)
+
+# --- left: workspaces and binding mode ---------------------------------
+
+sketchybar --add event aerospace_workspace_change
+
+for entry in $WORKSPACES; do
+    ws="${entry%%:*}"
+    sketchybar --add item "space.$ws" left \
+        --set "space.$ws" icon="$entry" label.drawing=off \
+            icon.padding_left=6 icon.padding_right=6 \
+            background.color=$FOCUSED_COLOR background.drawing=off \
+            drawing=off \
+            click_script="aerospace workspace $ws" \
+            script="$PLUGIN_DIR/scroll.sh" \
+        --subscribe "space.$ws" mouse.scrolled
+done
+
+# one hidden item repaints the whole row: focused gets the background,
+# empty ones disappear (waybar shows existing workspaces only), and a
+# poll covers windows moved between workspaces without a focus change
+sketchybar --add item workspaces.driver left \
+    --set workspaces.driver drawing=off update_freq=10 \
+        script="$PLUGIN_DIR/workspaces.sh" \
+    --subscribe workspaces.driver aerospace_workspace_change \
+        front_app_switched display_change system_woke
+
+# windows parked on the hidden S workspace (sway/scratchpad)
+sketchybar --add item scratchpad left \
+    --set scratchpad drawing=off update_freq=10 \
+        script="$PLUGIN_DIR/scratchpad.sh" \
+        click_script="$HOME/.local/bin/scratch-term-mac" \
+    --subscribe scratchpad aerospace_workspace_change front_app_switched
+
+# resize/service mode indicator, toggled straight from aerospace.toml
+sketchybar --add item mode left \
+    --set mode drawing=off icon.drawing=off \
+        label.font="Hack Nerd Font:Italic:14.0" \
+        background.color=$FOCUSED_COLOR background.drawing=on
+
+# what is playing (waybar's mpris): on the left, after the workspaces;
+# the right side is too wide already for it next to a centered title
+sketchybar --add item media left \
+    --set media drawing=off label.max_chars=30 update_freq=5 padding_left=8 \
+        script="$PLUGIN_DIR/media.sh" \
+    --subscribe media mouse.clicked system_woke
+
+# --- the focused window: centered on the widest display like waybar,
+# left after the workspaces on the others (the builtin screen has no
+# room in the middle next to its right cluster); tray.sh assigns the
+# displays, front_app.sh fills both
+
+sketchybar --add item front_app center \
+    --set front_app icon.drawing=off label.max_chars=45 \
+        script="$PLUGIN_DIR/front_app.sh" \
+    --subscribe front_app front_app_switched title_change \
+        aerospace_workspace_change
+sketchybar --add item front_app.small left \
+    --set front_app.small icon.drawing=off label.max_chars=40 padding_left=12
+
+# --- right: status, rightmost first -----------------------------------
+
+# every popup off on app switch / display change (plugins/popups.sh),
+# and whenever the cursor is away from the bar and its popups
+# (popup-watch, compiled like input-source-watch above: sketchybar's
+# mouse.exited.global misses a cursor leaving straight onto a window)
+sketchybar --add item popups.driver right \
+    --set popups.driver drawing=off script="$PLUGIN_DIR/popups.sh" \
+    --subscribe popups.driver front_app_switched display_change
+POPWATCH="${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar/popup-watch"
+if [ ! -x "$POPWATCH" ] || [ "$CONFIG_DIR/popup-watch.swift" -nt "$POPWATCH" ]; then
+    swiftc -O -o "$POPWATCH" "$CONFIG_DIR/popup-watch.swift"
+fi
+pkill -x popup-watch || true
+(nohup "$POPWATCH" "CONFIG_DIR='$CONFIG_DIR' '$PLUGIN_DIR/popups.sh'" >/dev/null 2>&1 &)
+
+# popup shared by every module with a tooltip: bar-colored, framed, one
+# label per line (the plugins fill it, hover shows it)
+popup=(
+    popup.align=right
+    "popup.background.color=$BAR_COLOR"
+    popup.background.border_width=1
+    popup.background.border_color=0x59ffffff
+    popup.background.corner_radius=6
+    popup.background.padding_left=4
+    popup.background.padding_right=4
+)
+
+# power menu (waybar's custom/power): the click opens the picker
+sketchybar --add item power right \
+    --set power icon="⏻" label.drawing=off icon.padding_right=6 \
+        script="$PLUGIN_DIR/power.sh" \
+    --subscribe power mouse.clicked
+
+# toggles (waybar's #toggles drawer): Focus / do-not-disturb, Low Power
+# Mode, keep-awake; each bright while on, all behind the gear handle
+# (plugins/drawer.sh shows and hides them on a click). Focus is a clone
+# of the menu bar's own Focus item (kept visible always, see env.sh /
+# README): the picture tells the state; the click toggles it
+sketchybar --add item toggles.handle right \
+    --set toggles.handle icon="⚙" label.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/drawer.sh" \
+    --subscribe toggles.handle mouse.clicked mouse.entered mouse.exited.global
+# (an alias runs no script of its own, the click raises the event and a
+# hidden item does the work)
+sketchybar --add event focus_toggle
+sketchybar --add alias "Control Center,FocusModes" right \
+    --set "Control Center,FocusModes" icon.drawing=off label.drawing=off \
+        alias.update_freq=5 \
+        click_script="sketchybar --trigger focus_toggle"
+# the bell is the button (waybar's icon), the moon next to it the state
+# (the bell handles its own click in the script: a click_script that
+# calls `sketchybar --trigger` while sketchybar is still busy with the
+# click crashed it with a double free)
+sketchybar --add item focus right \
+    --set focus icon="󰂛" label.drawing=off update_freq=30 "${popup[@]}" \
+        script="$PLUGIN_DIR/focus.sh" \
+    --subscribe focus mouse.clicked focus_toggle system_woke mouse.entered mouse.exited.global
+
+sketchybar --add item lowpower right \
+    --set lowpower icon="󰌪" label.drawing=off update_freq=60 "${popup[@]}" \
+        script="$PLUGIN_DIR/lowpower.sh" \
+    --subscribe lowpower mouse.clicked power_source_change mouse.entered mouse.exited.global
+
+# keep-awake toggle (waybar's custom/nosuspend): caffeinate on click
+sketchybar --add item nosuspend right \
+    --set nosuspend icon="󰅶" label.drawing=off update_freq=60 "${popup[@]}" \
+        script="$PLUGIN_DIR/nosuspend.sh" \
+    --subscribe nosuspend mouse.clicked mouse.entered mouse.exited.global
+
+sketchybar --add item clock right \
+    --set clock update_freq=10 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/clock.sh" \
+        click_script="open -a Calendar" \
+    --subscribe clock mouse.entered mouse.exited.global
+
+# input source stands in for sway/language now that the native menu bar
+# is hidden. input-source-watch turns the macOS layout notification into
+# the input_source_change event; the slow poll only covers a dead watcher
+sketchybar --add event input_source_change
+sketchybar --add item keyboard right \
+    --set keyboard update_freq=60 icon.drawing=off \
+        script="$PLUGIN_DIR/keyboard.sh" \
+    --subscribe keyboard input_source_change
+# compiled on first run (and again when the source changes): a swift
+# script would run under the interpreter, whose long command line makes
+# the single-instance pkill below unreliable
+WATCHER="${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar/input-source-watch"
+if [ ! -x "$WATCHER" ] || [ "$CONFIG_DIR/input-source-watch.swift" -nt "$WATCHER" ]; then
+    mkdir -p "$(dirname "$WATCHER")"
+    swiftc -O -o "$WATCHER" "$CONFIG_DIR/input-source-watch.swift"
+fi
+pkill -x input-source-watch || true
+(nohup "$WATCHER" >/dev/null 2>&1 &)
+# same build for the Bluetooth battery reader (plugins/bluetooth.sh)
+BTBAT="${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar/bt-battery"
+if [ ! -x "$BTBAT" ] || [ "$CONFIG_DIR/bt-battery.swift" -nt "$BTBAT" ]; then
+    swiftc -O -o "$BTBAT" "$CONFIG_DIR/bt-battery.swift"
+fi
+
+# --- system group: battery, audio, wifi, bluetooth (waybar's #system
+# plus the bluetooth from #devices)
+
+sketchybar --add item battery right \
+    --set battery update_freq=120 "${popup[@]}" \
+        script="$PLUGIN_DIR/battery.sh" \
+    --subscribe battery system_woke power_source_change mouse.entered mouse.exited.global
+
+sketchybar --add item volume right \
+    --set volume script="$PLUGIN_DIR/volume.sh" \
+        click_script="open 'x-apple.systempreferences:com.apple.Sound-Settings.extension'" \
+    --subscribe volume volume_change
+
+sketchybar --add item wifi right \
+    --set wifi update_freq=30 script="$PLUGIN_DIR/wifi.sh" \
+        click_script="open 'x-apple.systempreferences:com.apple.Network-Settings.extension'" \
+    --subscribe wifi wifi_change system_woke
+
+# the wired link (waybar's network#eth), hidden while the default route
+# is wireless
+sketchybar --add item eth right \
+    --set eth update_freq=30 script="$PLUGIN_DIR/eth.sh" "${popup[@]}" \
+        click_script="open 'x-apple.systempreferences:com.apple.Network-Settings.extension'" \
+    --subscribe eth system_woke mouse.entered mouse.exited.global
+
+# system health (system-stats-mac via macmon): temperature on the bar,
+# cpu/load/mem in the popup
+sketchybar --add item stats right \
+    --set stats update_freq=30 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh system-stats-mac" \
+    --subscribe stats system_woke mouse.entered mouse.exited.global
+
+sketchybar --add item bluetooth right \
+    --set bluetooth update_freq=30 script="$PLUGIN_DIR/bluetooth.sh" "${popup[@]}" \
+        click_script="open 'x-apple.systempreferences:com.apple.BluetoothSettings'" \
+    --subscribe bluetooth system_woke mouse.entered mouse.exited.global
+
+# --- work group: gitlab pipelines/MRs and jira issues, the same scripts
+# waybar runs (they hide themselves without a glab / jira login); left
+# click picks one to open, right click opens the dashboard
+
+sketchybar --add item jira right \
+    --set jira update_freq=300 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh jira-status --sprint" \
+        click_script="$PLUGIN_DIR/click.sh 'jira-status --sprint pick' 'jira-status open'" \
+    --subscribe jira system_woke mouse.entered mouse.exited.global
+
+sketchybar --add item gitlab right \
+    --set gitlab update_freq=120 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh {{ $gitlab }}" \
+        click_script="$PLUGIN_DIR/click.sh '{{ $gitlab }} pick' 'gitlab-status open'" \
+    --subscribe gitlab system_woke mouse.entered mouse.exited.global
+
+# --- outside: weather (waybar's #outside also has the traffic and the
+# car, both stay on Linux)
+
+sketchybar --add item weather right \
+    --set weather update_freq=900 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh weather" \
+    --subscribe weather system_woke mouse.entered mouse.exited.global
+
+# --- ungrouped, leftmost: the recording indicator and the tray clones
+
+sketchybar --add event recording_change
+sketchybar --add item recording right \
+    --set recording update_freq=60 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh screen-record-mac status" \
+        click_script="$HOME/.local/bin/screen-record-mac" \
+    --subscribe recording recording_change mouse.entered mouse.exited.global
+
+
+for alias in "${TRAY_ALIASES[@]}"; do
+    sketchybar --add alias "$alias" right \
+        --set "$alias" icon.drawing=off label.drawing=off \
+            alias.color=0xffffffff alias.update_freq=5
+done
+# pin them to the widest display, again whenever monitors come and go
+sketchybar --add item tray.driver right \
+    --set tray.driver drawing=off script="$PLUGIN_DIR/tray.sh" \
+    --subscribe tray.driver display_change
+
+
+# framed clusters like waybar's groups (#system, #work, #outside)
+sketchybar --add bracket toggles toggles.handle nosuspend lowpower focus "Control Center,FocusModes" \
+    --set toggles background.color=0x26000000 \
+        background.border_color=0x59ffffff background.border_width=1 \
+        background.corner_radius=6 background.height=26
+for group in "system:battery volume wifi eth bluetooth stats" "work:jira gitlab" \
+             "outside:weather"; do
+    # shellcheck disable=SC2086
+    sketchybar --add bracket "${group%%:*}" ${group#*:} \
+        --set "${group%%:*}" background.color=0x26000000 \
+            background.border_color=0x59ffffff background.border_width=1 \
+            background.corner_radius=6 background.height=26
+done
+
+sketchybar --update
+# the drawer as it was left (its items start drawn, the handle hides them)
+"$PLUGIN_DIR/drawer.sh"

@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+# chezmoi modify script: Karabiner-Elements owns ~/.config/karabiner/
+# karabiner.json and rewrites it whenever its settings are touched, so
+# the file is not replaced but edited in place: the current contents come
+# in on stdin, the rules below are put into the selected profile (any rule
+# whose description starts with "ZMK keyboard:" is ours and gets replaced,
+# other rules stay), everything else is kept as it is. Key order and
+# indentation match Karabiner's own writer, so a round trip leaves no diff.
+#
+# The rules: Cmd and Ctrl are swapped on the ZMK keyboard so that the
+# physical Super key drives AeroSpace (ctrl) and the physical Ctrl carries
+# the app shortcuts (Cmd+C/V under it, Linux-style). The swap is the same
+# in every app: AeroSpace grabs its ctrl keys globally, so a terminal that
+# received a real ctrl would lose ^R, ^W, ^F ... to it; alacritty.toml
+# turns the Cmd+<key> the terminal sees back into control characters
+# instead. Karabiner sits below WindowServer, so this is also the place to
+# swallow a system shortcut macOS will not let go of (a manipulator with
+# an empty `to`).
+
+import json
+import sys
+
+ZMK = [{"vendor_id": 7504, "product_id": 24926}]
+OURS = "ZMK keyboard:"
+
+
+def swap(src, dst, description):
+    return {
+        "description": description,
+        "manipulators": [
+            {
+                "type": "basic",
+                "from": {"key_code": f"{side}_{src}", "modifiers": {"optional": ["any"]}},
+                "to": [{"key_code": f"{side}_{dst}"}],
+                "conditions": [{"type": "device_if", "identifiers": ZMK}],
+            }
+            for side in ("left", "right")
+        ],
+    }
+
+
+RULES = [
+    swap("command", "control", f"{OURS} physical Super sends ctrl (AeroSpace's modifier)"),
+    swap("control", "command", f"{OURS} physical Ctrl sends cmd (the app shortcuts)"),
+]
+
+raw = sys.stdin.read()
+config = json.loads(raw) if raw.strip() else {}
+profiles = config.setdefault("profiles", [])
+selected = next((p for p in profiles if p.get("selected")), None)
+if selected is None:
+    selected = {"name": "Default profile", "selected": True,
+                "virtual_hid_keyboard": {"keyboard_type_v2": "ansi"}}
+    profiles.append(selected)
+rules = selected.setdefault("complex_modifications", {}).setdefault("rules", [])
+rules[:] = RULES + [r for r in rules if not str(r.get("description", "")).startswith(OURS)]
+
+json.dump(config, sys.stdout, indent=4, ensure_ascii=False, sort_keys=True)
+sys.stdout.write("\n")

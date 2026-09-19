@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Toggle screen recording with screencapture (screen-record on sway):
+# the first call starts, the next one stops, so a single binding does
+# both. Files land in ~/videos as rec-YYYYmmdd-HHMMSS.mov (XDG_VIDEOS_DIR
+# when set, the Linux default otherwise); start and stop raise
+# notifications and poke the bar.
+#
+# usage: screen-record-mac [window|output|status]
+#   window   the focused AeroSpace window's rect (sway's region mode had
+#            a mouse selection; screencapture cannot select a video area
+#            interactively, the window frame from System Events stands in)
+#   output   the focused monitor (default)
+#   status   waybar json for the bar's recording indicator
+
+set -euo pipefail
+
+state="${XDG_CACHE_HOME:-$HOME/.cache}/screen-record-mac"
+mkdir -p "$state"
+pidfile="$state/pid"
+pathfile="$state/path"
+
+notify() { notify-mac "$1" screen-record "$2"; }
+
+running() {
+    [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null
+}
+
+if [ "${1:-}" = status ]; then
+    if running; then
+        printf '{"text": "REC", "tooltip": "recording, click to stop", "class": "recording"}\n'
+    else
+        printf '{"text": ""}\n'
+    fi
+    exit 0
+fi
+
+# a second invocation stops the running recording, whatever mode started it
+if running; then
+    kill -INT "$(cat "$pidfile")" 2>/dev/null || true
+    for _ in $(seq 50); do
+        running || break
+        sleep 0.1
+    done
+    file=$(cat "$pathfile" 2>/dev/null || echo unknown)
+    rm -f "$pidfile" "$pathfile"
+    sketchybar --trigger recording_change >/dev/null 2>&1 || true
+    size=$(du -h "$file" 2>/dev/null | cut -f1)
+    notify "Recording saved" "${file##*/}${size:+ ($size)}"
+    exit 0
+fi
+
+mode="${1:-output}"
+# the same default as user-dirs.dirs on Linux
+dir="${XDG_VIDEOS_DIR:-$HOME/videos}"
+mkdir -p "$dir"
+file="$dir/rec-$(date +%Y%m%d-%H%M%S).mov"
+
+args=(-x -v)
+case $mode in
+    window)
+        pid=$(aerospace list-windows --focused --format '%{app-pid}')
+        title=$(aerospace list-windows --focused --format '%{window-title}')
+        title=${title//\\/\\\\}
+        title=${title//\"/\\\"}
+        # position and size of that window through accessibility (the
+        # osascript runs under AeroSpace's grant when bound to a key)
+        rect=$(osascript \
+            -e "tell application \"System Events\" to tell (first application process whose unix id is $pid)" \
+            -e "set w to first window whose name is \"$title\"" \
+            -e "set {x, y} to position of w" -e "set {cw, ch} to size of w" \
+            -e "return (x as text) & \",\" & (y as text) & \",\" & (cw as text) & \",\" & (ch as text)" \
+            -e "end tell" 2>/dev/null || true)
+        if [ -z "$rect" ]; then
+            notify "Recording" "no window rect, recording the monitor instead"
+            mode=output
+        else
+            args+=(-R "$rect")
+            what="window"
+        fi
+        ;;
+esac
+if [ "$mode" = output ]; then
+    n=$(aerospace list-monitors --focused --format '%{monitor-appkit-nsscreen-screens-id}')
+    args+=(-D "${n:-1}")
+    what="monitor ${n:-1}"
+fi
+
+printf '%s\n' "$file" >"$pathfile"
+# screencapture -v stops on any byte from stdin (and on EOF, so /dev/null
+# would end it at once): feed it a fifo nobody writes to
+fifo="$state/stdin"
+[ -p "$fifo" ] || mkfifo "$fifo"
+exec 3<>"$fifo"
+screencapture "${args[@]}" "$file" <&3 >/dev/null 2>&1 &
+echo $! >"$pidfile"
+sketchybar --trigger recording_change >/dev/null 2>&1 || true
+notify "Recording started" "$what → ${file##*/}"
+wait "$(cat "$pidfile")" || true

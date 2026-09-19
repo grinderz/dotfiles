@@ -7,7 +7,7 @@
 
 {{- if hasKey .desktop "traffic_map_url" }}
 if [ "$1" = open ]; then
-    exec xdg-open {{ .desktop.traffic_map_url | shellQuote }}
+    exec open-url {{ .desktop.traffic_map_url | shellQuote }}
 fi
 {{- end }}
 

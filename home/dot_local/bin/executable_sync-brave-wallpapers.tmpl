@@ -6,6 +6,8 @@
 set -eu
 
 root="$HOME/.config/BraveSoftware/Brave-Browser"
+# macOS keeps the profile under Application Support (note the space)
+[ -d "$root" ] || root="$HOME/Library/Application Support/BraveSoftware/Brave-Browser"
 
 dest={{ .desktop.wallpaper_dir | shellQuote }}
 case "$dest" in "~"*) dest="$HOME${dest#\~}" ;; esac
@@ -15,7 +17,8 @@ manifests=$(grep -ls 'Brave NTP background images' "$root"/*/*/manifest.json 2>/
 mkdir -p "$dest"
 
 added=0
-for manifest in $manifests; do
+# one manifest per line: the path may contain spaces
+while IFS= read -r manifest; do
     src=${manifest%/manifest.json}
     for img in "$src"/*.jpg "$src"/*.png "$src"/*.webp; do
         [ -e "$img" ] || continue
@@ -26,6 +29,8 @@ for manifest in $manifests; do
             added=$((added + 1))
         fi
     done
-done
+done <<EOF_MANIFESTS
+$manifests
+EOF_MANIFESTS
 
 echo "$added new, $(ls "$dest" | wc -l) total in $dest"

@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Keybinding cheatsheet generated from the live AeroSpace config, so it
+# can never drift from reality (sway-bindings for macOS): every binding
+# with its trailing or preceding comment, non-main modes prefixed. In a
+# terminal the list goes through fzf (Escape closes); started from a
+# keybinding (no tty) it opens itself in a floating Alacritty window,
+# which the aerospace.toml rule on the "cheatsheet" title floats.
+
+set -euo pipefail
+
+config="${XDG_CONFIG_HOME:-$HOME/.config}/aerospace/aerospace.toml"
+[ -r "$config" ] || exit 0
+
+if [ ! -t 1 ]; then
+    exec open -na Alacritty --args -T cheatsheet -e "$0"
+fi
+
+awk '
+    /^\[mode\.[^.]+\.binding\]/ {
+        mode = $0
+        sub(/^\[mode\./, "", mode)
+        sub(/\.binding\].*/, "", mode)
+        comment = ""
+        next
+    }
+    /^\[/ { mode = ""; next }
+    /^[[:space:]]*#/ {
+        c = $0
+        sub(/^[[:space:]]*#[[:space:]]*/, "", c)
+        comment = (comment == "" ? c : comment " " c)
+        next
+    }
+    mode != "" && /^[[:space:]]*[a-zA-Z0-9-]+[[:space:]]*=/ {
+        keys = $0
+        sub(/^[[:space:]]*/, "", keys)
+        sub(/[[:space:]]*=.*/, "", keys)
+        if (mode != "main") keys = mode ": " keys
+        cmd = $0
+        sub(/^[^=]*=[[:space:]]*/, "", cmd)
+        # the command is the description, the comment (trailing, else
+        # the block above, which often covers a whole group) the hint
+        note = ""
+        if (match(cmd, /[[:space:]]#[[:space:]]*/)) {
+            note = substr(cmd, RSTART + RLENGTH)
+            cmd = substr(cmd, 1, RSTART - 1)
+        } else if (comment != "")
+            note = comment
+        gsub(/\047/, "", cmd)
+        gsub(/exec-and-forget /, "", cmd)
+        if (length(cmd) > 44) cmd = substr(cmd, 1, 43) "…"
+        if (length(note) > 70) note = substr(note, 1, 69) "…"
+        printf "%-26s %-44s %s\n", keys, cmd, note
+        comment = ""
+        next
+    }
+    /^[[:space:]]*$/ { next }
+    { comment = "" }
+' "$config" | fzf --no-sort --layout=reverse --prompt='aerospace> ' >/dev/null || true

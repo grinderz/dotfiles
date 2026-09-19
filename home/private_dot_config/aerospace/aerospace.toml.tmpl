@@ -1,0 +1,285 @@
+{{- /* macOS counterpart of the sway config: same keys, same workspace
+       numbering, same app-to-workspace assignments, same finger: sway's
+       $mod is Super, physically the Cmd key, and Cmd/Ctrl are swapped for
+       the external keyboard in System Settings > Keyboard > Modifier
+       Keys, so that key sends ctrl and the physical Ctrl carries the app
+       shortcuts (Cmd+C/V under the Ctrl key, Linux-style). AeroSpace
+       grabs its keys globally, so ctrl+<letter> for every letter bound
+       below never reaches an app; the shell is unaffected since the
+       physical Ctrl sends Cmd there and alacritty.toml turns Cmd+<key>
+       back into the control characters. The builtin keyboard has no swap:
+       physical Ctrl drives the windows, Cmd stays Cmd. aerospace_mod in
+       the private chezmoi.toml under [data.desktop] moves everything to
+       another modifier, e.g. "alt". */ -}}
+{{- $mod := dig "desktop" "aerospace_mod" "ctrl" . -}}
+{{- /* workspace to monitor preference, the sway rules: odd workspaces
+       on the left Dell, then the Samsung, then the builtin screen; even
+       ones on the right Dell, then the builtin. AeroSpace patterns are
+       regexes on the monitor name (first match in left-to-right order),
+       1-based indexes in that order, or main; both Dells share a name,
+       so "the right Dell" is index 2 (with one Dell left of the laptop
+       that is the laptop, like eDP-1 on sway). Override with
+       aerospace_monitor_odd / _even under [data.desktop]. */ -}}
+{{- $odd := dig "desktop" "aerospace_monitor_odd" (list "dell.*" "samsung.*" "main") . -}}
+{{- $even := dig "desktop" "aerospace_monitor_even" (list "2" "main") . -}}
+# managed by chezmoi: home/private_dot_config/aerospace/aerospace.toml.tmpl
+# reference: https://nikitabobko.github.io/AeroSpace/guide
+
+config-version = 2
+
+# a LaunchAgent is written on the first `aerospace` run with this on
+start-at-login = true
+# wallpaper and the dev/cli terminals, what sway execs at session start
+after-startup-command = ['exec-and-forget autostart-mac']
+auto-reload-config = true
+
+# i3 semantics: `split` only works with the container normalizations off,
+# otherwise AeroSpace flattens single-child containers behind your back
+enable-normalization-flatten-containers = false
+enable-normalization-opposite-orientation-for-nested-containers = false
+
+accordion-padding = 30
+default-root-container-layout = 'tiles'
+default-root-container-orientation = 'auto'
+
+on-focused-monitor-changed = ['move-mouse monitor-lazy-center']
+automatically-unhide-macos-hidden-apps = true
+
+# the numbered workspaces stay listed in the bar even while empty
+persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]
+
+focus-follows-mouse.enabled = false
+key-mapping.preset = 'qwerty'
+
+# no gaps like sway's hide_edge_borders smart; the bottom one is the
+# sketchybar height (--bar height in sketchybarrc), AeroSpace only knows
+# about the native menu bar
+gaps.inner.horizontal = 0
+gaps.inner.vertical =   0
+gaps.outer.left =       0
+gaps.outer.top =        0
+gaps.outer.right =      0
+gaps.outer.bottom =     30
+
+# the bar redraws its workspace row on every switch (plugins/workspaces.sh
+# subscribes to this event)
+exec-on-workspace-change = ['/bin/bash', '-c',
+    'sketchybar --trigger aerospace_workspace_change FOCUSED_WORKSPACE=$AEROSPACE_FOCUSED_WORKSPACE'
+]
+
+# sketchybar and the helper scripts live outside the LaunchAgent PATH
+# (tables from here on: no top-level keys below this line)
+[exec]
+inherit-env-vars = true
+[exec.env-vars]
+PATH = '/opt/homebrew/bin:${HOME}/.local/bin:${PATH}'
+
+# odd workspaces on the left Dell, even on the right one, the builtin
+# screen as the fallback, like the sway config (see the top comment)
+[workspace-to-monitor-force-assignment]
+{{- range $i := list 1 3 5 7 9 }}
+{{ $i }} = {{ $odd | toJson }}
+{{- end }}
+{{- range $i := list 2 4 6 8 10 }}
+{{ $i }} = {{ $even | toJson }}
+{{- end }}
+
+# long-lived apps open on their dedicated workspace, same numbers as sway:
+# browser 3, work browser 5, IDE 4, notes 7, chats 9 (no mail stack here)
+[[on-window-detected]]
+if.app-id = 'com.brave.Browser'
+run = 'move-node-to-workspace 3'
+
+[[on-window-detected]]
+if.app-id = 'com.jetbrains.pycharm'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'com.jetbrains.goland'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'com.jetbrains.datagrip'
+run = 'move-node-to-workspace 4'
+
+[[on-window-detected]]
+if.app-id = 'org.mozilla.firefox'
+run = 'move-node-to-workspace 5'
+
+[[on-window-detected]]
+if.app-id = 'md.obsidian'
+run = 'move-node-to-workspace 7'
+
+[[on-window-detected]]
+if.app-id = 'one.ayugram.AyuGramDesktop'
+run = 'move-node-to-workspace 9'
+
+[[on-window-detected]]
+if.app-id = 'ru.keepcoder.Telegram'
+run = 'move-node-to-workspace 9'
+
+# dialogs that make no sense tiled: the GPG/YubiKey pin prompt (as in
+# sway), Finder and System Settings windows
+[[on-window-detected]]
+if.app-id = 'org.gpgtools.pinentry-mac'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.finder'
+run = 'layout floating'
+
+# terminals with a fixed title (dynamic title off, so the shell cannot
+# rename them): the cheatsheet (aerospace-bindings) and the drop-down
+# terminal (scratch-term-mac) float over the layout, the autostart
+# terminals (autostart-mac) land on their workspaces like foot-dev and
+# foot-cli in the sway config
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
+if.window-title-regex-substring = '^cheatsheet$'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
+if.window-title-regex-substring = '^scratch$'
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
+if.window-title-regex-substring = '^dev$'
+run = 'move-node-to-workspace 2'
+
+[[on-window-detected]]
+if.app-id = 'org.alacritty'
+if.window-title-regex-substring = '^cli$'
+run = 'move-node-to-workspace 1'
+
+[[on-window-detected]]
+if.app-id = 'com.apple.systempreferences'
+run = 'layout floating'
+
+[mode.main.binding]
+    # Basics
+    {{ $mod }}-enter = 'exec-and-forget open -na Alacritty'
+    {{ $mod }}-shift-q = 'close'
+    {{ $mod }}-shift-c = 'reload-config'
+    {{ $mod }}-f = 'fullscreen'
+    {{ $mod }}-shift-space = 'layout floating tiling'
+
+    # lock the screen ($mod+Escape in sway): the system Lock Screen
+    # (Ctrl+Cmd+Q) as a synthetic keystroke, the only way left since
+    # Sequoia dropped CGSession; the osascript inherits AeroSpace's
+    # accessibility grant, and synthetic keys bypass the Cmd/Ctrl swap
+    {{ $mod }}-esc = '''exec-and-forget osascript -e 'tell application "System Events" to keystroke "q" using {command down, control down}' '''
+
+    # Moving around: vim keys and arrows, shift moves the window
+    {{ $mod }}-h = 'focus left'
+    {{ $mod }}-j = 'focus down'
+    {{ $mod }}-k = 'focus up'
+    {{ $mod }}-l = 'focus right'
+    {{ $mod }}-left = 'focus left'
+    {{ $mod }}-down = 'focus down'
+    {{ $mod }}-up = 'focus up'
+    {{ $mod }}-right = 'focus right'
+
+    {{ $mod }}-shift-h = 'move left'
+    {{ $mod }}-shift-j = 'move down'
+    {{ $mod }}-shift-k = 'move up'
+    {{ $mod }}-shift-l = 'move right'
+    {{ $mod }}-shift-left = 'move left'
+    {{ $mod }}-shift-down = 'move down'
+    {{ $mod }}-shift-up = 'move up'
+    {{ $mod }}-shift-right = 'move right'
+
+    # window to the neighbouring monitor ($mod+less / $mod+greater in sway)
+    {{ $mod }}-shift-comma = 'move-node-to-monitor --wrap-around left'
+    {{ $mod }}-shift-period = 'move-node-to-monitor --wrap-around right'
+
+    # Workspaces
+{{- range $i := list 1 2 3 4 5 6 7 8 9 }}
+    {{ $mod }}-{{ $i }} = 'workspace {{ $i }}'
+{{- end }}
+    {{ $mod }}-0 = 'workspace 10'
+{{- range $i := list 1 2 3 4 5 6 7 8 9 }}
+    {{ $mod }}-shift-{{ $i }} = 'move-node-to-workspace {{ $i }}'
+{{- end }}
+    {{ $mod }}-shift-0 = 'move-node-to-workspace 10'
+
+    # prev/next among the used workspaces of this monitor (sway's
+    # prev/next_on_output; AeroSpace's own walks the empty ones too) and
+    # back to the last one
+    {{ $mod }}-comma = 'exec-and-forget aerospace-workspace-cycle prev'
+    {{ $mod }}-period = 'exec-and-forget aerospace-workspace-cycle next'
+    {{ $mod }}-tab = 'workspace-back-and-forth'
+
+    # fresh empty workspace on the focused monitor; shift takes the window
+    {{ $mod }}-n = 'exec-and-forget aerospace workspace "$(aerospace list-workspaces --monitor focused --empty | head -n1)"'
+    {{ $mod }}-shift-n = 'exec-and-forget aerospace move-node-to-workspace --focus-follows-window "$(aerospace list-workspaces --monitor focused --empty | head -n1)"'
+
+    # Layout: splits need the normalizations off (see above); tabbed and
+    # stacking are the horizontal and vertical accordion
+    {{ $mod }}-b = 'split horizontal'
+    {{ $mod }}-v = 'split vertical'
+    {{ $mod }}-w = 'layout h_accordion'
+    {{ $mod }}-s = 'layout v_accordion'
+    {{ $mod }}-e = 'layout tiles horizontal vertical'
+
+    # screenshots (grimshot set from sway): area to file, area to
+    # clipboard, focused window, focused monitor; sway's $mod+Ctrl+p has
+    # no room with ctrl as $mod, so the window goes to alt and the
+    # monitor to cmd
+    {{ $mod }}-p = 'exec-and-forget screenshot-mac area'
+    {{ $mod }}-shift-p = 'exec-and-forget screenshot-mac clip'
+    {{ $mod }}-alt-p = 'exec-and-forget screenshot-mac window'
+    {{ $mod }}-cmd-p = 'exec-and-forget screenshot-mac output'
+
+    # OCR an area to the clipboard (eng+rus, tesseract like on sway)
+    {{ $mod }}-o = 'exec-and-forget ocr-mac'
+    # decode a QR code from a screen region into the clipboard (zbar)
+    {{ $mod }}-alt-o = 'exec-and-forget qr-mac'
+    # screen recording, the same key stops it: the focused window
+    # (sway's region) and the focused monitor (sway's $mod+Ctrl+o)
+    {{ $mod }}-shift-o = 'exec-and-forget screen-record-mac window'
+    {{ $mod }}-cmd-o = 'exec-and-forget screen-record-mac output'
+
+    # drop-down terminal (sway's scratchpad): spawned on first use, then
+    # toggled between the hidden workspace S and the focused one; the
+    # backtick is a base-layer thumb tap on the ZMK keymap
+    {{ $mod }}-minus = 'exec-and-forget scratch-term-mac'
+    {{ $mod }}-backtick = 'exec-and-forget scratch-term-mac'
+
+    # application launcher (fuzzel on sway): Raycast, Spotlight is off on
+    # this machine (indexing and both shortcuts)
+    {{ $mod }}-d = 'exec-and-forget open raycast://'
+
+    # keybinding cheatsheet: this file through fzf in a floating terminal
+    {{ $mod }}-i = 'exec-and-forget aerospace-bindings'
+
+    # launch-or-focus: one key always shows the app
+    {{ $mod }}-t = 'exec-and-forget aerospace-focus-app one.ayugram.AyuGramDesktop'   # telegram
+    {{ $mod }}-g = 'exec-and-forget aerospace-focus-app md.obsidian'                  # notes
+
+    {{ $mod }}-r = ['mode resize', 'exec-and-forget sketchybar --set mode label=resize drawing=on']
+    {{ $mod }}-shift-semicolon = ['mode service', 'exec-and-forget sketchybar --set mode label=service drawing=on']
+
+# Resizing containers, same keys as the sway mode
+[mode.resize.binding]
+    h = 'resize width -50'
+    j = 'resize height +50'
+    k = 'resize height -50'
+    l = 'resize width +50'
+    left = 'resize width -50'
+    down = 'resize height +50'
+    up = 'resize height -50'
+    right = 'resize width +50'
+    enter = ['mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    esc = ['mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+
+# the odd jobs from the default config
+[mode.service.binding]
+    esc = ['reload-config', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    r = ['flatten-workspace-tree', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    backspace = ['close-all-windows-but-current', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    {{ $mod }}-shift-h = ['join-with left', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    {{ $mod }}-shift-j = ['join-with down', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    {{ $mod }}-shift-k = ['join-with up', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    {{ $mod }}-shift-l = ['join-with right', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']

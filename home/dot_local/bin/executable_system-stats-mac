@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Compact system health for the bar (system-stats on sway): the CPU
+# temperature as the always-on number, cpu/load/mem/swap in the tooltip.
+# macmon (brew) reads the SoC sensors without root on Apple Silicon.
+
+set -euo pipefail
+
+command -v macmon >/dev/null 2>&1 || { printf '{"text": ""}\n'; exit 0; }
+
+sample=$(macmon pipe -s 1 -i 500 2>/dev/null | head -n1)
+[ -n "$sample" ] || { printf '{"text": ""}\n'; exit 0; }
+
+read -r temp ecpu pcpu mem < <(jq -r '
+    [(.temp.cpu_temp_avg | round),
+     (.ecpu_usage[1] * 100 | round), (.pcpu_usage[1] * 100 | round),
+     ("\(.memory.ram_usage / 1073741824 | . * 10 | round / 10)/\(.memory.ram_total / 1073741824 | round) GiB (\(.memory.ram_usage * 100 / .memory.ram_total | round)%)"
+      + (if .memory.swap_total > 0
+         then "\nswap \(.memory.swap_usage / 1073741824 | . * 10 | round / 10)/\(.memory.swap_total / 1073741824 | . * 10 | round / 10) GiB"
+         else "" end)
+      | gsub("\nswap "; "|swap: "))]
+    | @tsv' <<<"$sample" | tr '\t' ' ')
+mem=${mem//|/$'\n'}
+
+icon=$''
+[ "$temp" -ge 60 ] && icon=$''
+[ "$temp" -ge 80 ] && icon=$''
+
+load=$(sysctl -n vm.loadavg | tr -d '{}' | awk '{ print $1, $2, $3 }')
+cpu=$pcpu
+[ "$ecpu" -gt "$cpu" ] && cpu=$ecpu
+
+class=""
+{ [ "$temp" -ge 80 ] || [ "$cpu" -ge 90 ]; } && class=critical
+
+# E-cores / P-cores: Apple Silicon's efficiency and performance clusters
+jq -nc --arg text "$icon ${temp}°C" \
+    --arg tip "cpu: E-cores ${ecpu}%, P-cores ${pcpu}%
+load: $load
+mem: $mem" \
+    --arg class "$class" '{text: $text, tooltip: $tip, class: $class}'

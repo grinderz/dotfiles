@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Screenshots on macOS, the grimshot/smart-screenshot set from sway: every
+# mode saves to the screenshots dir (same XDG path as on Linux), copies
+# the image to the clipboard and raises a notification with a preview.
+#
+# usage: screenshot-mac area     drag = region, space = pick a window
+#                                (the smart picker), file + clipboard
+#        screenshot-mac clip     same picker, clipboard only
+#        screenshot-mac window   the focused AeroSpace window, no picker
+#        screenshot-mac output   the focused monitor, no picker
+
+set -euo pipefail
+
+mode="${1:?usage: screenshot-mac area|clip|window|output}"
+# the same default as user-dirs.dirs on Linux (the volume is case
+# sensitive, ~/pictures is not ~/Pictures)
+dir="${XDG_SCREENSHOTS_DIR:-$HOME/pictures/screenshots}"
+mkdir -p "$dir"
+file="$dir/$(date +%Y%m%d-%H%M%S)-$mode.png"
+
+notify() { notify-mac Screenshot screenshot "$@"; }
+
+case "$mode" in
+    clip)
+        # -x: no shutter sound; a cancelled picker leaves the clipboard alone
+        screencapture -xic || exit 0
+        notify "area copied"
+        exit 0
+        ;;
+    area)
+        screencapture -xi "$file" || exit 0
+        ;;
+    window)
+        id=$(aerospace list-windows --focused --format '%{window-id}')
+        [ -n "$id" ] || exit 0
+        screencapture -x -l "$id" "$file"
+        ;;
+    output)
+        # AeroSpace's NSScreen index is screencapture's display number
+        n=$(aerospace list-monitors --focused --format '%{monitor-appkit-nsscreen-screens-id}')
+        screencapture -x -D "${n:-1}" "$file"
+        ;;
+    *)
+        echo "screenshot-mac: unknown mode: $mode" >&2
+        exit 2
+        ;;
+esac
+
+# the picker may have been cancelled (esc): nothing written, nothing to do
+[ -s "$file" ] || exit 0
+# the file onto the clipboard as an image, like wl-copy < file
+osascript -e "set the clipboard to (read (POSIX file \"$file\") as «class PNGf»)" >/dev/null 2>&1 || true
+notify "${file##*/} (copied)" "$file"

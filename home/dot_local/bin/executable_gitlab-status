@@ -8,7 +8,7 @@
 #
 # Usage: gitlab-status [options]   print waybar json
 #        gitlab-status open        open the merge request dashboard in a browser
-#        gitlab-status pick        fuzzel menu of the same pipelines and merge
+#        gitlab-status pick        menu-pick menu of the same pipelines and merge
 #                                  requests; the chosen one opens in a browser
 #                                  (tooltips cannot take clicks, this can)
 #
@@ -46,6 +46,8 @@ while [ $# -gt 0 ]; do
 done
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/glab-cli/config.yml"
+# glab on macOS keeps it under Application Support
+[ -r "$config" ] || config="$HOME/Library/Application Support/glab-cli/config.yml"
 command -v glab >/dev/null 2>&1 || hide
 command -v jq >/dev/null 2>&1 || hide
 [ -r "$config" ] || hide
@@ -62,7 +64,7 @@ host="${GITLAB_STATUS_HOST:-$host}"
 [ -n "$host" ] || hide
 
 if [ "$cmd" = open ]; then
-    exec xdg-open "https://$host/dashboard/merge_requests?scope=all&state=opened"
+    exec open-url "https://$host/dashboard/merge_requests?scope=all&state=opened"
 fi
 
 query='query {
@@ -136,7 +138,7 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
 
     def wanted: (($inc == "") or test($inc)) and (($exc == "") or (test($exc) | not));
 
-    # pango-colored icon for the tooltip (fuzzel gets the plain one)
+    # pango-colored icon for the tooltip (the pick menu gets the plain one)
     def color: {FAILED: "#f53c3c", RUNNING: "#f1c40f", PENDING: "#f1c40f",
                 CREATED: "#f1c40f", WAITING_FOR_RESOURCE: "#f1c40f",
                 SUCCESS: "#9ece6a"}[.] // "#90b1b1";
@@ -225,9 +227,9 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
 if [ "$cmd" = pick ]; then
     [ -n "$out" ] || exit 0
     # second column is shown, the url column rides along and gets opened
-    sel=$(fuzzel --dmenu --with-nth=2 --width 100 <<<"$out") || exit 0
+    sel=$(menu-pick --with-nth=2 <<<"$out") || exit 0
     url=$(printf '%s\n' "$sel" | head -n1 | cut -f1)
-    [ -n "$url" ] && exec xdg-open "$url"
+    [ -n "$url" ] && exec open-url "$url"
 else
     printf '%s\n' "$out"
 fi

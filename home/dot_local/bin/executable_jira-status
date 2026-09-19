@@ -7,7 +7,7 @@
 #
 # Usage: jira-status [options]   print waybar json
 #        jira-status open        open my issues in a browser
-#        jira-status pick        fuzzel menu of the same issues; the chosen
+#        jira-status pick        menu-pick menu of the same issues; the chosen
 #                                one opens in a browser
 #
 # Options:
@@ -53,7 +53,7 @@ server=$(awk '/^server:/ { print $2; exit }' "$config")
 
 if [ "$cmd" = open ]; then
     # built-in "my open issues" filter
-    exec xdg-open "$server/issues/?filter=-1"
+    exec open-url "$server/issues/?filter=-1"
 fi
 
 [ "$sprint" = 1 ] && jql="$jql AND sprint in openSprints()"
@@ -94,7 +94,9 @@ out=$(jq -rc --arg mode "$cmd" --arg server "$server" \
     if $mode == "pick" then
         ($issues[] | "\($server)/browse/\(.key)\t\(.key)  [\(.status)]  \(.summary)")
       else
-        {text: "<span font_family=\"sans\"> </span>\($issues | length)(\($review | length))",
+        # nf-dev-jira: the Font Awesome 6 jira glyph sits beyond the Font
+        # Awesome range of the Nerd Fonts (4.7), this one every Nerd Font has
+        {text: "<span font_family=\"sans\"> </span>\($issues | length)(\($review | length))",
          tooltip: (if ($issues | length) == 0 then "no open issues"
              else ((if ($review | length) > 0
                     then ["<b>Review:</b>"] + ($review | map(line)) + [""]
@@ -111,9 +113,9 @@ out=$(jq -rc --arg mode "$cmd" --arg server "$server" \
 if [ "$cmd" = pick ]; then
     [ -n "$out" ] || exit 0
     # second column is shown, the url column rides along and gets opened
-    sel=$(fuzzel --dmenu --with-nth=2 --width 100 <<<"$out") || exit 0
+    sel=$(menu-pick --with-nth=2 <<<"$out") || exit 0
     url=$(printf '%s\n' "$sel" | head -n1 | cut -f1)
-    [ -n "$url" ] && exec xdg-open "$url"
+    [ -n "$url" ] && exec open-url "$url"
 else
     printf '%s\n' "$out"
 fi

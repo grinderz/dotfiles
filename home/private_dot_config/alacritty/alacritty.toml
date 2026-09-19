@@ -18,7 +18,223 @@ normal = { family = "SpaceMono Nerd Font Mono", style = "Regular" }
 [window]
 option_as_alt = "Both"
 
+# explicit: Alacritty otherwise takes $SHELL from the login session, which
+# still says zsh when the login shell was changed after logging in
+[terminal.shell]
+program = "/opt/homebrew/bin/fish"
+args = ["-l"]
+
 [[keyboard.bindings]]
 key = "Return"
 mods = "Shift"
 chars = "\u001B\r"
+
+# Karabiner swaps Cmd and Ctrl on the external keyboard (the physical Super
+# drives AeroSpace as ctrl, the physical Ctrl carries the app shortcuts,
+# Linux-style Ctrl+C/V). The terminal then sees Cmd where the shell expects
+# Ctrl, and it must stay that way: AeroSpace grabs its ctrl keys globally,
+# a real ctrl+r here would open resize mode instead of the history search.
+# So every Cmd+<key> below is sent as the control character it would be on
+# Linux. Copy and paste sit on Cmd+Shift+C/V (physically Ctrl+Shift+C/V,
+# foot's keys) and on Ctrl+Shift+C/V for the builtin keyboard; Cmd+=/-
+# keep the default font zoom, like foot's Ctrl+plus/minus.
+
+[[keyboard.bindings]]
+key = "A"
+mods = "Command"
+chars = "\u0001"
+
+[[keyboard.bindings]]
+key = "B"
+mods = "Command"
+chars = "\u0002"
+
+[[keyboard.bindings]]
+key = "C"
+mods = "Command"
+chars = "\u0003"
+
+[[keyboard.bindings]]
+key = "D"
+mods = "Command"
+chars = "\u0004"
+
+[[keyboard.bindings]]
+key = "E"
+mods = "Command"
+chars = "\u0005"
+
+[[keyboard.bindings]]
+key = "F"
+mods = "Command"
+chars = "\u0006"
+
+[[keyboard.bindings]]
+key = "G"
+mods = "Command"
+chars = "\u0007"
+
+[[keyboard.bindings]]
+key = "H"
+mods = "Command"
+chars = "\u0008"
+
+[[keyboard.bindings]]
+key = "I"
+mods = "Command"
+chars = "\u0009"
+
+[[keyboard.bindings]]
+key = "J"
+mods = "Command"
+chars = "\u000A"
+
+[[keyboard.bindings]]
+key = "K"
+mods = "Command"
+chars = "\u000B"
+
+[[keyboard.bindings]]
+key = "L"
+mods = "Command"
+chars = "\u000C"
+
+[[keyboard.bindings]]
+key = "M"
+mods = "Command"
+chars = "\u000D"
+
+[[keyboard.bindings]]
+key = "N"
+mods = "Command"
+chars = "\u000E"
+
+[[keyboard.bindings]]
+key = "O"
+mods = "Command"
+chars = "\u000F"
+
+[[keyboard.bindings]]
+key = "P"
+mods = "Command"
+chars = "\u0010"
+
+[[keyboard.bindings]]
+key = "Q"
+mods = "Command"
+chars = "\u0011"
+
+[[keyboard.bindings]]
+key = "R"
+mods = "Command"
+chars = "\u0012"
+
+[[keyboard.bindings]]
+key = "S"
+mods = "Command"
+chars = "\u0013"
+
+[[keyboard.bindings]]
+key = "T"
+mods = "Command"
+chars = "\u0014"
+
+[[keyboard.bindings]]
+key = "U"
+mods = "Command"
+chars = "\u0015"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Command"
+chars = "\u0016"
+
+[[keyboard.bindings]]
+key = "W"
+mods = "Command"
+chars = "\u0017"
+
+[[keyboard.bindings]]
+key = "X"
+mods = "Command"
+chars = "\u0018"
+
+[[keyboard.bindings]]
+key = "Y"
+mods = "Command"
+chars = "\u0019"
+
+[[keyboard.bindings]]
+key = "Z"
+mods = "Command"
+chars = "\u001A"
+
+[[keyboard.bindings]]
+key = "Space"
+mods = "Command"
+chars = "\u0000"
+
+[[keyboard.bindings]]
+key = "LBracket"
+mods = "Command"
+chars = "\u001B"
+
+[[keyboard.bindings]]
+key = "RBracket"
+mods = "Command"
+chars = "\u001D"
+
+[[keyboard.bindings]]
+key = "Backslash"
+mods = "Command"
+chars = "\u001C"
+
+[[keyboard.bindings]]
+key = "Slash"
+mods = "Command"
+chars = "\u001F"
+
+[[keyboard.bindings]]
+key = "Back"
+mods = "Command"
+chars = "\u0008"
+
+[[keyboard.bindings]]
+key = "Left"
+mods = "Command"
+chars = "\u001B[1;5D"
+
+[[keyboard.bindings]]
+key = "Right"
+mods = "Command"
+chars = "\u001B[1;5C"
+
+[[keyboard.bindings]]
+key = "Up"
+mods = "Command"
+chars = "\u001B[1;5A"
+
+[[keyboard.bindings]]
+key = "Down"
+mods = "Command"
+chars = "\u001B[1;5B"
+
+[[keyboard.bindings]]
+key = "C"
+mods = "Command|Shift"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Command|Shift"
+action = "Paste"
+
+[[keyboard.bindings]]
+key = "C"
+mods = "Control|Shift"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Control|Shift"
+action = "Paste"
