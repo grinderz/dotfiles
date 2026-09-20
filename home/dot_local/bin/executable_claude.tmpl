@@ -10,8 +10,11 @@
 # synced dir, so the state follows the project across machines.
 #
 # CLAUDE_CODE_PROJECT_DIR_NAME is only honoured when CLAUDE_CONFIG_DIR is
-# set, so the default config dir is passed explicitly. Anything outside
-# the roots runs claude untouched.
+# set, so the default config dir is passed explicitly. That also moves
+# the global config (login, onboarding, per-project trust) from
+# ~/.claude.json to ~/.claude/.claude.json; chezmoi keeps the latter a
+# symlink to the former, so both ways of starting claude share one
+# account. Anything outside the roots runs claude untouched.
 #
 # Adding a root: another [[data.claude.sync]] entry in chezmoi.toml on
 # every machine, chezmoi apply, and move any existing

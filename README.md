@@ -431,7 +431,10 @@ rendered only when `[[data.claude.sync]]` entries exist) names the project
 after its path relative to the root's parent instead
 (`~/src/work/acme/app` -> `acme-app`) and points that name at
 `<dir>/<name>` inside the entry's syncthing folder, so the state follows
-the project. Directories outside the roots are untouched.
+the project. Directories outside the roots are untouched. The wrapper has
+to set `CLAUDE_CONFIG_DIR`, which also moves the global config (login,
+onboarding, per-project trust) to `~/.claude/.claude.json`; that path is
+kept as a symlink to `~/.claude.json` so nothing asks to log in twice.
 
 To share another tree, on every machine:
 
