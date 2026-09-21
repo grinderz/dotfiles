@@ -1,3 +1,9 @@
+{{- /* the personal YubiKey of this machine: every machine has its own,
+       git_signing_key_by_host in the private chezmoi.toml (identical on
+       all of them) maps hostname -> key, the rest fall back to
+       git_signing_key */ -}}
+{{- $pkey := .personal.git_signing_key -}}
+{{- with (get .personal "git_signing_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end -}}
 {{ if eq .chezmoi.os "darwin" -}}
 Include ~/.colima/ssh_config
 {{ end -}}
@@ -14,13 +20,13 @@ host github.com
   Hostname github.com
   User git
   PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-sa
+  IdentityFile {{ $pkey }}
 
 host gitlab.com
   Hostname gitlab.com
   User git
   PubkeyAuthentication yes
-  IdentityFile ~/.ssh/id_ed25519_sk_rk_personal-sa
+  IdentityFile {{ $pkey }}
 
 # KVM
 

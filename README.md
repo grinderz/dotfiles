@@ -50,6 +50,38 @@ gpg-agent refuses to host them, so each `infra.linux.*` run wraps pyinfra in a
 throwaway OpenSSH agent with the key loaded (`PYINFRA_SSH_KEY` in the
 Makefile). Requires pyinfra >= 3.10 (agent-held sk keys, PR 1858).
 
+Commits are signed with ssh keys (`gpg.format = ssh`), and every machine
+has its own YubiKey, so it signs and talks to the forges with its own
+key. The private chezmoi.toml is identical everywhere, so the machine is
+picked inside the templates: `git_signing_key` is the default and
+`git_signing_key_by_host` overrides it per hostname,
+
+```toml
+git_signing_key = "~/.ssh/id_ed25519_sk_rk_personal-sa"
+git_signing_key_by_host = { "<hostname>" = "~/.ssh/id_ed25519_sk_rk_personal-<machine>" }
+```
+
+which `config.personal.inc.tmpl` uses for `user.signingKey` and
+`.ssh/config` for the github/gitlab `IdentityFile` — one key per machine,
+no "device not found" from a token that is somewhere else. Taking a new
+machine in: generate its key (`ssh-keygen -t ed25519-sk -O resident -O
+application=ssh:personal-<machine> -f ~/.ssh/id_ed25519_sk_rk_personal-<machine>`),
+upload the public key to GitHub and GitLab — as an authentication key and
+again as a *signing* key, they are separate there — add the line to
+`allowed_signers` below, and the hostname to the map.
+
+The list of keys allowed to verify signatures is shared instead:
+`~/.ssh/allowed_signers` is a symlink into the shared syncthing folder
+(see above), so a key added on one machine reaches the others.
+Every key of an identity goes in under the same principal — that is what
+makes a commit signed on one machine verify on another; a retired key
+keeps its line plus `valid-before="<yyyymmdd>"`, which git checks against
+the commit date, so old history still verifies while the key can no
+longer sign anything new. Each key also has to be uploaded to
+GitHub/GitLab as a *signing* key, separate from an authentication key.
+Without the syncthing folder the symlink dangles and verification stops
+working, signing does not.
+
 With two CCID YubiKeys plugged in, scdaemon can settle on the one without
 OpenPGP keys (`gpg --card-status` then shows `[none]` for every key) and
 every card operation has to switch cards first. Point it at the right one
@@ -66,6 +98,32 @@ or directory <Pinentry>` in `journalctl --user`), the agent came up without
 a display: `systemctl --user restart gpg-agent.service`, then a fresh
 terminal (fish runs `updatestartuptty`) keeps it that way.
 
+## Shared state (syncthing folder `dotfiles`)
+
+What is neither public enough for this repo nor secret enough for pass,
+but has to be the same on every machine, lives in the syncthing folder
+`dotfiles` (`~/sync/dotfiles`, shared with every device), and chezmoi
+only puts symlinks in place:
+
+| path | what |
+|---|---|
+| `chezmoi/chezmoi.toml` | the private template data below, so it no longer has to be copied between machines by hand |
+| `ssh/allowed_signers` | git signing keys of every machine (see SSH / YubiKey) |
+| `ssh/known_hosts` | host keys accepted once, trusted everywhere |
+| `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
+| `wallpapers/` | the set `sync-brave-wallpapers` fills and sway, `lock` and the macOS autostart pick from |
+| `claude/` | Claude Code sessions and memory of the personal checkouts (see the claude wrapper) |
+
+Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
+by `.chezmoi.hostname` such as `git_signing_key_by_host`), not in
+separate copies of the file. Editing the same key on two machines while
+one of them is offline leaves a syncthing conflict copy to merge by hand,
+which is the price for not copying anything.
+
+Bootstrapping a machine therefore starts with syncthing: install it,
+accept the folder, and only then `chezmoi init`, since the config it
+reads is a symlink into that folder.
+
 ## Private data
 
 Identity (name/emails/signing keys), work and VPS specifics never enter the
@@ -78,7 +136,6 @@ name = "..."
 email = "..."
 git_signing_key = "~/.ssh/..."
 git_includes = """..."""    # verbatim [includeIf] git config blocks
-allowed_signers = """..."""
 okd_url = "..."
 ssh_hosts = """..."""       # verbatim ssh Host blocks
 
@@ -86,7 +143,6 @@ ssh_hosts = """..."""       # verbatim ssh Host blocks
 name = "..."
 email = "..."
 git_signing_key = "~/.ssh/..."
-allowed_signers = """..."""
 ssh_hosts = """..."""       # home LAN Host blocks
 
 [data.vps]
@@ -461,8 +517,8 @@ root = "src/work/acme"
 dir  = "sync/work/claude"       # the work syncthing folder
 
 [[data.claude.sync]]
-root = "src/personal/other"
-dir  = "sync/common/claude"     # personal trees go to the common one
+root = "src/personal"
+dir  = "sync/dotfiles/claude"   # personal trees ride with the dotfiles folder
 ```
 
 then `make dotfiles.apply`, and move any state Claude already has for that
@@ -470,8 +526,8 @@ tree into the synced folder before the first run (the wrapper refuses to
 run while a real directory sits where its symlink goes):
 
 ```sh
-mv ~/.claude/projects/-home-me-src-personal-other ~/sync/common/claude/other
-mv ~/.claude/projects/-home-me-src-personal-other-sub ~/sync/common/claude/other-sub
+mv ~/.claude/projects/-home-me-src-personal-other ~/sync/dotfiles/claude/personal-other
+mv ~/.claude/projects/-home-me-src-personal-other-sub ~/sync/dotfiles/claude/personal-other-sub
 ```
 
 The old names are the absolute path with `/` turned into `-`; the new ones

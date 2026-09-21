@@ -1,7 +1,9 @@
 [user]
     email = {{ .personal.email }}
     name = {{ .personal.name }}
-    signingKey = {{ .personal.git_signing_key }}
+{{- $pkey := .personal.git_signing_key -}}
+{{- with (get .personal "git_signing_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end }}
+    signingKey = {{ $pkey }}
 
 [commit]
     gpgSign = true
