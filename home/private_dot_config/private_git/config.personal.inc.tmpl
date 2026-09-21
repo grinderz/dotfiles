@@ -1,8 +1,8 @@
 [user]
     email = {{ .personal.email }}
     name = {{ .personal.name }}
-{{- $pkey := .personal.git_signing_key -}}
-{{- with (get .personal "git_signing_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end }}
+{{- $pkey := .personal.personal_key -}}
+{{- with (get .personal "personal_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end }}
     signingKey = {{ $pkey }}
 
 [commit]

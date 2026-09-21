@@ -50,19 +50,26 @@ gpg-agent refuses to host them, so each `infra.linux.*` run wraps pyinfra in a
 throwaway OpenSSH agent with the key loaded (`PYINFRA_SSH_KEY` in the
 Makefile). Requires pyinfra >= 3.10 (agent-held sk keys, PR 1858).
 
+Connections are multiplexed (`ControlMaster auto`, `ControlPersist 10m`):
+the FIDO signature costs seconds with several tokens plugged in, a reused
+socket costs nothing — measured 3.5-6 s per fresh connection against 37 ms
+over an open one. `ssh -O exit <host>` drops a master that outlived its
+network.
+
 Commits are signed with ssh keys (`gpg.format = ssh`), and every machine
 has its own YubiKey, so it signs and talks to the forges with its own
 key. The private chezmoi.toml is identical everywhere, so the machine is
-picked inside the templates: `git_signing_key` is the default and
-`git_signing_key_by_host` overrides it per hostname,
+picked inside the templates: `personal_key` is the default and
+`personal_key_by_host` overrides it per hostname,
 
 ```toml
-git_signing_key = "~/.ssh/id_ed25519_sk_rk_personal-sa"
-git_signing_key_by_host = { "<hostname>" = "~/.ssh/id_ed25519_sk_rk_personal-<machine>" }
+personal_key = "~/.ssh/id_ed25519_sk_rk_personal-sa"
+personal_key_by_host = { "<hostname>" = "~/.ssh/id_ed25519_sk_rk_personal-<machine>" }
 ```
 
 which `config.personal.inc.tmpl` uses for `user.signingKey` and
-`.ssh/config` for the github/gitlab `IdentityFile` — one key per machine,
+`.ssh/config` for every `IdentityFile` — the forges, the home LAN and the
+VPS alike — one key per machine,
 no "device not found" from a token that is somewhere else. Taking a new
 machine in: generate its key (`ssh-keygen -t ed25519-sk -O resident -O
 application=ssh:personal-<machine> -f ~/.ssh/id_ed25519_sk_rk_personal-<machine>`),
@@ -115,7 +122,7 @@ only puts symlinks in place:
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts live apart, in the `ai` folder below |
 
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
-by `.chezmoi.hostname` such as `git_signing_key_by_host`), not in
+by `.chezmoi.hostname` such as `personal_key_by_host`), not in
 separate copies of the file. Editing the same key on two machines while
 one of them is offline leaves a syncthing conflict copy to merge by hand,
 which is the price for not copying anything.
@@ -159,19 +166,28 @@ repo. Templates guard on machine-local data from
 [data.work]
 name = "..."
 email = "..."
-git_signing_key = "~/.ssh/..."
-git_includes = """..."""    # verbatim [includeIf] git config blocks
+git_signing_key = "~/.ssh/..."     # work signs with its own YubiKey
+git_includes = """..."""           # verbatim [includeIf] git config blocks
 okd_url = "..."
-ssh_hosts = """..."""       # verbatim ssh Host blocks
 
 [data.personal]
 name = "..."
 email = "..."
-git_signing_key = "~/.ssh/..."
-ssh_hosts = """..."""       # home LAN Host blocks
+personal_key = "~/.ssh/..."
 
-[data.vps]
-ssh_hosts = """..."""
+# every ssh host is a table, rendered by private_dot_ssh/private_config.tmpl:
+# data.personal.hosts (home LAN), .git_hosts (forges), .oth_hosts,
+# data.work.hosts, data.vps.hosts. Hosts that name no key of their own
+# are collected into one block that hands them personal_key, so the
+# per-host blocks carry only what differs from the ssh defaults.
+[[data.personal.hosts]]
+name = "srv1-example"       # the only required field
+hostname = "10.0.0.9"       # default: name
+user = "admin"              # default: root
+port = 2222                 # default: 22
+key = false                 # false drops pubkey auth, a path pins another key
+agent = true                # adds IdentityAgent SSH_AUTH_SOCK
+extra = ["KexAlgorithms ..."]   # copied verbatim into the block
 
 [data.desktop]
 wallpaper_dir = "~/pictures/wallpapers/brave"   # sway bg, swaylock bg, sync script

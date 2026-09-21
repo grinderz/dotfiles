@@ -1,57 +1,56 @@
 {{- /* the personal YubiKey of this machine: every machine has its own,
-       git_signing_key_by_host in the private chezmoi.toml (identical on
-       all of them) maps hostname -> key, the rest fall back to
-       git_signing_key */ -}}
-{{- $pkey := .personal.git_signing_key -}}
-{{- with (get .personal "git_signing_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end -}}
+       personal_key_by_host in the private chezmoi.toml (identical on all
+       of them) maps hostname -> key, the rest fall back to personal_key */ -}}
+{{- $pkey := .personal.personal_key -}}
+{{- with (get .personal "personal_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end -}}
+{{- /* one host entry from the lists in the private chezmoi.toml: only
+       name is required, the rest defaults to Hostname = name, User =
+       root, no Port line and IdentityFile = the key above */ -}}
+{{- define "sshhost" -}}
+{{- $h := . -}}
+host {{ $h.name }}
+{{- with (get $h "hostname") }}
+  Hostname {{ . }}
+{{- end }}
+  User {{ default "root" (get $h "user") }}
+{{- with (get $h "port") }}
+  Port {{ . }}
+{{- end }}
+{{- with (get $h "key") }}
+  PubkeyAuthentication yes
+{{- if (get $h "agent") }}
+  IdentityAgent SSH_AUTH_SOCK
+{{- end }}
+  IdentityFile {{ . }}
+{{- end }}
+{{- range (default (list) (get $h "extra")) }}
+  {{ . }}
+{{- end }}
+{{ end -}}
 {{ if eq .chezmoi.os "darwin" -}}
 Include ~/.colima/ssh_config
 {{ end -}}
 
-# HOME
-
-{{ if hasKey .personal "ssh_hosts" -}}
-{{ .personal.ssh_hosts }}
-{{ end -}}
-
-# GIT
-
-host github.com
-  Hostname github.com
-  User git
+{{- $all := concat .personal.hosts .personal.git_hosts .personal.oth_hosts -}}
+{{- if hasKey . "work" }}{{ $all = concat $all .work.hosts }}{{ end -}}
+{{- if hasKey . "vps" }}{{ $all = concat $all .vps.hosts }}{{ end -}}
+{{- /* everything that did not name a key of its own shares this one */ -}}
+{{- $shared := list -}}
+{{- range $all }}{{ if not (hasKey . "key") }}{{ $shared = append $shared .name }}{{ end }}{{ end -}}
+host {{ join " " $shared }}
   PubkeyAuthentication yes
   IdentityFile {{ $pkey }}
 
-host gitlab.com
-  Hostname gitlab.com
-  User git
-  PubkeyAuthentication yes
-  IdentityFile {{ $pkey }}
-
-# KVM
-
-
-# OTH
-
-host aur.archlinux.org
-    User aur
-
-# Work
-
-{{ if hasKey . "work" -}}
-{{ .work.ssh_hosts }}
+{{ range $all }}{{ template "sshhost" . }}
 {{ end -}}
-
-# VPS
-
-{{ if hasKey . "vps" -}}
-{{ .vps.ssh_hosts }}
-{{ end -}}
-
 Host *
     PubkeyAuthentication no
     IdentityAgent none
     IdentitiesOnly yes
+
+    ControlMaster auto
+    ControlPath ~/.ssh/cm-%C
+    ControlPersist 10m
 
     CheckHostIP yes
     PreferredAuthentications publickey,keyboard-interactive,password
