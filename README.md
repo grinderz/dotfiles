@@ -112,7 +112,7 @@ only puts symlinks in place:
 | `ssh/known_hosts` | host keys accepted once, trusted everywhere |
 | `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
 | `wallpapers/` | the set `sync-brave-wallpapers` fills and sway, `lock` and the macOS autostart pick from |
-| `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts next to it are excluded by a syncthing ignore — they run to tens of MB and hold whole file contents and command output |
+| `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts live apart, in the `ai` folder below |
 
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `git_signing_key_by_host`), not in
@@ -123,6 +123,31 @@ which is the price for not copying anything.
 Bootstrapping a machine therefore starts with syncthing: install it,
 accept the folder, and only then `chezmoi init`, since the config it
 reads is a symlink into that folder.
+
+### Session transcripts (syncthing folder `ai`)
+
+Transcripts are a different kind of data than the memory beside them:
+tens of MB each, and a full record of the session — whole file contents,
+command output, whatever was pasted. They get their own folder,
+`~/sync/ai` (`claude/<project>/<session>.jsonl`), shared with the two
+desktops only, so `claude --resume` finds yesterday's session on either
+of them while the backup machines never see it. The `memory` symlink
+inside each project points back into the `dotfiles` folder and is made
+per machine by the wrapper, so syncthing ignores it.
+
+`claude-prune-sessions` drops the ones nobody came back to. Age counts
+from the last *use*: resuming appends to the transcript, so its newest
+record marks the last visit (`/home` is `noatime`, the file system does
+not track reads). It reports and deletes nothing unless told to:
+
+```sh
+claude-prune-sessions                  # what is older than 90 days
+claude-prune-sessions --days 30        # stricter window
+claude-prune-sessions --days 30 --apply
+```
+
+A session used within the last hour is never a candidate, so a running
+session cannot prune itself.
 
 ## Private data
 
@@ -501,37 +526,49 @@ working directory, so the same checkout gets a different name on every
 machine. `~/.local/bin/claude` (a wrapper in front of the real binary,
 rendered only when `[[data.claude.sync]]` entries exist) names the project
 after its path relative to the root's parent instead
-(`~/src/work/acme/app` -> `acme-app`) and points that name at
-`<dir>/<name>` inside the entry's syncthing folder, so the state follows
-the project. Directories outside the roots are untouched. The wrapper has
+(`~/src/work/acme/app` -> `src-work-acme-app`) and points that name at
+`<dir>/<name>` inside the entry's syncthing folder (and the auto memory at
+`<memory_dir>/<name>/memory`, linked in), so the state follows the
+project. Directories outside the roots are untouched. The wrapper has
 to set `CLAUDE_CONFIG_DIR`, which also moves the global config (login,
 onboarding, per-project trust) to `~/.claude/.claude.json`; that path is
 kept as a symlink to `~/.claude.json` so nothing asks to log in twice.
 
-To share another tree, on every machine:
+Sharing another tree takes one entry in the private chezmoi.toml, which
+is itself synced, so it is written once and not per machine:
 
 ```toml
-# ~/.config/chezmoi/chezmoi.toml — both paths relative to $HOME
+# paths relative to $HOME
 [[data.claude.sync]]
-root = "src/work/acme"
-dir  = "sync/dotfiles/claude"
-
-[[data.claude.sync]]
-root = "src/personal"
-dir  = "sync/dotfiles/claude"
+root = "src"                        # the whole tree, at any depth below it
+dir  = "sync/ai/claude"             # transcripts (the two desktops)
+memory_dir = "sync/dotfiles/claude" # auto memory (every device); defaults to dir
 ```
 
-then `make dotfiles.apply`, and move any state Claude already has for that
-tree into the synced folder before the first run (the wrapper refuses to
-run while a real directory sits where its symlink goes):
+A root covers everything under it, so `~/src` is one entry rather than one
+per checkout; further entries are for trees elsewhere (notes, vaults) or
+for one that needs different folders. A root that does not exist on a
+machine simply never matches there. The project name is the path from the root's *parent*, so
+`~/src/work/acme/app` becomes `src-work-acme-app` and each directory you
+start claude in is its own project, exactly as Claude Code splits them by
+absolute path.
+
+Then `make dotfiles.apply` on each machine — that is what re-renders the
+wrapper — and move whatever state Claude already keeps for that tree,
+before the first run there (the wrapper refuses to run while a real
+directory sits where its symlink goes). A checkout at `~/src/foo/bar`
+becomes `src-foo-bar`: the path relative to the root's *parent*, slashes
+turned into dashes, while the old name is the absolute path the same way:
 
 ```sh
-mv ~/.claude/projects/-home-me-src-personal-other ~/sync/dotfiles/claude/personal-other
-mv ~/.claude/projects/-home-me-src-personal-other-sub ~/sync/dotfiles/claude/personal-other-sub
+name=src-foo-bar; old=~/.claude/projects/-home-me-src-foo-bar
+mkdir -p ~/sync/ai/claude/$name ~/sync/dotfiles/claude/$name
+mv "$old"/memory ~/sync/dotfiles/claude/$name/
+mv "$old"/* ~/sync/ai/claude/$name/          # transcripts and their dirs
+rmdir "$old"                                  # the wrapper makes the links
 ```
 
-The old names are the absolute path with `/` turned into `-`; the new ones
-start at the root's basename. Working on both machines at the same time is
+Working on both machines at the same time is
 fine for sessions (one file each) but can leave a syncthing conflict copy
 of `memory/MEMORY.md`.
 

@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""Drop Claude Code session transcripts nobody has come back to.
+
+The transcripts under the session directories of [[data.claude.sync]]
+(private chezmoi.toml) grow to tens of megabytes each and are synced
+between the desktops, while the auto memory next to them is tiny and
+travels everywhere. This prunes the transcripts only.
+
+Age is counted from the last time the session was *used*, not from when
+it started: resuming a session appends to its file, so the newest record
+in it marks the last visit. The file system cannot answer this — /home is
+mounted noatime — so the timestamps inside the transcript are read, with
+the file mtime as the floor (records written without one still touch it).
+
+Nothing is deleted without --apply; the default run only reports. A
+session touched within the last hour is never a candidate, so the session
+doing the pruning cannot delete itself.
+"""
+
+import argparse
+import json
+import os
+import re
+import shutil
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+# entries may share a directory; keep the order, drop the repeats
+SESSION_DIRS = list(dict.fromkeys([
+{{- range .claude.sync }}
+    Path.home() / {{ .dir | quote }},
+{{- end }}
+]))
+TAIL_BYTES = 256 * 1024
+LIVE_GRACE = 3600
+TS = re.compile(rb'"timestamp":"([0-9]{4}-[0-9]{2}-[0-9]{2}T[^"]+)"')
+
+
+def newest_timestamp(path):
+    """The newest record timestamp in the file, from its tail if possible."""
+    size = path.stat().st_size
+    with path.open("rb") as fh:
+        if size > TAIL_BYTES:
+            fh.seek(-TAIL_BYTES, os.SEEK_END)
+        found = TS.findall(fh.read())
+        if not found and size > TAIL_BYTES:  # a quiet tail, read it all
+            fh.seek(0)
+            found = TS.findall(fh.read())
+    if not found:
+        return None
+    newest = max(found).decode()
+    try:
+        return datetime.fromisoformat(newest.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def sessions(dirs, project=None):
+    for root in dirs:
+        if not root.is_dir():
+            continue
+        for proj in sorted(p for p in root.iterdir() if p.is_dir()):
+            if project and project not in proj.name:
+                continue
+            for jsonl in sorted(proj.glob("*.jsonl")):
+                sid = jsonl.stem
+                extra = proj / sid
+                size = jsonl.stat().st_size
+                if extra.is_dir():
+                    size += sum(f.stat().st_size for f in extra.rglob("*") if f.is_file())
+                used = max(jsonl.stat().st_mtime, newest_timestamp(jsonl) or 0)
+                yield proj.name, sid, used, size, jsonl, extra
+
+
+def human(n):
+    for unit in ("B", "K", "M", "G"):
+        if n < 1024 or unit == "G":
+            return f"{n:.0f}{unit}" if unit == "B" else f"{n:.1f}{unit}"
+        n /= 1024
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--days", type=int, default=90, help="keep sessions used within N days (default 90)")
+    ap.add_argument("--project", help="only projects whose name contains this")
+    ap.add_argument("--apply", action="store_true", help="actually delete; without it nothing is touched")
+    ap.add_argument("--json", action="store_true", help="machine readable output")
+    args = ap.parse_args()
+
+    now = time.time()
+    cutoff = now - args.days * 86400
+    old, kept_bytes, freed = [], 0, 0
+    for name, sid, used, size, jsonl, extra in sessions(SESSION_DIRS, args.project):
+        if used > cutoff or now - used < LIVE_GRACE:
+            kept_bytes += size
+            continue
+        old.append((name, sid, used, size, jsonl, extra))
+        freed += size
+
+    if args.json:
+        print(json.dumps([{"project": n, "session": s, "last_used": datetime.fromtimestamp(u, timezone.utc).isoformat(),
+                           "bytes": b} for n, s, u, b, _, _ in old], indent=2))
+    else:
+        for name, sid, used, size, _, extra in sorted(old, key=lambda r: r[2]):
+            when = datetime.fromtimestamp(used).strftime("%Y-%m-%d")
+            print(f"{name:42} {sid[:8]}  {when}  {human(size):>7}{'  +dir' if extra.is_dir() else ''}")
+
+    if args.apply:
+        for *_, jsonl, extra in old:
+            jsonl.unlink()
+            if extra.is_dir():
+                shutil.rmtree(extra)
+
+    if not args.json:
+        verb = "deleted" if args.apply else "would delete"
+        print(f"\n{verb} {len(old)} sessions older than {args.days} days, {human(freed)}; "
+              f"keeping {human(kept_bytes)}", file=sys.stderr)
+        if old and not args.apply:
+            print("run again with --apply to delete", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

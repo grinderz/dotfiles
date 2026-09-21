@@ -9,6 +9,10 @@
 # (~/src/work/acme/app -> acme-app), and points that name at the root's
 # synced dir, so the state follows the project across machines.
 #
+# Each [[data.claude.sync]] entry gives root (the checkouts), dir (where
+# their sessions live) and optionally memory_dir (where the auto memory
+# lives, when it should travel further than the transcripts).
+#
 # CLAUDE_CODE_PROJECT_DIR_NAME is only honoured when CLAUDE_CONFIG_DIR is
 # set, so the default config dir is passed explicitly. That also moves
 # the global config (login, onboarding, per-project trust) from
@@ -34,10 +38,12 @@ done
 config=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 cwd=$(pwd -P)
 
-# shellcheck disable=SC2066  # one quoted root:dir word per entry is the point
-for entry in {{ range .claude.sync }}"$HOME/{{ .root }}:$HOME/{{ .dir }}" {{ end }}; do
+# shellcheck disable=SC2066  # one quoted root:dir:memory word per entry
+for entry in {{ range .claude.sync }}"$HOME/{{ .root }}:$HOME/{{ .dir }}:$HOME/{{ default .dir (get . "memory_dir") }}" {{ end }}; do
     root=${entry%%:*}
-    store=${entry#*:}
+    rest=${entry#*:}
+    store=${rest%%:*}
+    memory=${rest#*:}
     case $cwd in
     "$root" | "$root"/*) ;;
     *) continue ;;
@@ -51,6 +57,13 @@ for entry in {{ range .claude.sync }}"$HOME/{{ .root }}:$HOME/{{ .dir }}" {{ end
     fi
     mkdir -p "$store/$name" "$config/projects"
     [ -L "$link" ] || ln -s "$store/$name" "$link"
+    # auto memory can live in a different synced folder than the session
+    # transcripts (small and wanted everywhere vs large and private); the
+    # link itself is per machine, syncthing ignores it
+    if [ "$memory" != "$store" ]; then
+        mkdir -p "$memory/$name/memory"
+        [ -e "$store/$name/memory" ] || ln -s "$memory/$name/memory" "$store/$name/memory"
+    fi
     # shellcheck disable=SC2093  # exec is the exit of this branch
     CLAUDE_CONFIG_DIR=$config CLAUDE_CODE_PROJECT_DIR_NAME=$name exec "$real" "$@"
 done
