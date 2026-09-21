@@ -112,7 +112,7 @@ only puts symlinks in place:
 | `ssh/known_hosts` | host keys accepted once, trusted everywhere |
 | `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
 | `wallpapers/` | the set `sync-brave-wallpapers` fills and sway, `lock` and the macOS autostart pick from |
-| `claude/` | Claude Code sessions and memory of the personal checkouts (see the claude wrapper) |
+| `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts next to it are excluded by a syncthing ignore — they run to tens of MB and hold whole file contents and command output |
 
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `git_signing_key_by_host`), not in
@@ -514,11 +514,11 @@ To share another tree, on every machine:
 # ~/.config/chezmoi/chezmoi.toml — both paths relative to $HOME
 [[data.claude.sync]]
 root = "src/work/acme"
-dir  = "sync/work/claude"       # the work syncthing folder
+dir  = "sync/dotfiles/claude"
 
 [[data.claude.sync]]
 root = "src/personal"
-dir  = "sync/dotfiles/claude"   # personal trees ride with the dotfiles folder
+dir  = "sync/dotfiles/claude"
 ```
 
 then `make dotfiles.apply`, and move any state Claude already has for that
