@@ -50,6 +50,22 @@ gpg-agent refuses to host them, so each `infra.linux.*` run wraps pyinfra in a
 throwaway OpenSSH agent with the key loaded (`PYINFRA_SSH_KEY` in the
 Makefile). Requires pyinfra >= 3.10 (agent-held sk keys, PR 1858).
 
+With two CCID YubiKeys plugged in, scdaemon can settle on the one without
+OpenPGP keys (`gpg --card-status` then shows `[none]` for every key) and
+every card operation has to switch cards first. Point it at the right one
+without unplugging anything:
+
+```sh
+gpg --card-status                 # Serial number of the card it talks to
+gpg-connect-agent 'scd serialno --demand=D27600012401000000060000000000000' \
+                  'scd learn --force' /bye     # ...0006 + serial + 0000
+```
+
+If a prompt cannot be shown at all (`ssh sign request failed: No such file
+or directory <Pinentry>` in `journalctl --user`), the agent came up without
+a display: `systemctl --user restart gpg-agent.service`, then a fresh
+terminal (fish runs `updatestartuptty`) keeps it that way.
+
 ## Private data
 
 Identity (name/emails/signing keys), work and VPS specifics never enter the
