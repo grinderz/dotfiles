@@ -3,7 +3,17 @@
 # Brave keeps them in a versioned component dir that gets replaced on
 # component updates, so anything worth keeping must be copied out.
 # The component is located by its manifest name, not the hardcoded id.
+#
+# Usage: sync-brave-wallpapers [-n|--dry-run]   -n only lists what a run
+# would copy. Nothing is ever overwritten or removed either way.
 set -eu
+
+dry=0
+case "${1:-}" in
+    -n | --dry-run) dry=1 ;;
+    "") ;;
+    *) echo "usage: ${0##*/} [-n|--dry-run]" >&2; exit 2 ;;
+esac
 
 root="$HOME/.config/BraveSoftware/Brave-Browser"
 # macOS keeps the profile under Application Support (note the space)
@@ -24,8 +34,12 @@ while IFS= read -r manifest; do
         [ -e "$img" ] || continue
         base=$(basename "$img")
         if [ ! -e "$dest/$base" ]; then
-            cp "$img" "$dest/"
-            echo "added $base"
+            if [ "$dry" = 1 ]; then
+                echo "would add $base"
+            else
+                cp "$img" "$dest/"
+                echo "added $base"
+            fi
             added=$((added + 1))
         fi
     done
@@ -33,4 +47,8 @@ done <<EOF_MANIFESTS
 $manifests
 EOF_MANIFESTS
 
-echo "$added new, $(ls "$dest" | wc -l) total in $dest"
+if [ "$dry" = 1 ]; then
+    echo "$added would be added, $(ls "$dest" | wc -l) already in $dest"
+else
+    echo "$added new, $(ls "$dest" | wc -l) total in $dest"
+fi

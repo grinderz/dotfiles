@@ -118,7 +118,7 @@ only puts symlinks in place:
 | `ssh/allowed_signers` | git signing keys of every machine (see SSH / YubiKey) |
 | `ssh/known_hosts` | host keys accepted once, trusted everywhere |
 | `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
-| `wallpapers/` | the set `sync-brave-wallpapers` fills and sway, `lock` and the macOS autostart pick from |
+| `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts live apart, in the `ai` folder below |
 
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
@@ -197,6 +197,9 @@ output_left = "Make Model Serial"               # kanshi profile + sway workspac
 output_right = "Make Model Serial"
 traffic_url = "https://..."                     # regional traffic XML feed, waybar module
 traffic_map_url = "https://..."                 # map page opened on click
+
+[data.jetbrains]                                # see JetBrains vmoptions
+options = ["-XX:MaxRAMPercentage=50"]           # verbatim vmoptions lines
 ```
 
 Machines without a table simply render without those sections
@@ -594,6 +597,48 @@ rmdir "$old"                                  # the wrapper makes the links
 Working on both machines at the same time is
 fine for sessions (one file each) but can leave a syncthing conflict copy
 of `memory/MEMORY.md`.
+
+### JetBrains vmoptions
+
+The IDE settings themselves stay out of this repo (JetBrains Backup and
+Sync carries them), but VM options are not part of that sync, so the user
+vmoptions file is written by chezmoi instead. The lines are listed
+verbatim in the private toml:
+
+```toml
+[data.jetbrains]
+options = ["-XX:MaxRAMPercentage=50"]   # every IDE on every machine
+
+[data.jetbrains.per_product]      # key = config directory without the version
+GoLand   = ["-Xmx8192m"]
+DataGrip = ["-Xmx4096m"]
+
+[data.jetbrains.per_host]         # the private toml is shared by syncthing, so
+"<hostname>" = ["-Xmx4096m"]      # hardware sizes and machine-local paths
+                                  # go by hostname
+```
+
+`run_after_jetbrains-vmoptions.sh` writes one marked block into the user
+vmoptions file of the newest config directory of every IDE —
+`~/.config/JetBrains/GoLand2026.2/goland64.vmoptions`, on macOS
+`~/Library/Application Support/JetBrains/GoLand2026.2/goland.vmoptions`.
+An IDE that is no longer installed is skipped (its launcher has to exist),
+and older version directories are left as they are. Inside the block the
+order is `options`, `per_product`, `per_host`; the JVM takes the last of
+two conflicting values, so the more specific key wins.
+
+The launcher concatenates that file with the one in the IDE's own `bin/`,
+so the block carries the extra lines alone and the defaults stay — with
+two exceptions it makes itself: `-XX:InitialRAMPercentage` here drops the
+packaged `-Xms`, `-XX:(Max|Min)RAMPercentage` drops `-Xmx`, and any
+`-XX:+...GC` drops the packaged GC flags. Options added by hand or through
+`Help | Edit Custom VM Options` live outside the markers and are left
+alone.
+
+After an IDE upgrade, start the new version once (it creates the config
+directory), then `chezmoi apply` and restart it — the vmoptions file is
+per version, and the script writes to the newest directory only. Without
+the table nothing is rendered at all.
 
 ### macOS window manager and bar
 

@@ -109,6 +109,12 @@ Library
 .config/git/config.work.inc
 {{ end }}
 
+# the JetBrains vmoptions block is written only when options are listed in
+# the private toml
+{{ if not (hasKey . "jetbrains") }}
+.chezmoiscripts/jetbrains-vmoptions.sh
+{{ end }}
+
 # car status module renders only with [data.starline] in the private toml
 {{ if not (hasKey . "starline") }}
 .config/starline-status
