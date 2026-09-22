@@ -1,0 +1,25 @@
+#!/bin/sh
+# Trackpad gestures for the AeroSpace session. macOS reads these at login,
+# so a change here needs a re-login; the values themselves live nowhere
+# else, which is why the script exists at all.
+#
+# The four-finger horizontal swipe stays ON although nothing of macOS's
+# own should move: aerospace-swipe reads raw touches below the event
+# system, and letting macOS swallow the gesture keeps the browser from
+# reading it as back/forward. Every display holds a single Space, so the
+# system gesture has nowhere to go. Everything else is off: the
+# three-finger swipes fight the workspace gesture, and three-finger drag
+# ate the first fingers of it.
+set -eu
+
+for domain in com.apple.AppleMultitouchTrackpad \
+              com.apple.driver.AppleBluetoothMultitouch.trackpad; do
+    defaults write "$domain" TrackpadFourFingerHorizSwipeGesture -int 2
+    defaults write "$domain" TrackpadThreeFingerHorizSwipeGesture -int 0
+    defaults write "$domain" TrackpadFourFingerVertSwipeGesture -int 0
+    defaults write "$domain" TrackpadThreeFingerVertSwipeGesture -int 0
+    defaults write "$domain" TrackpadThreeFingerDrag -bool false
+done
+defaults write NSGlobalDomain com.apple.trackpad.fourFingerHorizSwipeGesture -int 2
+
+echo "trackpad gestures written; they take effect after the next login"

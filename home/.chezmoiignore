@@ -9,6 +9,7 @@
 .docker
 # the macOS window manager and bar (sway/waybar counterparts)
 .config/aerospace
+.config/aerospace-swipe
 .config/sketchybar
 .config/karabiner
 .local/bin/aerospace-focus-app
@@ -22,6 +23,8 @@
 .local/bin/autostart-mac
 .local/bin/system-stats-mac
 .local/bin/screen-record-mac
+Library
+.chezmoiscripts/darwin-trackpad-gestures.sh
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}

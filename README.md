@@ -287,7 +287,14 @@ Per deploy, once per host:
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
   (OCR bind), `otf-font-awesome` + `ttf-roboto` (waybar font stack),
-  `udisks2` (usb-storage waybar module);
+  `udisks2` (usb-storage waybar module); before the first apply, generate
+  the locale the waybar clock names (`en_DK.UTF-8`: English with ISO dates
+  and a Monday-first week, which is what the `%V` week number counts) —
+  `sudo sed -i 's/^#en_DK.UTF-8 UTF-8/en_DK.UTF-8 UTF-8/' /etc/locale.gen
+  && sudo locale-gen`; without it waybar disables the whole clock module
+  with `locale::facet::_S_create_c_locale name not valid`, and a running
+  waybar needs a restart rather than a reload to see a locale generated
+  under it;
   the failed-units
   notifier timer is enabled by the systemd deploy (run dotfiles apply
   first — the unit files come from chezmoi); dark theme for GTK4/portal
@@ -619,10 +626,18 @@ brew install sketchybar jq blueutil tesseract zbar macmon
 brew tap ungive/media-control && brew install media-control   # now playing
 brew install --cask nikitabobko/tap/aerospace sf-symbols font-sketchybar-app-font raycast
 brew install --cask karabiner-elements    # pkg: run in a real terminal, asks sudo
-brew tap mediosz/tap && brew trust mediosz/tap && brew install --cask swipeaerospace
 make dotfiles.apply
 brew services start sketchybar    # launchd, survives aerospace reloads
 open -a AeroSpace                 # registers itself as a login item
+```
+
+The workspace swipe has no package; it is built from source once per
+machine (the config it reads comes from chezmoi):
+
+```sh
+git clone https://github.com/acsandmann/aerospace-swipe ~/.local/share/aerospace-swipe
+cd ~/.local/share/aerospace-swipe
+make install                      # builds, ad-hoc signs, loads the launch agent
 ```
 
 Run that `open` from a plain terminal, never from a shell inside Claude
@@ -664,20 +679,41 @@ then in System Settings:
   native menu bar either way)
 * Desktop & Dock: "Automatically rearrange Spaces based on most recent
   use" off, "Displays have separate Spaces" on
-* SwipeAeroSpace is sway's four-finger workspace swipe, on three
-  fingers here (four land unevenly on the Magic Trackpad and every
-  other swipe was missed): allow it under Accessibility (not a Login
-  Item: `autostart-mac` starts it after AeroSpace is up, started
-  alongside it never connected), and set three fingers, natural direction, wrap-around,
-  skipping empty workspaces, no multi-workspace swipe (its menu bar
-  item, or `defaults write club.mediosz.SwipeAeroSpace fingers -string
-  Three`, `naturalSwipe -bool true`, `wrap -bool true`, `skip-empty
-  -bool true`, `multiSwipe -bool false`, then relaunch); three-finger
-  drag is off (it ate the first fingers of a swipe); macOS's own three-
-  and four-finger swipes
-  (Spaces, Mission Control, App Exposé) are switched off for both
-  trackpads (`TrackpadFourFingerHorizSwipeGesture` and friends = 0,
-  applied after a re-login)
+* aerospace-swipe is sway's four-finger workspace swipe: a launchd
+  daemon that reads `.config/aerospace-swipe/config.json` (chezmoi), so
+  the settings are a file rather than a `defaults` domain. It needs
+  Accessibility, and asks for it on first start. Four fingers only work
+  with `swipe_tolerance` above zero, which the shipped config sets to 2
+  and no documentation mentions: the armed state drops the gesture when
+  any finger fails to move its `min_step` within a frame, and four
+  fingers never move in lockstep — with the stock `0` a swipe landed
+  about one time in four. A rebuild changes the ad-hoc
+  signature, which invalidates the Accessibility grant without asking
+  again: `tccutil reset Accessibility com.example.swipe`, then
+  `make restart`, and approve the prompt. It survives an AeroSpace
+  restart, unlike the SwipeAeroSpace app it replaced (that one never
+  reconnected to the socket, which is why `autostart-mac` used to
+  start it after AeroSpace). Its event tap is listen-only, so the swipe
+  also reaches whatever is underneath, and a browser reads a horizontal
+  one as back/forward. The fix is to let macOS swallow it first: the
+  system four-finger horizontal gesture is left **on**
+  (`TrackpadFourFingerHorizSwipeGesture = 2` on both trackpads and
+  `com.apple.trackpad.fourFingerHorizSwipeGesture` in globals, applied
+  after a re-login), and since every display holds a single Space it has
+  nowhere to switch and does nothing visible. The daemon reads raw
+  touches through MultitouchSupport, a layer below the event system, so
+  it still fires — and two-finger back/forward keeps working in the
+  browser, which turning page-swipe navigation off there would have
+  cost. A display with a second Space breaks the trick: any app going
+  full screen makes one, and then the four-finger swipe walks into it.
+  The three-finger swipes (Mission Control, App Exposé) stay off, as
+  does three-finger drag (it ate the first fingers of a swipe)
+* Media keys stay with the bar's `media` item instead of opening Music:
+  macOS routes them through `com.apple.rcd`, which launches the app on
+  the first press. `Library/LaunchAgents/com.user.disable-rcd.plist`
+  (chezmoi, macOS only) unloads that agent at login; it takes effect on
+  the next login, or right away with
+  `launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist`
 * Low Power Mode from the bar (`lowpower` toggle) needs `pmset` without
   a password, `sudo visudo -f /etc/sudoers.d/lowpower`:
   `<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1`;

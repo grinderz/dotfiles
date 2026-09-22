@@ -15,7 +15,7 @@ cache="${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar"
 mkdir -p "$cache"
 now=$(date +%s%3N)
 
-# a trackpad swipe over the bar (SwipeAeroSpace's workspace gesture)
+# a trackpad swipe over the bar (aerospace-swipe's workspace gesture)
 # arrives as a flood of horizontal events (delta 0) with a stray
 # vertical one now and then: remember the horizontal ones and let no
 # vertical delta through within 500 ms of them, or the swipe switches

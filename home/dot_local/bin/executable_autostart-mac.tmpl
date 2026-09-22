@@ -35,8 +35,3 @@ spawn() {
 
 spawn dev -e zellij attach --create dev
 spawn cli
-
-# the workspace swipe app talks to AeroSpace's socket and does not retry
-# a connection that failed: started from here, after AeroSpace, instead
-# of from Login Items (where both came up in the same second)
-pgrep -x SwipeAeroSpace >/dev/null || open -a SwipeAeroSpace
