@@ -258,7 +258,10 @@ run = 'layout floating'
     {{ $mod }}-t = 'exec-and-forget aerospace-focus-app one.ayugram.AyuGramDesktop'   # telegram
     {{ $mod }}-g = 'exec-and-forget aerospace-focus-app md.obsidian'                  # notes
 
-    {{ $mod }}-r = ['mode resize', 'exec-and-forget sketchybar --set mode label=resize drawing=on']
+    # Shift on purpose: a bare $mod-r is the terminal's Ctrl+r here
+    # (Karabiner sends physical Super as Ctrl), and landing in the mode
+    # silently eats h/j/k/l in every app
+    {{ $mod }}-shift-r = ['mode resize', 'exec-and-forget sketchybar --set mode label=resize drawing=on']
     {{ $mod }}-shift-semicolon = ['mode service', 'exec-and-forget sketchybar --set mode label=service drawing=on']
 
 # Resizing containers, same keys as the sway mode
@@ -273,6 +276,7 @@ run = 'layout floating'
     right = 'resize width +50'
     enter = ['mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     esc = ['mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    {{ $mod }}-shift-r = ['mode main', 'exec-and-forget sketchybar --set mode drawing=off']
 
 # the odd jobs from the default config
 [mode.service.binding]

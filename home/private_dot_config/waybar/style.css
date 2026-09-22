@@ -75,8 +75,10 @@ button:hover {
     background-color: #eb4d4b;
 }
 
+/* a mode swallows plain h/j/k/l, so it has to be impossible to miss */
 #mode {
-    background-color: #64727D;
+    background-color: #eb4d4b;
+    color: #ffffff;
     box-shadow: inset 0 3px #ffffff;
 }
 

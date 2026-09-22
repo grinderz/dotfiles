@@ -71,11 +71,12 @@ sketchybar --add item scratchpad left \
         click_script="$HOME/.local/bin/scratch-term-mac" \
     --subscribe scratchpad aerospace_workspace_change front_app_switched
 
-# resize/service mode indicator, toggled straight from aerospace.toml
+# resize/service mode indicator, toggled straight from aerospace.toml; a
+# mode swallows plain h/j/k/l, so it wears the urgent colour
 sketchybar --add item mode left \
     --set mode drawing=off icon.drawing=off \
-        label.font="Hack Nerd Font:Italic:14.0" \
-        background.color=$FOCUSED_COLOR background.drawing=on
+        label.font="Hack Nerd Font:Italic:14.0" label.color=0xffffffff \
+        background.color=$CRITICAL_COLOR background.drawing=on
 
 # what is playing (waybar's mpris): on the left, after the workspaces;
 # the right side is too wide already for it next to a centered title

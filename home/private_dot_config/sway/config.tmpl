@@ -351,11 +351,15 @@ mode "resize" {
     bindsym Up resize shrink height 10px
     bindsym Right resize grow width 10px
 
-    # Return to default mode
+    # Return to default mode: Escape, Return, or the key that got us here
     bindsym Return mode "default"
     bindsym Escape mode "default"
+    bindsym $mod+Shift+r mode "default"
 }
-bindsym $mod+r mode "resize"
+# Shift on purpose: a bare $mod+r is one slip away from the terminal's
+# Ctrl+r on the mac (Karabiner sends physical Super as Ctrl there), and
+# landing in this mode silently eats h/j/k/l everywhere
+bindsym $mod+Shift+r mode "resize"
 #
 # Utilities:
 #
