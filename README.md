@@ -754,14 +754,11 @@ without its setup, so on the Mac gitlab needs `glab auth login` and jira
 the `jira-cli` config and token. Bluetooth comes from `blueutil` (brew), what is
 playing from `media-control` (the mediaremote-adapter; sketchybar's own
 `media_change` event is dead on macOS 15.4+ where Apple locked
-MediaRemote down), polled every 5 s, a click toggles play/pause. The tray:
-sketchybar clones menu bar extras as read-only images
-(`TRAY_ALIASES` in `sketchybar/env.sh`, names from `sketchybar --query
-default_menu_items`, which needs Screen Recording for sketchybar);
-clicks do not reach the apps, the native menu bar is one mouse move to
-the top edge away, and the clones sit on the widest display only (the
-builtin screen has no room next to the centered window title). The
-wired link, the toggles (keep-awake via `caffeinate`, Low Power Mode,
+MediaRemote down), polled every 5 s, a click toggles play/pause. There is
+no tray: sketchybar can clone menu bar extras as images, but the clones
+take clicks nowhere and the builtin screen has no room for them beside
+the window title, so the native menu bar (one mouse move to the top
+edge) does that job. The wired link, the toggles (keep-awake via `caffeinate`, Low Power Mode,
 Focus), the power menu, the recording indicator, the system health
 (`system-stats-mac`: temperature on the bar, cpu/load/mem in the popup,
 sensors read by macmon without root) and the calendar / battery-time /
@@ -788,7 +785,7 @@ Sequoia has no CGSession any more.
 
 Not carried over: focus-parent and mod+drag of tiles (AeroSpace has
 neither), media/brightness keys (macOS handles them natively), the mail
-stack, usb-storage (MountMate sits in the tray) and the battery charge
+stack, usb-storage (MountMate does it from the menu bar) and the battery charge
 limit (no CLI on macOS, AlDente if ever).
 
 ## Fish functions and abbreviations

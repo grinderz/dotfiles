@@ -87,7 +87,7 @@ sketchybar --add item media left \
 
 # --- the focused window: centered on the widest display like waybar,
 # left after the workspaces on the others (the builtin screen has no
-# room in the middle next to its right cluster); tray.sh assigns the
+# room in the middle next to its right cluster); displays.sh assigns the
 # displays, front_app.sh fills both
 
 sketchybar --add item front_app center \
@@ -259,7 +259,7 @@ sketchybar --add item weather right \
         script="$PLUGIN_DIR/waybar.sh weather" \
     --subscribe weather system_woke mouse.entered mouse.exited.global
 
-# --- ungrouped, leftmost: the recording indicator and the tray clones
+# --- ungrouped, leftmost: the recording indicator
 
 sketchybar --add event recording_change
 sketchybar --add item recording right \
@@ -269,15 +269,11 @@ sketchybar --add item recording right \
     --subscribe recording recording_change mouse.entered mouse.exited.global
 
 
-for alias in "${TRAY_ALIASES[@]}"; do
-    sketchybar --add alias "$alias" right \
-        --set "$alias" icon.drawing=off label.drawing=off \
-            alias.color=0xffffffff alias.update_freq=5
-done
-# pin them to the widest display, again whenever monitors come and go
-sketchybar --add item tray.driver right \
-    --set tray.driver drawing=off script="$PLUGIN_DIR/tray.sh" \
-    --subscribe tray.driver display_change
+# places the title and the now-playing line by display width, again
+# whenever monitors come and go
+sketchybar --add item displays.driver right \
+    --set displays.driver drawing=off script="$PLUGIN_DIR/displays.sh" \
+    --subscribe displays.driver display_change
 
 
 # framed clusters like waybar's groups (#system, #work, #outside)

@@ -21,20 +21,6 @@ MUTED_COLOR=0xff90b1b1
 # reads as the key that gets there
 WORKSPACES="1:cli 2:dev 3:web 4:ide 5:wrk 6:eml 7:doc 8 9:msg 10"
 
-# menu bar extras cloned into the bar (waybar's tray) now that the native
-# menu bar is hidden: "App Name,Item Name" as `sketchybar --query
-# default_menu_items` lists them (needs Screen Recording for sketchybar).
-# Display only, clicks do not reach the app; an extra that is not up
-# (Control Center's mic/camera dot, say) draws as a blank box, so only
-# permanent ones belong here. Shown on the widest display only, the
-# builtin screen has no room next to the centered window title.
-TRAY_ALIASES=(
-    "AyuGram,Item-0"
-    "MountMate,Item-0"
-    "ConnectMeNow4,Item-0"
-    "SystemUIServer,AppleVPNExtra"
-)
-
 # popup_lines ITEM LINE...: fill ITEM's popup with one label per line
 # without tearing it down: existing rows are relabeled in place, rows are
 # added or removed only when the count changes (a rebuild on every hover
