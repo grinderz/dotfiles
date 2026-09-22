@@ -118,9 +118,23 @@
     },
     "clock": {
         // "timezone": "America/New_York",
+        // en_DK is English with ISO dates and a week that starts on Monday,
+        // which is what %V counts; the module needs it spelled out, the
+        // system LC_TIME does not reach {calendar}
+        "locale": "en_DK.UTF-8",
         "format": "W{:%V %a %e %b %H:%M}",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-        "format-alt": "W{:%V %Y-%m-%d}"
+        "format-alt": "W{:%V %Y-%m-%d}",
+        "calendar": {
+            "mode": "month",
+            "weeks-pos": "left",
+            "on-scroll": 1,
+            "format": {
+                "today": "<b><u>{}</u></b>",
+                "weeks": "<span color='#90b1b1'>W{}</span>",
+                "weekdays": "<b>{}</b>"
+            }
+        }
     },
     "battery": {
         // pin to the real battery and adapter: scanning all of
