@@ -1,0 +1,10 @@
+{{- /* Sublime Text user preferences, shared by the linux ~/.config path
+       and the mac ~/Library/Application Support one; called with
+       (dict "font_size" <n>) where a machine needs its own size */ -}}
+{
+	"theme": "Default Dark.sublime-theme",
+	"remember_open_files": false,
+	"hot_exit": false,
+	"update_check": false{{ with (get . "font_size") }},
+	"font_size": {{ . }}{{ end }}
+}

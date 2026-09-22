@@ -58,6 +58,7 @@ Library
 .config/ewsctl
 # sublime keeps its mac config under ~/Library/Application Support
 .config/sublime-text
+.config/sublime-merge
 .local/bin/battery-conservation
 .local/bin/battery-low-notify
 .local/bin/bt-power

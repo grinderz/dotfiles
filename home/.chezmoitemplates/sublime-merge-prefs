@@ -1,0 +1,9 @@
+{{- /* Sublime Merge user preferences, shared the same way as the Sublime
+       Text ones; called with (dict "font_size" <n>) when a machine
+       needs its own size */ -}}
+{
+	"update_check": false,
+	"theme": "Merge Dark.sublime-theme",
+	"trim_trailing_white_space_on_save": true{{ with (get . "font_size") }},
+	"font_size": {{ . }}{{ end }}
+}
