@@ -758,8 +758,15 @@ MediaRemote down), polled every 5 s, a click toggles play/pause. There is
 no tray: sketchybar can clone menu bar extras as images, but the clones
 take clicks nowhere and the builtin screen has no room for them beside
 the window title, so the native menu bar (one mouse move to the top
-edge) does that job. The wired link, the toggles (keep-awake via `caffeinate`, Low Power Mode,
-Focus), the power menu, the recording indicator, the system health
+edge) does that job. Syncthing has a module of its own
+(`syncthing-status`, both bars): hidden while every folder is idle and
+every device is connected and caught up, otherwise it counts what is
+left to pull, the devices that are away (`⊘`) and the folders in error,
+with the breakdown in the tooltip; the same script prints a table for
+the terminal (`syncthing-status show`) and opens the web GUI on click,
+and it reads the address and the API key from syncthing's own
+`config.xml`. The wired link, the toggles (keep-awake via `caffeinate`,
+Low Power Mode, Focus), the power menu, the recording indicator, the system health
 (`system-stats-mac`: temperature on the bar, cpu/load/mem in the popup,
 sensors read by macmon without root) and the calendar / battery-time /
 Wi-Fi-signal popups are small plugins of their own.

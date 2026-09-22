@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# Waybar module: what syncthing is doing, without opening the web GUI.
+# The text stays empty while every folder is idle and every device is
+# connected and complete, so the module shows up only when something is
+# moving, missing or broken. The tooltip lists the folders (state, what
+# is left) and the devices (completion, last seen).
+#
+# Usage: syncthing-status         print waybar json
+#        syncthing-status show    the same as a table, for the terminal
+#        syncthing-status open    open the web GUI in a browser
+#
+# The address and the API key come from syncthing's own config.xml, so
+# nothing about this machine lives here; without a config (or with
+# syncthing down) the module prints empty text and stays hidden.
+
+set -euo pipefail
+
+hide() { printf '{"text": ""}\n'; exit 0; }
+
+cmd="${1:-status}"
+
+config=""
+for candidate in \
+    "${STHOMEDIR:-/nonexistent}/config.xml" \
+    "$HOME/.local/state/syncthing/config.xml" \
+    "$HOME/.config/syncthing/config.xml" \
+    "$HOME/Library/Application Support/Syncthing/config.xml"
+do
+    [ -f "$candidate" ] && { config=$candidate; break; }
+done
+if [ -z "$config" ]; then
+    [ "$cmd" = status ] && hide
+    echo "syncthing-status: no syncthing config.xml found" >&2
+    exit 1
+fi
+
+# both live in the <gui> block; every remote device carries an <address>
+# of its own, so the first match in the file is the wrong one
+gui=$(sed -n '/<gui /,/<\/gui>/p' "$config")
+key=$(sed -n 's/.*<apikey>\(.*\)<\/apikey>.*/\1/p' <<<"$gui" | head -1)
+address=$(sed -n 's/.*<address>\(.*\)<\/address>.*/\1/p' <<<"$gui" | head -1)
+scheme=http
+grep -q '<gui[^>]*tls="true"' <<<"$gui" && scheme=https
+base="$scheme://${address:-127.0.0.1:8384}"
+
+api() { curl -sf -m 4 -H "X-API-Key: $key" "$base/rest/$1"; }
+
+case "$cmd" in
+open)
+    if command -v xdg-open >/dev/null; then exec xdg-open "$base"
+    else exec open "$base"
+    fi
+    ;;
+status | show) ;;
+*)
+    echo "syncthing-status: unknown command '$cmd'" >&2
+    exit 2
+    ;;
+esac
+
+# one pass over the API: folders and their state, devices and how far
+# behind they are. Nothing here is expensive, but it is a dozen requests,
+# so the bars poll it on a long interval.
+status=$(api system/status) || { [ "$cmd" = status ] && hide; echo "syncthing-status: not running" >&2; exit 1; }
+me=$(jq -r .myID <<<"$status")
+folders=$(api config/folders) || hide
+devices=$(api config/devices) || hide
+connections=$(api system/connections) || connections='{"connections":{}}'
+device_stats=$(api stats/device) || device_stats='{}'
+
+folder_rows=$(
+    jq -r '.[] | [.id, .label] | @tsv' <<<"$folders" | while IFS=$'\t' read -r id label; do
+        st=$(api "db/status?folder=$id") || continue
+        jq -c --arg name "${label:-$id}" '{
+            name: $name,
+            state: .state,
+            need_items: (.needTotalItems // 0),
+            need_bytes: (.needBytes // 0),
+            errors: ((.errors // 0) + (.pullErrors // 0))
+        }' <<<"$st"
+    done | jq -s .
+)
+
+device_rows=$(
+    jq -r --arg me "$me" '.[] | select(.deviceID != $me) | [.deviceID, .name, (.paused | tostring)] | @tsv' <<<"$devices" \
+    | while IFS=$'\t' read -r id name paused; do
+        completion=$(api "db/completion?device=$id") || completion='{"completion":0}'
+        jq -c --arg name "$name" --arg paused "$paused" \
+              --argjson conns "$connections" --argjson stats "$device_stats" --arg id "$id" '{
+            name: $name,
+            paused: ($paused == "true"),
+            connected: ($conns.connections[$id].connected // false),
+            completion: (.completion // 0 | floor),
+            need_bytes: (.needBytes // 0),
+            last_seen: ($stats[$id].lastSeen // "")
+        }' <<<"$completion"
+    done | jq -s .
+)
+
+human() {
+    jq -rn --argjson b "$1" '
+        def unit: if . >= 1073741824 then (./1073741824*10|round/10|tostring) + "G"
+                  elif . >= 1048576 then (./1048576|round|tostring) + "M"
+                  elif . >= 1024 then (./1024|round|tostring) + "K"
+                  else (.|tostring) + "B" end;
+        $b | unit'
+}
+
+need_items=$(jq '[.[].need_items] | add // 0' <<<"$folder_rows")
+need_bytes=$(jq '[.[].need_bytes] | add // 0' <<<"$folder_rows")
+errors=$(jq '[.[].errors] | add // 0' <<<"$folder_rows")
+busy=$(jq '[.[] | select(.state != "idle")] | length' <<<"$folder_rows")
+offline=$(jq '[.[] | select(.paused | not) | select(.connected | not)] | length' <<<"$device_rows")
+# a device that is away is reported as away, not as lagging behind
+behind=$(jq '[.[] | select(.paused | not) | select(.connected) | select(.completion < 100)] | length' <<<"$device_rows")
+
+if [ "$cmd" = show ]; then
+    printf '%-14s %-12s %s\n' FOLDER STATE LEFT
+    jq -r '.[] | [.name, .state, .need_items, .need_bytes, .errors] | @tsv' <<<"$folder_rows" \
+    | while IFS=$'\t' read -r name state items bytes errs; do
+        left="-"
+        [ "$items" -gt 0 ] && left="$items items, $(human "$bytes")"
+        [ "$errs" -gt 0 ] && left="$left ($errs errors)"
+        printf '%-14s %-12s %s\n' "$name" "$state" "$left"
+    done
+    echo
+    printf '%-14s %-12s %s\n' DEVICE LINK SYNCED
+    jq -r '.[] | [.name, (.paused|tostring), (.connected|tostring), .completion, .last_seen] | @tsv' <<<"$device_rows" \
+    | while IFS=$'\t' read -r name paused connected completion seen; do
+        link=connected
+        if [ "$connected" = false ]; then
+            case "$seen" in
+                "" | 1970-*) link="never seen" ;;
+                *) link="offline since ${seen%T*}" ;;
+            esac
+        fi
+        [ "$paused" = true ] && link=paused
+        printf '%-14s %-12s %s%%\n' "$name" "$link" "$completion"
+    done
+    exit 0
+fi
+
+# nothing to report: idle folders, every device connected and complete
+if [ "$busy" -eq 0 ] && [ "$need_items" -eq 0 ] && [ "$errors" -eq 0 ] \
+   && [ "$offline" -eq 0 ] && [ "$behind" -eq 0 ]; then
+    hide
+fi
+
+# the icon carries the module, the counters say what is wrong: what is
+# still to pull, devices not caught up, devices away, folders in error.
+# The classes are the ones both bars already colour (see style.css and
+# sketchybar's waybar.sh): running is dim, warning yellow, critical red.
+details=()
+class=running
+if [ "$need_items" -gt 0 ]; then
+    details+=("$need_items")
+elif [ "$busy" -gt 0 ] && [ "$need_bytes" -gt 0 ]; then
+    details+=("$(human "$need_bytes")")
+fi
+[ "$behind" -gt 0 ] && details+=("⇡$behind")
+if [ "$offline" -gt 0 ]; then
+    details+=("⊘$offline")
+    class=warning
+fi
+if [ "$errors" -gt 0 ]; then
+    details+=("!$errors")
+    class=critical
+fi
+text=$(printf ' %s' "${details[*]-}")
+
+tooltip=$(
+    jq -r '.[] | select(.state != "idle" or .need_items > 0 or .errors > 0)
+           | "\(.name): \(.state)"
+             + (if .need_items > 0 then ", \(.need_items) items left" else "" end)
+             + (if .errors > 0 then ", \(.errors) errors" else "" end)' <<<"$folder_rows"
+    jq -r '.[] | select(.paused | not)
+           | "\(.name): \(if .connected then "connected" else "offline" end) \(.completion)%"
+             + (if (.connected | not) and (.last_seen | startswith("1970") | not) and .last_seen != ""
+                then ", last seen \(.last_seen | split("T")[0])"
+                elif (.connected | not) then ", never seen" else "" end)' <<<"$device_rows"
+)
+
+jq -cn --arg text "${text% }" --arg tooltip "$tooltip" --arg class "$class" \
+    '{text: $text, tooltip: $tooltip, class: $class}'

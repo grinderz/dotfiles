@@ -236,8 +236,18 @@ label:focus {
 }
 
 /* a pipeline is running: dim until it settles */
-#custom-gitlab.running {
+#custom-gitlab.running,
+/* syncthing moving data: dim; a device away: yellow; folder errors: red */
+#custom-syncthing.running {
     color: #a5c5dd;
+}
+
+#custom-syncthing.warning {
+    color: #f9c74f;
+}
+
+#custom-syncthing.critical {
+    color: #eb4d4b;
 }
 
 #tray {

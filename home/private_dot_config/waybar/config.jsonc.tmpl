@@ -57,7 +57,7 @@
     },
     "group/system": {
         "orientation": "inherit",
-        "modules": ["custom/system-stats", "network#eth", "network#wifi", "pulseaudio", "battery"]
+        "modules": ["custom/syncthing", "custom/system-stats", "network#eth", "network#wifi", "pulseaudio", "battery"]
     },
     // Modules configuration
     // "sway/workspaces": {
@@ -251,6 +251,15 @@
         "interval": 60,
         "signal": 7,
         "on-click": "$HOME/.local/bin/screen-record region"
+    },
+    // hidden while every folder is idle and every device is connected and
+    // caught up, so it appears only when syncthing has something to say
+    "custom/syncthing": {
+        "exec": "$HOME/.local/bin/syncthing-status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 30,
+        "on-click": "$HOME/.local/bin/syncthing-status open"
     },
     "custom/gitlab": {
         "exec": "$HOME/.local/bin/gitlab-status{{ if $gitlabExclude }} --exclude {{ $gitlabExclude | shellQuote }}{{ end }}",

@@ -212,9 +212,9 @@ sketchybar --add item volume right \
     --subscribe volume volume_change
 
 sketchybar --add item wifi right \
-    --set wifi update_freq=30 script="$PLUGIN_DIR/wifi.sh" \
+    --set wifi update_freq=30 script="$PLUGIN_DIR/wifi.sh" "${popup[@]}" \
         click_script="open 'x-apple.systempreferences:com.apple.Network-Settings.extension'" \
-    --subscribe wifi wifi_change system_woke
+    --subscribe wifi wifi_change system_woke mouse.entered mouse.exited.global
 
 # the wired link (waybar's network#eth), hidden while the default route
 # is wireless
@@ -234,6 +234,13 @@ sketchybar --add item bluetooth right \
     --set bluetooth update_freq=30 script="$PLUGIN_DIR/bluetooth.sh" "${popup[@]}" \
         click_script="open 'x-apple.systempreferences:com.apple.BluetoothSettings'" \
     --subscribe bluetooth system_woke mouse.entered mouse.exited.global
+
+# syncthing: hidden while everything is in sync, a click opens its web GUI
+sketchybar --add item syncthing right \
+    --set syncthing update_freq=30 icon.drawing=off "${popup[@]}" \
+        script="$PLUGIN_DIR/waybar.sh syncthing-status" \
+        click_script="$HOME/.local/bin/syncthing-status open" \
+    --subscribe syncthing system_woke mouse.entered mouse.exited.global
 
 # --- work group: gitlab pipelines/MRs and jira issues, the same scripts
 # waybar runs (they hide themselves without a glab / jira login); left
@@ -281,7 +288,7 @@ sketchybar --add bracket toggles toggles.handle nosuspend lowpower focus "Contro
     --set toggles background.color=0x26000000 \
         background.border_color=0x59ffffff background.border_width=1 \
         background.corner_radius=6 background.height=26
-for group in "system:battery volume wifi eth bluetooth stats" "work:jira gitlab" \
+for group in "system:battery volume wifi eth bluetooth stats syncthing" "work:jira gitlab" \
              "outside:weather"; do
     # shellcheck disable=SC2086
     sketchybar --add bracket "${group%%:*}" ${group#*:} \
