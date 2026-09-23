@@ -121,6 +121,17 @@ only puts symlinks in place:
 | `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts live apart, in the `ai` folder below |
 
+User units under `.config/systemd/user` are enabled by apply itself:
+`.chezmoiscripts/run_onchange_after_systemd-user.sh` reloads the user
+manager and runs `systemctl --user enable --now` for every deployed unit
+that carries an `[Install]` section — the timers, `davmail`,
+`goimapnotify`. Units without one (`mbsync.service`, the notify services,
+`evolution-alarm-notify`) are started by their timer or by
+`sway-session.target` and are left alone, and a session without a user
+bus (plain ssh, no lingering) skips the script instead of failing the
+apply. pyinfra stays out of this: it runs as root over ssh and owns
+system state, `/etc` and system services.
+
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `personal_key_by_host`), not in
 separate copies of the file. Editing the same key on two machines while
@@ -313,17 +324,24 @@ Per deploy, once per host:
   `vdirsyncer/config.tmpl`. Secrets live in pass: `passp` (personal store,
   `~/sync/pass`) and `passw` (work store, `~/sync/work/pass`); the shared
   Google OAuth client sits at `oauth/google/client-id` / `client-secret`
-  (used by vdirsyncer directly and mirrored into oama's config). After
-  apply: `systemctl --user enable --now davmail.service mbsync.timer
-  goimapnotify.service` (the last one is IMAP IDLE push: new mail starts
-  mbsync.service at once, the timer stays as the fallback). Sending goes
+  (used by vdirsyncer directly and mirrored into oama's config). Apply
+  enables the units itself (see below), goimapnotify among them: IMAP
+  IDLE push, new mail starts mbsync.service at once and the timer stays
+  as the fallback. Sending goes
   through `msmtp` (package) via the vendored `msmtpq`: a failed send is
   queued under `~/.local/state/msmtpq/queue`, retried by mbsync.service
   and counted in the waybar mail module until it leaves; sends are
   logged to the journal (`journalctl --user -t msmtp`). Then
   a one-time `oama authorize google <email>` per Google mail account and
   `vdirsyncer discover` (browser OAuth per google calendar), then
-  `enable --now vdirsyncer.timer`.
+  `enable --now vdirsyncer.timer`. Address completion in the composer
+  (`mail-addr`, aerc's `address-book-cmd`) reads the table that
+  `maildir-rank-addr` (AUR) builds from the maildir, so the people written
+  to most and most recently come first instead of alphabetically, rebuilt
+  twice a day by its timer. Without
+  the package the script falls back to a notmuch query, and either way the
+  Exchange address list (`ewsctl contacts`) is appended for colleagues
+  never written to, cached per query for a week because it costs ~2 s.
 
 ### Mail password rotation
 

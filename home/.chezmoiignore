@@ -97,6 +97,7 @@ Library
 .msmtprc
 .local/bin/msmtpq
 .local/bin/msmtp-queue
+.config/maildir-rank-addr
 .chezmoiscripts/reload-aerc.sh
 # systemd user environment; PATH and the editor come from fish on macOS
 .config/environment.d

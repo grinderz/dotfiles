@@ -1,0 +1,35 @@
+#!/bin/sh
+# Enables what chezmoi just deployed under ~/.config/systemd/user, so a
+# fresh machine needs no list of `systemctl --user enable` lines from the
+# README. The rule is the unit's own: everything with an [Install] section
+# is meant to be enabled (the timers, davmail, goimapnotify), everything
+# without one is started by a timer or by sway-session.target and must be
+# left alone.
+#
+# Reruns whenever any unit file changes, hashed through the source dir:
+{{ range (glob (joinPath .chezmoi.sourceDir "private_dot_config/systemd/user/*")) -}}
+# {{ base . }}: {{ include . | sha256sum }}
+{{ end -}}
+set -eu
+
+units_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+[ -d "$units_dir" ] || exit 0
+
+# no user bus (a plain ssh session without lingering): leave it for the
+# next apply inside the session rather than failing the whole run
+systemctl --user show-environment >/dev/null 2>&1 || exit 0
+
+systemctl --user daemon-reload
+
+wanted=""
+for unit in "$units_dir"/*; do
+    [ -f "$unit" ] || continue
+    grep -q '^\[Install\]' "$unit" || continue
+    wanted="$wanted $(basename "$unit")"
+done
+[ -n "$wanted" ] || exit 0
+
+# enabling an already enabled unit is a no-op, so this stays quiet after
+# the first run; --now also starts what is not running yet
+# shellcheck disable=SC2086
+systemctl --user enable --now $wanted

@@ -1,0 +1,18 @@
+{{- /* maildir-rank-addr indexes the synced maildir and ranks addresses by
+       how often and how recently they were written to; mail-addr reads the
+       table it writes. Own addresses come from the accounts in the private
+       chezmoi.toml, the same list mbsync and aerc use, so adding an account
+       needs no edit here. */ -}}
+# one root per account, not their parent: the tool globs <root>/*/cur and
+# would find nothing a level up
+maildir = [{{ range $i, $a := .mail.accounts }}{{ if $i }}, {{ end }}"{{ $.chezmoi.homeDir }}/{{ $.paths.mail }}/{{ $a.name }}"{{ end }}]
+addresses = [{{ range $i, $a := .mail.accounts }}{{ if $i }}, {{ end }}"{{ $a.email }}"{{ end }}]
+# noreply senders and mailing-list machinery never belong in completion
+filters = [
+    "^noreply@",
+    "^no-reply@",
+    "@noreply\\.",
+    "^notifications@",
+    "^mailer-daemon@",
+    "bounce",
+]

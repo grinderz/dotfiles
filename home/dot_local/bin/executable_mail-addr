@@ -1,8 +1,18 @@
 #!/bin/sh
-# Address completion for aerc's compose fields (address-book-cmd):
-# harvests candidates from the notmuch index — everyone ever written to
-# or received from across all synced accounts. Output is what aerc
-# expects: address<TAB>name, best-effort match on the typed fragment.
+# Address completion for aerc's compose fields (address-book-cmd), in the
+# order aerc shows them: people you actually write to first, the corporate
+# directory after.
+#
+# Three sources, cheapest first:
+#   1. maildir-rank-addr's table (~/.cache/maildir-rank-addr/addressbook.tsv),
+#      already sorted by how often and how recently an address was written
+#      to. A systemd timer rebuilds it twice a day.
+#   2. notmuch, only while that table is missing (package not installed yet,
+#      first index still to come) -- alphabetical, but better than nothing.
+#   3. ewsctl, the Exchange global address list: the only source that knows
+#      colleagues never written to. It costs ~2 s, so its answers are cached
+#      per query and reused for a week.
+# Output is what aerc expects: address<TAB>name.
 
 # ewsctl lives here too; the sway session PATH misses it
 PATH="$HOME/.local/bin:$PATH"
@@ -10,20 +20,16 @@ PATH="$HOME/.local/bin:$PATH"
 q=$1
 [ -n "$q" ] || exit 0
 
-{
-    # senders AND recipients: people only ever written to (never heard
-    # from) live in the To of sent mail and need --output=recipients
-    notmuch address --deduplicate=address --output=sender --output=recipients \
-        "from:$q* or to:$q*" 2>/dev/null
-    # corporate GAL over EWS; silently absent when ewsctl or the network
-    # is not around. Already in address<TAB>name form — normalize below
-    # is a no-op for it.
-    command -v ewsctl >/dev/null && timeout 3 ewsctl contacts "$q" 2>/dev/null \
-        | sed 's/^\([^\t]*\)\t\(.*\)$/\2 <\1>/'
-} \
-    | awk '
+ranked="${XDG_CACHE_HOME:-$HOME/.cache}/maildir-rank-addr/addressbook.tsv"
+gal_dir="${XDG_CACHE_HOME:-$HOME/.cache}/mail-addr"
+gal_ttl_days=7
+limit=30
+
+# normalize "Some Name <addr>" and bare "addr" into address<TAB>name
+normalize() {
+    awk -F'\t' '
+        NF >= 2 { print $1 "\t" $2; next }
         {
-            # "Some Name <addr>" or bare "addr"
             if (match($0, /<[^>]+>$/)) {
                 addr = substr($0, RSTART + 1, RLENGTH - 2)
                 name = substr($0, 1, RSTART - 1)
@@ -32,6 +38,43 @@ q=$1
                 addr = $0
                 name = ""
             }
-            printf "%s\t%s\n", addr, name
+            if (addr != "") printf "%s\t%s\n", addr, name
         }
-    ' | sort -u | grep -i -- "$q" | head -30
+    '
+}
+
+ranked_matches() {
+    [ -s "$ranked" ] || return 1
+    # the file is already in rank order, so matches keep it
+    grep -i -- "$q" "$ranked" | normalize
+}
+
+notmuch_matches() {
+    command -v notmuch >/dev/null || return 0
+    # senders AND recipients: people only ever written to (never heard
+    # from) live in the To of sent mail and need --output=recipients
+    notmuch address --deduplicate=address --output=sender --output=recipients \
+        "from:$q* or to:$q*" 2>/dev/null | normalize | sort -u
+}
+
+gal_matches() {
+    command -v ewsctl >/dev/null || return 0
+    # one cache file per query, refreshed when older than the TTL; a slow
+    # or absent network then costs nothing on the next keystroke
+    key=$(printf '%s' "$q" | tr -c '[:alnum:]' '_')
+    cache="$gal_dir/$key.tsv"
+    if [ ! -f "$cache" ] || [ -n "$(find "$cache" -mtime +$gal_ttl_days 2>/dev/null)" ]; then
+        mkdir -p "$gal_dir"
+        timeout 3 ewsctl contacts "$q" 2>/dev/null \
+            | sed 's/^\([^\t]*\)\t\(.*\)$/\2 <\1>/' | normalize >"$cache.tmp" 2>/dev/null \
+            && mv "$cache.tmp" "$cache"
+    fi
+    cat "$cache" 2>/dev/null
+}
+
+{
+    if ! ranked_matches; then
+        notmuch_matches
+    fi
+    gal_matches
+} | awk -F'\t' '!seen[tolower($1)]++' | grep -i -- "$q" | head -"$limit"

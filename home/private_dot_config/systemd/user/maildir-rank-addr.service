@@ -1,0 +1,9 @@
+[Unit]
+Description=Rebuild the ranked address book from the maildir
+After=mbsync.service
+
+[Service]
+Type=oneshot
+# reads the maildir only; a missing binary must not mark the run failed,
+# mail-addr falls back to notmuch until the package is installed
+ExecStart=/usr/bin/maildir-rank-addr
