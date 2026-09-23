@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # Area screenshot with the smart picker (drag = freeform, click = window or
 # output, via region-select): saves to the screenshots dir, copies to the
-# clipboard, raises a notification with a preview.
+# clipboard, raises a notification with a preview. With "clipboard" as the
+# argument nothing is written to disk — the throwaway crop that goes
+# straight into a chat window.
 
 set -euo pipefail
 
 geom=$("$HOME/.local/bin/region-select") || exit 0
+
+if [ "${1:-}" = clipboard ]; then
+    grim -g "$geom" - | wl-copy --type image/png
+    notify-send -t 3000 "Screenshot" "area copied"
+    exit 0
+fi
 
 dir="${XDG_SCREENSHOTS_DIR:-$HOME/pictures/screenshots}"
 mkdir -p "$dir"

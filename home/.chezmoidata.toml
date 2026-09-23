@@ -12,6 +12,15 @@ path = ["$HOME/.local/bin", "$HOME/go/bin"]
 # mbsync fills and notmuch indexes (isyncrc, notmuch, mbsync.service, the
 # aerc group tabs that read the account off a message path), and the
 # msmtpq queue (msmtpq/config; the mail scripts read MSMTPQ_Q from there).
+# The two font families named in more than one file: the generic monospace
+# fontconfig pins for everything that asks for one (foot, waybar CSS, the
+# web), and the nerd-patched family the bars need for icon glyphs --
+# sketchybar spells families out by name, macOS has no fontconfig.
+[fonts]
+mono = "Noto Sans Mono"
+icons = "Hack Nerd Font"
+bar_size = 14
+
 [paths]
 mail = ".local/share/mail"
 msmtp_queue = ".local/state/msmtpq/queue"

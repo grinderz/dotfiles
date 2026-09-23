@@ -19,7 +19,8 @@ trap 'rm -f "$tmp"' EXIT
 screencapture -xi "$tmp" || exit 0
 [ -s "$tmp" ] || exit 0
 
-text=$(tesseract "$tmp" - -l eng+rus 2>/dev/null || true)
+text=$(tesseract "$tmp" - --oem 1 --psm 6 -l eng+rus --dpi 300 \
+    -c preserve_interword_spaces=1 2>/dev/null || true)
 if [ -z "${text//[[:space:]]/}" ]; then
     notify "no text found"
     exit 0

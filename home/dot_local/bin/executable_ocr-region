@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# OCR a screen region into the clipboard ($mod+o; the mac twin is ocr-mac).
+#
+# The flags matter more than the engine: --psm 6 says "one block of text",
+# which a screen region almost always is, --dpi 300 stops tesseract from
+# guessing the resolution off a screenshot that carries none, and
+# preserve_interword_spaces keeps code and tables from collapsing into one
+# word. Needs tesseract-data-eng and tesseract-data-rus.
+
+set -euo pipefail
+
+geom=$("$HOME/.local/bin/region-select") || exit 0
+
+text=$(grim -g "$geom" - \
+    | tesseract stdin stdout --oem 1 --psm 6 -l eng+rus --dpi 300 \
+        -c preserve_interword_spaces=1 2>/dev/null || true)
+
+if [ -z "${text//[[:space:]]/}" ]; then
+    notify-send -u low -t 3000 "OCR" "no text found in the selection"
+    exit 0
+fi
+
+printf '%s' "$text" | wl-copy
+notify-send -t 5000 "OCR" "$(printf '%s' "$text" | head -c 120) (copied)"

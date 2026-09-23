@@ -29,8 +29,8 @@ sketchybar --bar position=bottom height=30 color=$BAR_COLOR sticky=on \
 
 sketchybar --default \
     padding_left=2 padding_right=2 \
-    icon.font="Hack Nerd Font:Regular:14.0" \
-    label.font="Hack Nerd Font:Regular:14.0" \
+    icon.font="{{ .fonts.icons }}:Regular:{{ .fonts.bar_size }}.0" \
+    label.font="{{ .fonts.icons }}:Regular:{{ .fonts.bar_size }}.0" \
     icon.color=0xffffffff label.color=0xffffffff \
     icon.padding_left=4 icon.padding_right=2 \
     label.padding_left=2 label.padding_right=4 \
@@ -75,7 +75,7 @@ sketchybar --add item scratchpad left \
 # mode swallows plain h/j/k/l, so it wears the urgent colour
 sketchybar --add item mode left \
     --set mode drawing=off icon.drawing=off \
-        label.font="Hack Nerd Font:Italic:14.0" label.color=0xffffffff \
+        label.font="{{ .fonts.icons }}:Italic:{{ .fonts.bar_size }}.0" label.color=0xffffffff \
         background.color=$CRITICAL_COLOR background.drawing=on
 
 # what is playing (waybar's mpris): on the left, after the workspaces;
