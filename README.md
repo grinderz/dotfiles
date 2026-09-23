@@ -142,6 +142,15 @@ permission flow — `sed -i`, `tee`, `find -exec` and `~/.ssh/config` stay
 allowed on purpose, since a guard that fires on daily work only teaches
 everyone to work around it.
 
+Taskwarrior splits work, personal and family life by the project a task
+belongs to (`work.*`, `personal.*`, `family.*`), with a context per
+sphere in `taskrc`: the `read` filter decides what a report shows, the
+`write` one stamps the project on whatever is added while that context is
+on, so `task context work` is the only thing to remember. `personal` also
+matches tasks with no project, which is where everything added before the
+split still lives. `task context none` shows all three again, and
+taskwarrior-tui has the same switch behind its context menu.
+
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `personal_key_by_host`), not in
 separate copies of the file. Editing the same key on two machines while

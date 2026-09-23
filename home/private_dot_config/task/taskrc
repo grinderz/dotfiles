@@ -27,3 +27,48 @@ report.annotated.columns=id,start.age,entry.age,depends,priority,project,tags,re
 report.annotated.labels=ID,Active,Age,Deps,P,Project,Tags,Recur,Sched,Due,Until,Description,Urg
 report.annotated.filter=status:pending
 report.annotated.sort=urgency-
+
+# Three spheres, kept apart by the project an entry belongs to. read
+# filters what a report shows, write stamps the project on anything added
+# while the context is on, so `task context work` plus `task add ...` needs
+# no project argument. personal also picks up the tasks that predate the
+# split (project:) until they are sorted.
+context.personal.read=project:personal or project:
+context.personal.write=project:personal
+context.work.read=project:work
+context.work.write=project:work
+context.family.read=project:family
+context.family.write=project:family
+
+# taskwarrior-tui reads its settings from here too, prefixed uda.
+# The sync is the point: `task sync` writes to the syncthing-carried
+# server dir above, so the interface picks up what the other machine did
+# without a manual refresh.
+uda.taskwarrior-tui.background_process=task sync
+uda.taskwarrior-tui.background_process_period=60
+# alternate row colour comes from the theme (color.alternate)
+uda.taskwarrior-tui.task-report.use-alternate-style=true
+# the key that toggles a tag marks it as the next thing to do
+uda.taskwarrior-tui.quick-tag.name=next
+# the interface chrome, borrowed from the theme included above instead of
+# a palette of its own: color4 is its header blue, color0 the dimmed
+# background it uses for alternate rows, color6 its footnote cyan and
+# color1 the due-today red. Swap the theme and this follows.
+uda.taskwarrior-tui.style.navbar=color4
+uda.taskwarrior-tui.style.title=bold color4
+uda.taskwarrior-tui.style.title.border=color4
+uda.taskwarrior-tui.style.context.active=bold color4
+uda.taskwarrior-tui.style.report.selection=bold on color0
+uda.taskwarrior-tui.style.report.scrollbar=color4
+uda.taskwarrior-tui.style.report.scrollbar.area=color0
+uda.taskwarrior-tui.style.report.completion-pane=on color0
+uda.taskwarrior-tui.style.report.completion-pane-highlight=bold color4 on color0
+uda.taskwarrior-tui.style.command=color6
+uda.taskwarrior-tui.style.command.error=color0 on color1
+uda.taskwarrior-tui.style.calendar.title=bold color4
+uda.taskwarrior-tui.style.calendar.today=color0 on color4
+uda.taskwarrior-tui.style.help.gauge=color0 on color4
+
+# deleting and undoing ask first
+uda.taskwarrior-tui.task-report.prompt-on-delete=true
+uda.taskwarrior-tui.task-report.prompt-on-undo=true
