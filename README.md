@@ -132,6 +132,16 @@ bus (plain ssh, no lingering) skips the script instead of failing the
 apply. pyinfra stays out of this: it runs as root over ssh and owns
 system state, `/etc` and system services.
 
+`agent-bash-guard` is a `PreToolUse` hook (registered in the merged
+`~/.claude/settings.json`): it denies a Bash call that pipes a download
+into a shell, sets `LD_PRELOAD`/`BASH_ENV` and friends inline, reads a
+private ssh key or a credentials file (`.netrc`, `.aws/credentials`,
+`.docker/config.json`), writes inside `.git` by hand, deletes `~` or `/`
+recursively, or formats a device. Everything else passes to the normal
+permission flow — `sed -i`, `tee`, `find -exec` and `~/.ssh/config` stay
+allowed on purpose, since a guard that fires on daily work only teaches
+everyone to work around it.
+
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `personal_key_by_host`), not in
 separate copies of the file. Editing the same key on two machines while
@@ -301,7 +311,13 @@ Per deploy, once per host:
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
   (OCR bind), `otf-font-awesome` + `ttf-roboto` (waybar font stack),
-  `udisks2` (usb-storage waybar module); before the first apply, generate
+  `udisks2` (usb-storage waybar module), `zathura` +
+  `zathura-pdf-mupdf` (the viewer `application/pdf` opens in: vim keys,
+  and `recolor` inverts the page rather than dimming the window. The
+  backend is a separate package -- zathura without one starts and shows
+  nothing. sioyek was the other candidate and lost on weight: it is a Qt
+  app and would have pulled ~250 MB of Qt6 onto a desktop that has none);
+  before the first apply, generate
   the locale the waybar clock names (`en_DK.UTF-8`: English with ISO dates
   and a Monday-first week, which is what the `%V` week number counts) —
   `sudo sed -i 's/^#en_DK.UTF-8 UTF-8/en_DK.UTF-8 UTF-8/' /etc/locale.gen

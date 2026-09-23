@@ -1,0 +1,25 @@
+# zathura, the PDF viewer xdg-open hands application/pdf to
+# (mimeapps.list). Vim keys are the default binding set; what follows is
+# the dark reading mode and the few defaults worth flipping.
+
+# invert the page instead of dimming the window: white paper at night is
+# the actual problem, and recolor keeps the contrast of the text
+set recolor true
+set recolor-keephue true
+set recolor-lightcolor "#1d2021"
+set recolor-darkcolor "#d4be98"
+
+# the chrome around the page, close to the bar palette
+set default-bg "#1d2021"
+set statusbar-bg "#285577"
+set statusbar-fg "#ffffff"
+set inputbar-bg "#1d2021"
+set inputbar-fg "#ffffff"
+
+# open where the document was left, and keep more of them
+set database sqlite
+set window-title-basename true
+set selection-clipboard clipboard
+set scroll-step 80
+set smooth-scroll true
+set adjust-open width

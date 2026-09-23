@@ -85,6 +85,7 @@ Library
 .local/bin/car-traffic
 .local/bin/starline-status
 .config/starline-status
+.config/zathura
 .local/bin/sway-bindings
 .local/bin/zellij-bindings
 .local/bin/aerc-bindings

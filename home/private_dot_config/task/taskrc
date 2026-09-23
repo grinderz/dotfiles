@@ -6,3 +6,24 @@ sync.local.server_dir=~/sync/common/task
 data.location=~/.local/share/task
 
 news.version=3.4.2
+
+# the shipped theme, not a copy in the repo (task ships them all)
+include /usr/share/doc/task/rc/solarized-dark-256.theme
+
+search.case.sensitive=no
+# an empty middle priority so a task can be H, L or simply unset
+uda.priority.values=H,M,,L
+reserved.lines=2
+
+# reports with the columns worth having: what blocks what (depends), when
+# it was scheduled and how long until it is due, and the urgency that
+# decides the order
+report.next.columns=id,start.age,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description.count,urgency
+report.list.columns=id,start.age,entry.age,depends.indicator,priority,project,tags,recur.indicator,scheduled.countdown,due,until.remaining,description.count,urgency
+
+# same as next, with the annotations spelled out
+report.annotated.description=Task list with annotations shown
+report.annotated.columns=id,start.age,entry.age,depends,priority,project,tags,recur,scheduled.countdown,due.relative,until.remaining,description,urgency
+report.annotated.labels=ID,Active,Age,Deps,P,Project,Tags,Recur,Sched,Due,Until,Description,Urg
+report.annotated.filter=status:pending
+report.annotated.sort=urgency-

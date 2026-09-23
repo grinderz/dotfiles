@@ -8,6 +8,7 @@ video/webm=mpv.desktop
 video/mpeg=mpv.desktop
 video/quicktime=mpv.desktop
 video/x-msvideo=mpv.desktop
+application/pdf=org.pwmt.zathura.desktop
 inode/directory=yazi.desktop
 application/zip=yazi.desktop
 application/x-7z-compressed=yazi.desktop

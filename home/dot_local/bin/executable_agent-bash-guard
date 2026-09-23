@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# PreToolUse hook for the coding agents: refuses a handful of Bash
+# commands that no task here has a reason to run, borrowed in spirit from
+# ferdinandyb's opencode bash-guard.
+#
+# Claude Code calls it through `hooks.PreToolUse` in ~/.claude/settings.json.
+# Codex CLI has the same event (`pre_tool_use`) and generates its hook
+# schemas from Claude's, so the script fits it unchanged -- only the
+# declaration in ~/.codex/config.toml is still missing.
+#
+# The hook JSON arrives on stdin; a deny is a permissionDecision object on
+# stdout with exit 0. Anything not matched prints nothing and exits 0, so
+# the normal permission flow decides.
+#
+# Deliberately narrower than the original: it does not block `sed -i`,
+# `tee`, `find -exec` or reading ~/.ssh/config, all of which this setup
+# uses constantly, and blocking them would train everyone to bypass the
+# guard. What stays blocked is what has no legitimate use here.
+#
+# It matches the command as text, with no idea of intent: a shell line
+# that merely quotes one of these patterns (documentation about the guard,
+# a test payload) is denied too. Write that kind of text with an editor
+# tool rather than a heredoc and the question does not arise.
+
+set -euo pipefail
+
+deny() {
+    jq -n --arg reason "$1" '{
+        hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: ("bash-guard: " + $reason)
+        }
+    }'
+    exit 0
+}
+
+payload=$(cat)
+[ "$(jq -r '.tool_name // ""' <<<"$payload")" = "Bash" ] || exit 0
+cmd=$(jq -r '.tool_input.command // ""' <<<"$payload")
+[ -n "$cmd" ] || exit 0
+
+# remote code straight into a shell: the one pattern where reviewing the
+# command tells you nothing about what will run
+if grep -Eq '(curl|wget|fetch)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k|da|)sh' <<<"$cmd"; then
+    deny "piping a download into a shell hides what actually runs; clone or download first, read it, then run it"
+fi
+
+# loader and startup-file injection: a command that brings its own code
+# into every process it spawns
+if grep -Eq '(^|[[:space:];&|(])(LD_PRELOAD|LD_AUDIT|LD_LIBRARY_PATH|BASH_ENV|ENV|SHELLOPTS|PERL5OPT|PYTHONSTARTUP)=' <<<"$cmd"; then
+    deny "setting a loader or startup-file variable inline injects code into everything the command spawns"
+fi
+
+# private key material and credential files; public keys and ssh/config
+# are fine and used all the time. Both patterns want a path in front: the
+# guard only sees command text, and a bare `.netrc` in a sentence (README,
+# a commit message, a test payload) is not an attempt to read it.
+# the suffixed names count too (id_ed25519_sk_rk_personal-sa); a trailing
+# .pub is the public half and stays readable, hence the character class
+# that stops before the dot
+if grep -Eq '(^|[[:space:]="'"'"'])(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)?/\.?ssh/[^[:space:]]*id_(rsa|dsa|ecdsa|ed25519)[A-Za-z0-9_-]*([[:space:]"'"'"';|]|$)' <<<"$cmd"; then
+    deny "that is a private ssh key; the .pub half is readable and usually the one you want"
+fi
+if grep -Eq '(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)/\.(netrc|npmrc|pypirc)([[:space:]"'"'"';|]|$)|/\.aws/credentials|/\.gnupg/private-keys|/\.docker/config\.json' <<<"$cmd"; then
+    deny "that file holds credentials in the clear"
+fi
+
+# the repository's own plumbing: a stray write in there loses history in a
+# way no editor undo will bring back. Git's own commands stay allowed.
+if grep -Eq '(^|[[:space:];&|])(rm|mv|cp|sed|tee|truncate|dd|chmod|chown)[^|;&]*[[:space:]/]\.git(/|[[:space:]]|$)' <<<"$cmd"; then
+    deny "writing inside .git by hand corrupts the repository; use a git command"
+fi
+
+# sweeps that cannot be meant: the whole home, the root, a raw device
+if grep -Eq '(^|[[:space:];&|])rm([[:space:]]+-[^[:space:]]+)*[[:space:]]+"?('"'"'?)(~|/|\$\{?HOME\}?)\3"?/?\*?([[:space:]]|;|$)' <<<"$cmd"; then
+    deny "a recursive delete of the home directory or the root is never the task"
+fi
+if grep -Eq '(^|[[:space:];&|])(mkfs(\.[a-z0-9]+)?|shred)[[:space:]]|dd[^|;&]*of=/dev/' <<<"$cmd"; then
+    deny "formatting or overwriting a device is not something to do from a tool call"
+fi
+
+exit 0
