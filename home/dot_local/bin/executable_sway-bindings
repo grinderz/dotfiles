@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Keybinding cheatsheet generated from the live sway config, so it can never
-# drift from reality: every bindsym line with its trailing or preceding
-# comment, shown in fuzzel. Selection is just for browsing (nothing runs).
+# drift from reality: every bindsym line with its mode, its command and its
+# trailing or preceding comment, shown in fuzzel. Selection is just for
+# browsing (nothing runs). Same four columns as aerc-bindings and
+# zellij-bindings: context, keys, action, description.
 
 set -euo pipefail
 
@@ -9,9 +11,20 @@ config="${XDG_CONFIG_HOME:-$HOME/.config}/sway/config"
 [ -r "$config" ] || exit 0
 
 awk '
+    # `set $left h` and friends, so the sheet shows the key, not the variable
+    /^[[:space:]]*set[[:space:]]+\$/ {
+        name = $2
+        value = $0
+        sub(/^[[:space:]]*set[[:space:]]+\$[^[:space:]]+[[:space:]]+/, "", value)
+        var[name] = value
+        next
+    }
+    # a comment block of several lines is prose about the group below it,
+    # not a label for its first bind, so only one-liners become descriptions
     /^[[:space:]]*#/ {
-        comment = $0
+        comment = (comment_lines ? "" : $0)
         sub(/^[[:space:]]*#[[:space:]]*/, "", comment)
+        comment_lines++
         next
     }
     /^[[:space:]]*bindsym/ {
@@ -22,18 +35,36 @@ awk '
         keys = line
         sub(/[[:space:]].*/, "", keys)
         gsub(/\$mod/, "Super", keys)
+        while (match(keys, /\$[A-Za-z_][A-Za-z0-9_]*/)) {
+            name = substr(keys, RSTART, RLENGTH)
+            if (!(name in var)) break
+            sub(/\$[A-Za-z_][A-Za-z0-9_]*/, var[name], keys)
+        }
         cmd = line
         sub(/^[^[:space:]]+[[:space:]]+/, "", cmd)
-        desc = cmd
-        if (match(cmd, /#[[:space:]]*/)) {
-            desc = substr(cmd, RSTART)
-            sub(/^#[[:space:]]*/, "", desc)
+        desc = ""
+        if (match(cmd, /[[:space:]]*#[[:space:]]*/)) {
+            desc = substr(cmd, RSTART + RLENGTH)
+            cmd = substr(cmd, 1, RSTART - 1)
         } else if (comment != "")
             desc = comment
-        printf "%-28s %s\n", keys, desc
+        line = sprintf("%-9s %-24s %-34s %s", (mode ? mode : "global"), keys, cmd, desc)
+        sub(/[[:space:]]+$/, "", line)
+        print line
         comment = ""
+        comment_lines = 0
         next
     }
-    /^[[:space:]]*$/ { next }
-    { comment = "" }
+    # a mode block labels the binds inside it, the way aerc sections do
+    /^[[:space:]]*mode[[:space:]]+"[^"]+"[[:space:]]*\{/ {
+        mode = $0
+        sub(/^[[:space:]]*mode[[:space:]]+"/, "", mode)
+        sub(/".*$/, "", mode)
+        comment = ""
+        comment_lines = 0
+        next
+    }
+    /^[[:space:]]*\}/ { mode = ""; comment = ""; comment_lines = 0; next }
+    /^[[:space:]]*$/ { comment_lines = 0; next }
+    { comment = ""; comment_lines = 0 }
 ' "$config" | fuzzel --dmenu --width 110 >/dev/null || true

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Keybinding cheatsheet generated from the live zellij config, so it can
-# never drift from reality: every bind in the keybinds block with its mode
-# and actions, shown in fuzzel. Selection is just for browsing (nothing
-# runs). Companion of sway-bindings.
+# never drift from reality: every bind in the keybinds block with its mode,
+# its actions and the // comment above it, shown in fuzzel. Selection is
+# just for browsing (nothing runs). Same four columns as sway-bindings and
+# aerc-bindings: context, keys, action, description.
 
 set -euo pipefail
 
@@ -18,7 +19,7 @@ awk '
         }
         return d
     }
-    function emit(s, m,    key, act) {
+    function emit(s, m, d,    key, act, line) {
         gsub(/[[:space:]]+/, " ", s)
         sub(/^ ?bind "/, "", s)
         key = s
@@ -32,15 +33,22 @@ awk '
         # line binds lose their semicolons, hence the [; ] alternative)
         sub(/[; ] *SwitchToMode "locked" *;?$/, "", act)
         gsub(/"/, "", act)
-        printf "%-21s %-12s %s\n", m, key, act
+        line = sprintf("%-9s %-24s %-34s %s", m, key, act, d)
+        sub(/[[:space:]]+$/, "", line)
+        print line
     }
     /^keybinds/ { in_kb = 1 }
     !in_kb { next }
+    /^[[:space:]]*\/\// {
+        comment = $0
+        sub(/^[[:space:]]*\/\/[[:space:]]*/, "", comment)
+        next
+    }
     {
         if (collecting) {
             buf = buf " " $0
             bdepth += braces($0)
-            if (bdepth <= 0) { emit(buf, mode); collecting = 0 }
+            if (bdepth <= 0) { emit(buf, mode, comment); comment = ""; collecting = 0 }
             depth += braces($0)
             next
         }
@@ -62,8 +70,10 @@ awk '
                 collecting = 1
                 buf = $0
                 bdepth = braces($0)
-            } else
-                emit($0, mode)
+            } else {
+                emit($0, mode, comment)
+                comment = ""
+            }
         }
         depth += braces($0)
         if (depth <= 0) in_kb = 0

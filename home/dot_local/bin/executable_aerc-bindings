@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # Keybinding cheatsheet generated from the live aerc binds.conf, so it
-# can never drift from reality: every bind with its context section,
-# shown in fuzzel. Selection is just for browsing (nothing runs).
-# Companion of sway-bindings and zellij-bindings.
+# can never drift from reality: every bind with its context section and
+# its description, shown in fuzzel. Selection is just for browsing
+# (nothing runs). Companion of sway-bindings and zellij-bindings.
+#
+# Descriptions are aerc's own: a " # " comment at the end of a bind, the
+# same annotation it shows on the review screen (see aerc-binds(5)), and
+# " # -" hides a bind there. Comment lines of their own stay out of it --
+# the file header would otherwise label the binds under it.
 
 set -euo pipefail
 
@@ -23,7 +28,16 @@ awk '
         sub(/[[:space:]]*=.*$/, "", key)
         cmd = $0
         sub(/^[^=]*=[[:space:]]*/, "", cmd)
+        desc = ""
+        if (match(cmd, /[[:space:]]+#[[:space:]]*/)) {
+            desc = substr(cmd, RSTART + RLENGTH)
+            cmd = substr(cmd, 1, RSTART - 1)
+            if (desc == "-")
+                desc = ""
+        }
         gsub(/<Enter>/, "", cmd)
-        printf "%-18s %-14s %s\n", (section ? section : "global"), key, cmd
+        line = sprintf("%-9s %-24s %-34s %s", (section ? section : "global"), key, cmd, desc)
+        sub(/[[:space:]]+$/, "", line)
+        print line
     }
 ' "$config" | fuzzel --dmenu --width 110 >/dev/null || true

@@ -117,6 +117,16 @@ S = :save<space>
 D = :delete<Enter>
 A = :archive flat<Enter>
 
+# meeting invitations: the first three only answer the organiser, aerc
+# never touches a calendar of ours. ci does that half, piping the
+# selected text/calendar part into khal, which asks which calendar to
+# import into (no -a, no --batch) and then vdirsyncer carries it to the
+# server. Same UID twice updates the event instead of duplicating it.
+ca = :accept<Enter> # Accept an invitation (answers the organiser)
+ct = :accept-tentative<Enter> # Accept tentatively
+cd = :decline<Enter> # Decline an invitation
+ci = :pipe -p khal import<Enter> # Import the invitation into a calendar (khal asks which)
+
 <C-y> = :copy-link <space>
 <C-l> = :open-link <space>
 [[- $clip := "wl-copy" ]][[ if eq .chezmoi.os "darwin" ]][[ $clip = "pbcopy" ]][[ end ]]
