@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Cheatsheet of the scripts in ~/.local/bin, read from the scripts
+# themselves so it cannot drift: the first line of each header comment is
+# the description, a "Usage:" line in it is the action. Same four columns
+# as the keybinding sheets: context (mac for the mac-only ones), name,
+# usage, description. fuzzel under sway, fzf in the terminal elsewhere.
+
+set -euo pipefail
+
+bin="$HOME/.local/bin"
+for f in "$bin"/*; do
+    [ -f "$f" ] && [ -x "$f" ] || continue
+    # scripts only: a compiled binary next to them (usign, audio-device)
+    # has no header to read
+    [ "$(head -c 2 "$f" 2>/dev/null)" = '#!' ] || continue
+    name=${f##*/}
+    desc=$(awk 'NR == 1 && /^#!/ { next }
+                /^#/ { sub(/^#[[:space:]]?/, ""); if ($0 != "") { print; exit } }
+                /^[^#]/ && NF { exit }' "$f")
+    usage=$(awk 'tolower($0) ~ /^#[[:space:]]*usage:/ { sub(/^#[[:space:]]*[Uu]sage:[[:space:]]*/, ""); print; exit }' "$f")
+    case $name in *-mac|aerospace-*|notify-mac|autostart-mac) ctx=mac ;; *) ctx=bin ;; esac
+    printf '%-9s %-24s %-34s %s\n' "$ctx" "$name" "$usage" "$desc"
+done | sed 's/[[:space:]]*$//' | {
+    if command -v fuzzel >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        fuzzel --dmenu --width 110 >/dev/null || true
+    else
+        fzf --no-sort --layout=reverse --prompt='scripts> ' >/dev/null || true
+    fi
+}

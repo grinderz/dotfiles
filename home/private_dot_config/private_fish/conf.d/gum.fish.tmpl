@@ -1,0 +1,13 @@
+# gum (charmbracelet) in the [theme] roles of .chezmoidata.toml: the cursor
+# and the selected row in choose/filter, the yes button in confirm, the
+# spinner. Everything else keeps gum's defaults on the terminal palette.
+set -gx GUM_CHOOSE_CURSOR_FOREGROUND "#{{ .theme.border }}"
+set -gx GUM_CHOOSE_SELECTED_FOREGROUND "#{{ .theme.ok }}"
+set -gx GUM_FILTER_INDICATOR_FOREGROUND "#{{ .theme.border }}"
+set -gx GUM_FILTER_MATCH_FOREGROUND "#{{ .theme.info }}"
+set -gx GUM_FILTER_PROMPT_FOREGROUND "#{{ .theme.border }}"
+set -gx GUM_CONFIRM_SELECTED_BACKGROUND "#{{ .theme.focused }}"
+set -gx GUM_CONFIRM_SELECTED_FOREGROUND "#{{ .theme.fg }}"
+set -gx GUM_INPUT_CURSOR_FOREGROUND "#{{ .theme.border }}"
+set -gx GUM_INPUT_PROMPT_FOREGROUND "#{{ .theme.border }}"
+set -gx GUM_SPIN_SPINNER_FOREGROUND "#{{ .theme.border }}"

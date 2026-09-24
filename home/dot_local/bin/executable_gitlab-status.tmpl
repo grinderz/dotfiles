@@ -139,9 +139,10 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
     def wanted: (($inc == "") or test($inc)) and (($exc == "") or (test($exc) | not));
 
     # pango-colored icon for the tooltip (the pick menu gets the plain one)
-    def color: {FAILED: "#f53c3c", RUNNING: "#f1c40f", PENDING: "#f1c40f",
-                CREATED: "#f1c40f", WAITING_FOR_RESOURCE: "#f1c40f",
-                SUCCESS: "#9ece6a"}[.] // "#90b1b1";
+    def color: {FAILED: "#{{ .theme.critical }}", RUNNING: "#{{ .theme.warning }}",
+                PENDING: "#{{ .theme.warning }}", CREATED: "#{{ .theme.warning }}",
+                WAITING_FOR_RESOURCE: "#{{ .theme.warning }}",
+                SUCCESS: "#{{ .theme.ok }}"}[.] // "#{{ .theme.fg_dim }}";
     # no size="large" here: it lifts every line and the tooltip is height-bound
     def cicon: "<span weight=\"bold\" foreground=\"\(color)\">\(icon)</span>";
 
@@ -153,7 +154,7 @@ out=$(jq -rc --argjson drafts "$show_drafts" \
     # the output, so long titles are cut here (the pick menu keeps them whole)
     def clip: if length > 60 then .[:59] + "…" else . end;
     def mrcline: ((.headPipeline.status // null) as $s
-        | if $s == null then "<span weight=\"bold\" foreground=\"#90b1b1\">·</span>"
+        | if $s == null then "<span weight=\"bold\" foreground=\"#{{ .theme.fg_dim }}\">·</span>"
           else ($s | cicon) end)
         + " \(.title | clip | @html) — \(.project.fullPath | @html)";
 

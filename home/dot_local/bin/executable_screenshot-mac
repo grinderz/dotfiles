@@ -8,10 +8,13 @@
 #        screenshot-mac clip     same picker, clipboard only
 #        screenshot-mac window   the focused AeroSpace window, no picker
 #        screenshot-mac output   the focused monitor, no picker
+#        screenshot-mac annotate the area picker, then the file opens in
+#                                Preview for its Markup toolbar (arrows,
+#                                shapes, text) — satty on sway
 
 set -euo pipefail
 
-mode="${1:?usage: screenshot-mac area|clip|window|output}"
+mode="${1:?usage: screenshot-mac area|clip|window|output|annotate}"
 # the same default as user-dirs.dirs on Linux (the volume is case
 # sensitive, ~/pictures is not ~/Pictures)
 dir="${XDG_SCREENSHOTS_DIR:-$HOME/pictures/screenshots}"
@@ -29,6 +32,14 @@ case "$mode" in
         ;;
     area)
         screencapture -xi "$file" || exit 0
+        ;;
+    annotate)
+        screencapture -xi "$file" || exit 0
+        [ -s "$file" ] || exit 0
+        # Preview: Tools > Annotate, or the Markup toolbar button; Cmd+S
+        # writes over the same file, the clipboard copy below is the
+        # unannotated one until then
+        open -a Preview "$file"
         ;;
     window)
         id=$(aerospace list-windows --focused --format '%{window-id}')

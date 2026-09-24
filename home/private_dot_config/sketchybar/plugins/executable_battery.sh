@@ -35,7 +35,7 @@ case "$pct" in
     *) icon="" ;;
 esac
 
-color=0xffffffff
+color="$FG_COLOR"
 if grep -q 'AC Power' <<<"$batt"; then
     icon=""
 elif [ "$pct" -le 15 ]; then

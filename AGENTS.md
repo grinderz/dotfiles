@@ -27,6 +27,15 @@ unless the calling process has Screen Recording. Run it from a session on
 the machine, or read the state with `sketchybar --query <item>` instead,
 which needs no permission and reports drawing, colours and popup rows.
 
+**Keystrokes and pointer.** `wtype` types into whatever has focus (a
+picker, a dialog, `Escape` to close one) — check that focus first
+(`swaymsg -t get_tree | jq '.. | select(.focused? == true) | .app_id'`),
+a new window does not always take it and the keys land in the terminal
+this session runs in; `swaymsg seat - cursor set X Y`
+and `press`/`release button1` move and click the pointer. A drag made of
+those does not reach `slurp` — it takes it for a click and snaps to the
+window under the pointer.
+
 **Terminal programs.** Render them through a pty rather than guessing:
 `python-pyte` replays the escape stream into a screen buffer that can be
 printed. Set the window size with `TIOCSWINSZ` first -- a TUI that sees
@@ -36,5 +45,5 @@ printed. Set the window size with `TIOCSWINSZ` first -- a TUI that sees
 
 `chezmoi apply`, `swaymsg reload` and `pacman` are the user's to run; do
 everything else (data moves, restarts of user services, checks) without
-asking. `chezmoi status` always lists the two `run_` scripts as pending,
-which is what a `run_after_` script looks like, not work left over.
+asking. A `run_onchange_` script in `chezmoi status` means its hash
+moved and it will run on the next apply, not work left over.

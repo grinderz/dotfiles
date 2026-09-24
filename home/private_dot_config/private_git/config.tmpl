@@ -123,20 +123,18 @@
 	true-color = always
     navigate = true  # use n and N to move between diff sections
 
+# diff colours come from the Tokyo Night Storm include below; this
+# feature keeps the frame only, a colour here would win over the theme
 [delta "decorations"]
-	minus-style = red bold normal
-	plus-style = green bold normal
-	minus-emph-style = white bold red
-	minus-non-emph-style = red bold normal
-	plus-emph-style = white bold green
-	plus-non-emph-style = green bold normal
 	file-style = yellow bold none
 	file-decoration-style = yellow box
 	hunk-header-style = magenta bold
 	hunk-header-decoration-style = magenta box
-	minus-empty-line-marker-style = normal normal
-	plus-empty-line-marker-style = normal normal
 	line-numbers-right-format = "{np:^4}│ "
+
+# Tokyo Night Storm for delta (folke/tokyonight.nvim extras/delta)
+[include]
+	path = ~/.config/git/tokyonight_storm.gitconfig
 
 [alias]
     tagm = tag -a

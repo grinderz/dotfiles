@@ -1,14 +1,13 @@
-accounts-daemon.service
 bluetooth.service
-bolt.service
+containerd.service
 dbus-broker.service
+dirmngr@etc-pacman.d-gnupg.service
+docker.service
 getty@tty1.service
-iwd.service
 limine-snapper-sync.service
 pcscd.service
 polkit.service
 power-profiles-daemon.service
-rtkit-daemon.service
 seatd.service
 smartd.service
 sshd.service
@@ -20,6 +19,4 @@ systemd-resolved.service
 systemd-timesyncd.service
 systemd-udevd.service
 systemd-userdbd.service
-udisks2.service
-upower.service
 user@1000.service

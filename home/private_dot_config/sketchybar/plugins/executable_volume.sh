@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# shellcheck source=../env.sh
+. "$CONFIG_DIR/env.sh"
+
 if [ "${SENDER:-}" = "volume_change" ]; then
     vol="$INFO"
 else
@@ -27,7 +30,7 @@ src=""
 
 if [ "$vol" = "0" ]; then
     # muted: dim like waybar's #pulseaudio.muted
-    sketchybar --set "$NAME" icon="$icon" label="$src" icon.color=0xff90b1b1
+    sketchybar --set "$NAME" icon="$icon" label="$src" icon.color="$MUTED_COLOR"
 else
-    sketchybar --set "$NAME" icon="$icon" label="${vol}%$src" icon.color=0xffffffff
+    sketchybar --set "$NAME" icon="$icon" label="${vol}%$src" icon.color="$FG_COLOR"
 fi

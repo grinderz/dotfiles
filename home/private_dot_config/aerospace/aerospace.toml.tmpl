@@ -129,7 +129,7 @@ if.app-id = 'com.apple.finder'
 run = 'layout floating'
 
 # terminals with a fixed title (dynamic title off, so the shell cannot
-# rename them): the cheatsheet (aerospace-bindings) and the drop-down
+# rename them): the cheatsheet (the picker and its sheets) and the drop-down
 # terminal (scratch-term-mac) float over the layout, the autostart
 # terminals (autostart-mac) land on their workspaces like foot-dev and
 # foot-cli in the sway config
@@ -231,6 +231,7 @@ run = 'layout floating'
     {{ $mod }}-shift-p = 'exec-and-forget screenshot-mac clip'
     {{ $mod }}-alt-p = 'exec-and-forget screenshot-mac window'
     {{ $mod }}-cmd-p = 'exec-and-forget screenshot-mac output'
+    {{ $mod }}-cmd-shift-p = 'exec-and-forget screenshot-mac annotate'   # annotate area (Preview markup)
 
     # OCR an area to the clipboard (eng+rus, tesseract like on sway)
     {{ $mod }}-o = 'exec-and-forget ocr-mac'
@@ -240,6 +241,7 @@ run = 'layout floating'
     # (sway's region) and the focused monitor (sway's $mod+Ctrl+o)
     {{ $mod }}-shift-o = 'exec-and-forget screen-record-mac window'
     {{ $mod }}-cmd-o = 'exec-and-forget screen-record-mac output'
+    {{ $mod }}-cmd-shift-o = 'exec-and-forget screen-record-mac output --audio'   # record monitor with sound
 
     # drop-down terminal (sway's scratchpad): spawned on first use, then
     # toggled between the hidden workspace S and the focused one; the
@@ -248,11 +250,17 @@ run = 'layout floating'
     {{ $mod }}-backtick = 'exec-and-forget scratch-term-mac'
 
     # application launcher (fuzzel on sway): Raycast, Spotlight is off on
-    # this machine (indexing and both shortcuts)
-    {{ $mod }}-d = 'exec-and-forget open raycast://'
+    # this machine (indexing and both shortcuts). Shift+d is Raycast's own
+    # window switcher, the mac side of focus-window
+    {{ $mod }}-d = 'exec-and-forget open raycast://'                                                            # launcher
+    {{ $mod }}-shift-d = 'exec-and-forget open -g raycast://extensions/raycast/navigation/switch-windows'   # focus window by name
+    # clipboard history: Raycast's own (cliphist on sway). Not $mod-c — that
+    # is Ctrl+C in a terminal here. Alacritty is on the command's list of
+    # disabled apps in Raycast, so what pass -c copies stays out of it
+    {{ $mod }}-cmd-c = 'exec-and-forget open -g raycast://extensions/raycast/clipboard-history/clipboard-history'   # clipboard history
 
     # keybinding cheatsheet: this file through fzf in a floating terminal
-    {{ $mod }}-i = 'exec-and-forget aerospace-bindings'
+    {{ $mod }}-i = 'exec-and-forget cheatsheet'
 
     # launch-or-focus: one key always shows the app
     {{ $mod }}-t = 'exec-and-forget aerospace-focus-app one.ayugram.AyuGramDesktop'   # telegram

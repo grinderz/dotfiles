@@ -13,6 +13,7 @@ Two tools, split by scope:
 
 ```sh
 # dotfiles
+make dotfiles.status                                # what differs, one line per file
 make dotfiles.diff                                  # preview, never changes anything
 make dotfiles.apply
 make dotfiles.add/.config/foo/bar.conf              # adopt a file, path relative to $HOME
@@ -316,10 +317,52 @@ Per deploy, once per host:
   sudo-by-touch (per machine, file stays out of the repo):
   `mkdir -p ~/.config/Yubico && pamu2fcfg > ~/.config/Yubico/u2f_keys`,
   each additional key: `pamu2fcfg -n >> ~/.config/Yubico/u2f_keys`
+* **look** (chezmoi) — Tokyo Night Storm everywhere: the GTK theme is the
+  package above, the terminal side comes from `folke/tokyonight.nvim`
+  `extras/` at `cdc07ac` (2026-03-24), vendored next to each config
+  (foot, fuzzel, zathura, zellij `themes/`, fish `conf.d/`, tmux, yazi,
+  aerc `stylesets/`, delta, alacritty, eza, btop, sublime) and pulled
+  in with the app's own include. The extras lag behind the apps: foot
+  (`[colors-dark]`, cursor in it) and yazi (`url` in filetype rules)
+  are adapted, each says so in its header; the Vimium CSS, pasted by
+  hand into the extension, lives adapted in `~/sync/dotfiles/vimium`.
+  The hand-written configs (waybar, sketchybar,
+  mako, swaylock, sway borders, the status scripts) take their colours
+  from `[theme]` in `.chezmoidata.toml`. To move to another variant:
+  swap the vendored files and the `[theme]` block, nothing else names
+  a colour
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
   `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
-  (OCR bind), `otf-font-awesome` + `ttf-roboto` (waybar font stack),
+  (OCR bind), `gpu-screen-recorder` (both recorders: `screen-record` for
+  planned recordings, `--audio` = what the apps play plus the mic in
+  one track; `screen-replay` keeps the last minute of the focused
+  monitor in RAM and `$mod+r` saves it after the fact; `wf-recorder`
+  is no longer needed), `wtype` (synthetic keystrokes, what an agent uses to drive
+  a picker or dialog while checking a change — see AGENTS.md), `glow`
+  (Markdown in the terminal, `glow/glow.yml`), `gum` (prompts and
+  pickers for terminal-side scripts, coloured from `[theme]` in fish
+  `conf.d/gum.fish`), AUR `forgit` (git through fzf in the shell: `ga`,
+  `glo`, `gd`, `gcb` ...; its aliases and fzf keys are a cheatsheet,
+  `forgit-bindings`, built from the installed plugin and README; brew on
+  the mac, sourced from config.fish there). The `$mod+i` cheatsheet
+  picker also has `scripts-sheet` (every script in `~/.local/bin` with
+  the first line of its header and its usage line), `fish-sheet`
+  (abbreviations live, the functions with their descriptions, fzf's
+  keys) and `task-sheet` (reports and contexts as taskwarrior reports
+  them) — all read from what is installed, nothing to keep in step.
+  `cliphist` (clipboard history, text and images: two `wl-paste --watch`
+  execs in the sway config feed it, `$mod+c` is `clip-history`, the
+  list through `menu-pick`; `pass -c` goes through `pass-scrub`, which
+  takes the secret out of the history again, and KeePassXC's copies
+  carry the password-manager hint cliphist honours; on the mac the
+  history is Raycast's, `ctrl-cmd-c`, with Alacritty on the command's
+  disabled-apps list by hand since pbcopy sets no concealed type),
+  `satty` (screenshot annotation: `$mod+Ctrl+Shift+p` picks an area
+  and opens it in satty, Enter copies and saves; the mac's counterpart
+  is `screenshot-mac annotate`, the capture opened in Preview for its
+  Markup toolbar), `otf-font-awesome` +
+  `ttf-roboto` (waybar font stack),
   `udisks2` (usb-storage waybar module), `zathura` +
   `zathura-pdf-mupdf` (the viewer `application/pdf` opens in: vim keys,
   and `recolor` inverts the page rather than dimming the window. The
@@ -336,9 +379,13 @@ Per deploy, once per host:
   under it;
   the failed-units
   notifier timer is enabled by the systemd deploy (run dotfiles apply
-  first — the unit files come from chezmoi); dark theme for GTK4/portal
-  apps and web (dconf state, chezmoi only covers the settings.ini files):
-  `gsettings set org.gnome.desktop.interface color-scheme prefer-dark`
+  first — the unit files come from chezmoi); the GTK theme is Tokyo
+  Night Storm from the own `aur` repo
+  (`yay -B ~/src/personal/aur/tokyonight-gtk-theme-storm-git`), named
+  in `[gtk]` of `.chezmoidata.toml` — the settings.ini of both GTK
+  versions, the libadwaita links in `gtk-4.0` and the dconf side
+  (`gtk-settings.sh` runs gsettings for theme, icons and prefer-dark)
+  all follow from there
 
 * **mail / calendar** (chezmoi) — packages: `aerc isync notmuch pass w3m
   dante khal vdirsyncer python-aiohttp-oauthlib keyutils`, AUR: `davmail
@@ -866,7 +913,13 @@ clipboard, window, monitor; files land in `XDG_SCREENSHOTS_DIR`, the
 same path as on Linux), `ocr-mac`, `qr-mac`, `aerospace-bindings` (the
 cheatsheet, fzf in a floating terminal), `screen-record-mac` (one key
 starts and stops; the focused window's frame or the monitor, since
-screencapture has no interactive video area), `scratch-term-mac` (the
+screencapture has no interactive video area; `--audio` records what the
+apps play plus the mic — macOS has no such source, so `audio-device`,
+a small CoreAudio CLI in Swift built by the darwin-audio-device script,
+creates a "Recording" aggregate and a "Recording Out" multi-output
+over BlackHole (`brew install --cask blackhole-2ch`, then
+`sudo killall coreaudiod` once) and flips the system output for the
+duration), `scratch-term-mac` (the
 drop-down terminal, parked on the hidden workspace S and centered with
 System Events on every show) and `autostart-mac` (after-startup-command:
 a random wallpaper when the wallpaper dir exists on the machine, the

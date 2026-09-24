@@ -25,6 +25,8 @@
 .local/bin/screen-record-mac
 Library
 .chezmoiscripts/darwin-trackpad-gestures.sh
+.chezmoiscripts/darwin-audio-device.sh
+.local/share/audio-device
 {{ end }}
 
 {{ if eq .chezmoi.os "darwin" }}
@@ -35,6 +37,7 @@ Library
 .config/fuzzel
 .config/gtk-3.0
 .config/gtk-4.0
+.chezmoiscripts/gtk-settings.sh
 .config/kanshi
 .config/mako
 .config/mimeapps.list
@@ -80,14 +83,13 @@ Library
 .local/bin/scratch-term
 .local/bin/screen-record
 .local/bin/smart-screenshot
-.local/bin/cheatsheet
+.local/bin/clip-history
 # traffic and car modules stay on Linux
 .local/bin/car-traffic
 .local/bin/starline-status
 .config/starline-status
 .config/zathura
 .local/bin/sway-bindings
-.local/bin/zellij-bindings
 .local/bin/aerc-bindings
 .local/bin/suspend-toggle
 .local/bin/usb-storage

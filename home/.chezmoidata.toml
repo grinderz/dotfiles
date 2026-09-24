@@ -21,6 +21,31 @@ mono = "Noto Sans Mono"
 icons = "Hack Nerd Font"
 bar_size = 14
 
+# GTK theme and icon set, as installed by the own aur repo's
+# tokyonight-gtk-theme-storm-git (linux only): settings.ini for both GTK
+# versions, the libadwaita links in gtk-4.0 and the gsettings script all
+# read these names
+[gtk]
+theme = "Tokyonight-Dark-Storm"
+icons = "Tokyonight-Dark"
+
+# The palette of the hand-written configs — waybar, sketchybar, mako,
+# swaylock, sway borders, the status scripts — as roles, not colours:
+# Tokyo Night Storm. The vendored themes (foot, fuzzel, zellij, ...) carry
+# the same values inside; changing the variant means swapping those files
+# and this block, nothing else names a colour.
+[theme]
+bg = "1f2335"        # bar, notification, lock screen
+bg_soft = "24283b"   # a surface on the bar (inactive workspace, hover)
+fg = "c0caf5"
+fg_dim = "a9b1d6"    # muted: paused, no data, calendar week numbers
+focused = "3d59a1"   # the active workspace / button
+border = "7aa2f7"
+info = "7dcfff"      # in progress: running pipeline, usb plugged
+warning = "e0af68"
+critical = "f7768e"
+ok = "9ece6a"
+
 [paths]
 mail = ".local/share/mail"
 msmtp_queue = ".local/state/msmtpq/queue"

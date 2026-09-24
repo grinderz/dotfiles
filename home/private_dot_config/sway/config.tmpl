@@ -79,6 +79,13 @@ exec swayidle -w
 # (coordinates live in the private chezmoi.toml, [data.desktop])
 exec wlsunset -l {{ .desktop.latitude }} -L {{ .desktop.longitude }} -t 4000 -T 6500
 
+# Clipboard history (cliphist): the watchers that feed it are
+# cliphist@text/image.service, wanted by sway-session.target (an exec
+# here would not survive a reload); $mod+c brings the list back through
+# menu-pick. What pass copies is taken out again by the passp/passw
+# wrappers, KeePassXC marks its copies with x-kde-passwordManagerHint
+# and cliphist skips those.
+
 ### Input configuration
 #
 # Example configuration:
@@ -113,6 +120,11 @@ input type:keyboard {
     xkb_options grp:caps_toggle
 }
 
+# The pointer gets out of the way: gone after 8 s without motion and the
+# moment a key is pressed, back with the first mouse movement
+seat * hide_cursor 8000
+seat * hide_cursor when-typing enable
+
 # Focus stays put; stray trackpad hovers must not steal it
 #focus_follows_mouse no
 
@@ -120,6 +132,13 @@ input type:keyboard {
 #
 # No border/titlebar edges for a lone window on an output
 hide_edge_borders smart
+
+# Window borders in the roles of [theme] in .chezmoidata.toml (Tokyo Night
+# Storm): border, background, text, indicator, child border
+client.focused          #{{ .theme.border }} #{{ .theme.focused }} #{{ .theme.fg }} #{{ .theme.border }} #{{ .theme.border }}
+client.focused_inactive #{{ .theme.bg_soft }} #{{ .theme.bg_soft }} #{{ .theme.fg_dim }} #{{ .theme.bg_soft }} #{{ .theme.bg_soft }}
+client.unfocused        #{{ .theme.bg }} #{{ .theme.bg }} #{{ .theme.fg_dim }} #{{ .theme.bg }} #{{ .theme.bg }}
+client.urgent           #{{ .theme.critical }} #{{ .theme.critical }} #{{ .theme.bg }} #{{ .theme.critical }} #{{ .theme.critical }}
 
 # Volume mixer opened from the waybar pulseaudio module
 for_window [app_id="mixer"] floating enable
@@ -134,6 +153,14 @@ for_window [app_id="gcr-prompter"] floating enable
 # Portal file chooser remembers its size from the big externals and then
 # overflows the builtin screen; clamp it to the current workspace instead
 for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 80 ppt height 80 ppt, move position center
+
+# Browser picture-in-picture: without this the video window is tiled next
+# to the browser on its workspace and stays there. Floating puts it over
+# the tiles, sticky carries it across the workspaces of its output. No
+# position on purpose: sway centres it on the focused output, and fixed
+# coordinates would land on the wrong monitor. Title only: Chromium gives
+# this toplevel no app_id at all, so the browser's criteria never match it.
+for_window [title="^Picture in picture$"] floating enable, sticky enable, border none
 
 # Long-lived apps open on their dedicated workspace: browser 3 and work
 # browser 5, notes 7 and chats 9 (left Dell), IDE 4 and mail 6
@@ -190,8 +217,11 @@ bindgesture swipe:4:right workspace prev_on_output
     # Power button locks instead of suspending (logind: HandlePowerKey=ignore)
     bindsym --locked XF86PowerOff exec '$HOME/.local/bin/lock'
 
-    # Start your launcher
-    bindsym $mod+d exec $menu
+    # the launcher, and the same picker over the open windows for the
+    # ones launch-or-focus has no key for
+    bindsym $mod+d exec $menu                                # launcher
+    bindsym $mod+Shift+d exec $HOME/.local/bin/focus-window  # focus window by name
+    bindsym $mod+c exec $HOME/.local/bin/clip-history        # clipboard history
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
@@ -387,16 +417,24 @@ bindsym $mod+Shift+r mode "resize"
     bindsym $mod+p exec $HOME/.local/bin/smart-screenshot    # area to file
 
     bindsym $mod+Shift+p exec $HOME/.local/bin/smart-screenshot clipboard  # area to clipboard
+    bindsym $mod+Ctrl+Shift+p exec $HOME/.local/bin/smart-screenshot annotate  # annotate area (satty)
     bindsym $mod+Ctrl+p exec grimshot --notify save active   # active window
     bindsym $mod+Alt+p exec grimshot --notify save output    # current monitor
 
     # OCR an area to the clipboard (eng+rus; needs tesseract-data-*)
     bindsym $mod+o exec $HOME/.local/bin/ocr-region          # ocr area
 
-    # Screen recording via wf-recorder; the same key stops a running
-    # recording and the notification tells where the file landed
-    bindsym $mod+Shift+o exec $HOME/.local/bin/screen-record region
-    bindsym $mod+Ctrl+o exec $HOME/.local/bin/screen-record output
+    # Screen recording via gpu-screen-recorder; the same key stops a
+    # running recording and the notification tells where the file landed.
+    # --audio is what the apps play plus the mic, in one track
+    bindsym $mod+Shift+o exec $HOME/.local/bin/screen-record region               # record area
+    bindsym $mod+Ctrl+o exec $HOME/.local/bin/screen-record output                # record monitor
+    bindsym $mod+Ctrl+Shift+o exec $HOME/.local/bin/screen-record output --audio  # record monitor with sound
+
+    # Replay buffer (gpu-screen-recorder): keep the last minute of the
+    # focused monitor in RAM, save it after the fact
+    bindsym $mod+Ctrl+r exec $HOME/.local/bin/screen-replay toggle   # replay buffer on/off
+    bindsym $mod+r exec $HOME/.local/bin/screen-replay save          # save last 60 s
 
     # decode a QR code from a screen region into the clipboard (needs zbar)
     bindsym $mod+Alt+o exec $HOME/.local/bin/qr-scan

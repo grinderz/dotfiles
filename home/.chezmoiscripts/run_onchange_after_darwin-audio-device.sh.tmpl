@@ -1,0 +1,19 @@
+#!/bin/sh
+# macOS has no CLI for the CoreAudio bits screen-record-mac --audio needs:
+# an aggregate input (mic + BlackHole) for screencapture -G, a multi-output
+# (speakers + BlackHole) so the apps' sound reaches both, and switching the
+# default output. audio-device.swift is that CLI; it is compiled here and
+# the two devices are created once (by uid, so a rerun is a no-op).
+# Reruns when the source changes: {{ include "dot_local/share/audio-device/audio-device.swift" | sha256sum }}
+set -eu
+
+src="$HOME/.local/share/audio-device/audio-device.swift"
+bin="$HOME/.local/bin/audio-device"
+command -v swiftc >/dev/null 2>&1 || { echo "audio-device: swiftc missing (xcode-select --install)" >&2; exit 0; }
+swiftc -O -o "$bin" "$src"
+
+# BlackHole is a cask (brew install --cask blackhole-2ch); without it the
+# devices cannot be built and screen-record-mac --audio says so itself
+"$bin" list | grep -q '^BlackHole 2ch' || { echo "audio-device: BlackHole 2ch not installed, aggregates skipped" >&2; exit 0; }
+"$bin" create-aggregate "Recording" recording_in BuiltInMicrophoneDevice BlackHole2ch_UID
+"$bin" create-multi-output "Recording Out" recording_out BuiltInSpeakerDevice BlackHole2ch_UID

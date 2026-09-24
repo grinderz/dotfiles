@@ -1,6 +1,7 @@
 [general]
+# Tokyo Night Storm (folke/tokyonight.nvim extras/alacritty)
 import = [
-    "~/.config/alacritty/themes/themes/kitty.toml"
+    "~/.config/alacritty/tokyonight_storm.toml"
 ]
 
 [font]

@@ -21,6 +21,7 @@
     ],
     "modules-right": [
         "custom/recording",
+        "custom/replay",
         "mpris",
         "privacy",
         "tray",
@@ -131,7 +132,7 @@
             "on-scroll": 1,
             "format": {
                 "today": "<b><u>{}</u></b>",
-                "weeks": "<span color='#90b1b1'>W{}</span>",
+                "weeks": "<span color='#{{ .theme.fg_dim }}'>W{}</span>",
                 "weekdays": "<b>{}</b>"
             }
         }
@@ -251,6 +252,16 @@
         "interval": 60,
         "signal": 7,
         "on-click": "$HOME/.local/bin/screen-record region"
+    },
+    // replay buffer (gpu-screen-recorder): shown only while it runs
+    "custom/replay": {
+        "exec": "$HOME/.local/bin/screen-replay status",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 60,
+        "signal": 8,
+        "on-click": "$HOME/.local/bin/screen-replay save",
+        "on-click-right": "$HOME/.local/bin/screen-replay stop"
     },
     // hidden while every folder is idle and every device is connected and
     // caught up, so it appears only when syncthing has something to say

@@ -27,7 +27,7 @@ text=$(jq -r '[.artist, .title] | map(select(. != null and . != "")) | join(" - 
 
 if [ "$playing" = true ]; then
     sketchybar --set "$NAME" drawing=on icon="▶" label="$text" \
-        icon.color=0xffffffff label.color=0xffffffff
+        icon.color="$FG_COLOR" label.color="$FG_COLOR"
 else
     sketchybar --set "$NAME" drawing=on icon="⏸" label="$text" \
         icon.color=$MUTED_COLOR label.color=$MUTED_COLOR

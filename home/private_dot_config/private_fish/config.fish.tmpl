@@ -50,6 +50,21 @@ if status is-interactive
 {{- end }}
 {{- end }}
 
+    ## Prompt
+
+    # the stock prompt shows the branch; this adds how far it is from its
+    # upstream (an arrow with a count) so unpushed work is visible, and
+    # the state of the tree: * unstaged changes, + staged, … untracked.
+    # Not the informative mode with counts — that is a full git status
+    # on every prompt. The right side — kubectl context, slow-command
+    # duration — is functions/fish_right_prompt.fish
+    set -g __fish_git_prompt_showupstream informative
+    set -g __fish_git_prompt_char_upstream_ahead '↑'
+    set -g __fish_git_prompt_char_upstream_behind '↓'
+    set -g __fish_git_prompt_showdirtystate 1
+    set -g __fish_git_prompt_showuntrackedfiles 1
+    set -g __fish_git_prompt_char_untrackedfiles '…'
+
     ## Abbr
 
     abbr -a vim 'nvim'
@@ -73,6 +88,14 @@ if status is-interactive
 {{- end }}
 
     ## Plugins
+
+{{ if eq .chezmoi.os "darwin" }}
+    # forgit's fish plugin (ga, glo, gd ... over fzf): brew leaves it in its
+    # share dir, on Arch the package drops it into vendor_conf.d and fish
+    # loads it by itself
+    test -f /opt/homebrew/share/forgit/forgit.plugin.fish
+        and source /opt/homebrew/share/forgit/forgit.plugin.fish
+{{ end }}
 
     fzf --fish | source
     # tv init fish | source

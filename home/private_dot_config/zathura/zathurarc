@@ -6,15 +6,11 @@
 # the actual problem, and recolor keeps the contrast of the text
 set recolor true
 set recolor-keephue true
-set recolor-lightcolor "#1d2021"
-set recolor-darkcolor "#d4be98"
+# Tokyo Night Storm (folke/tokyonight.nvim extras/zathura), recolor
+# colours included
+include "tokyonight_storm.zathurarc"
 
 # the chrome around the page, close to the bar palette
-set default-bg "#1d2021"
-set statusbar-bg "#285577"
-set statusbar-fg "#ffffff"
-set inputbar-bg "#1d2021"
-set inputbar-fg "#ffffff"
 
 # open where the document was left, and keep more of them
 set database sqlite

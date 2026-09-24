@@ -1,0 +1,17 @@
+#!/bin/sh
+# GTK4/libadwaita apps and the portal (file chooser, web dark mode) take
+# theme, icons and colour scheme from the settings portal, which reads
+# dconf — not settings.ini. gsettings is the only way in, so this keeps
+# dconf in step with [gtk] in .chezmoidata.toml; the values are the
+# hash, an edit there reruns it:
+# {{ .gtk.theme }} {{ .gtk.icons }} prefer-dark
+set -eu
+
+command -v gsettings >/dev/null 2>&1 || exit 0
+# no session bus (a plain ssh session): dconf cannot be reached, leave it
+# for the next apply inside the session
+[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ] || exit 0
+
+gsettings set org.gnome.desktop.interface gtk-theme '{{ .gtk.theme }}'
+gsettings set org.gnome.desktop.interface icon-theme '{{ .gtk.icons }}'
+gsettings set org.gnome.desktop.interface color-scheme prefer-dark

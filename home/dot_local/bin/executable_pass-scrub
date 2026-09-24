@@ -1,0 +1,26 @@
+#!/bin/sh
+# pass, with the clipboard history kept clean: `pass -c` puts the secret on
+# the clipboard through a plain wl-copy, and the cliphist watcher stores
+# it like any other copy. When the call was a clip, the newest history
+# entry is dropped again if it is what sits on the clipboard now. Without
+# cliphist (the mac) this is just pass. passp and passw exec this with
+# their store.
+
+clip=0
+for a in "$@"; do
+    case $a in -c|-c[0-9]*|--clip|--clip=*) clip=1 ;; esac
+done
+
+pass "$@"
+rc=$?
+
+if [ "$clip" = 1 ] && [ "$rc" = 0 ] && command -v cliphist >/dev/null 2>&1 \
+    && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+    sleep 0.4                       # the watcher stores a beat after the copy
+    newest=$(cliphist list | head -n 1)
+    if [ -n "$newest" ] \
+        && [ "$(printf '%s\n' "$newest" | cliphist decode)" = "$(wl-paste -n 2>/dev/null)" ]; then
+        printf '%s\n' "$newest" | cliphist delete
+    fi
+fi
+exit "$rc"

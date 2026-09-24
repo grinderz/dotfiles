@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Cheatsheet of the shell: the abbreviations (live, from `abbr --show` in
+# an interactive fish — config.fish defines them behind status is-interactive),
+# the functions in ~/.config/fish/functions with the description each one
+# carries (-d or its first comment) and the usage it prints, and fzf's
+# three keys. Same four columns as the keybinding sheets: context, name,
+# expansion or usage, description. fuzzel under sway, fzf elsewhere.
+
+set -euo pipefail
+
+fdir="${XDG_CONFIG_HOME:-$HOME/.config}/fish/functions"
+
+{
+    # forgit's own abbreviations have a sheet of their own (forgit-bindings)
+    fish -ic 'abbr --show' 2>/dev/null | grep -vE 'git-forgit|forgit::' \
+        | sed -nE "s/^abbr -a -- ([^ ]+) '?(.*[^'])'?$/\1\t\2/p" \
+        | while IFS=$'\t' read -r name exp; do
+            printf '%-9s %-24s %-34s %s\n' "abbr" "$name" "$exp" ""
+        done
+    for f in "$fdir"/*.fish; do
+        name=${f##*/}; name=${name%.fish}
+        case $name in fish_*) continue ;; esac
+        # gawk-free on purpose: the mac awk has no three-argument match()
+        desc=$(sed -nE "s/^function [^ ]+ .*(-d|--description) ['\"]([^'\"]*)['\"].*/\\2/p" "$f" | head -1)
+        [ -n "$desc" ] || desc=$(grep -vE '^#!' "$f" | sed -nE '1,3{s/^#[[:space:]]?//p;}' | head -1)
+        usage=$(sed -nE 's/.*"usage: ([^"#]*).*/\1/p' "$f" | head -1 | sed 's/[[:space:]]*$//')
+        printf '%-9s %-24s %-34s %s\n' "function" "$name" "$usage" "$desc"
+    done
+    # what `fzf --fish` binds in config.fish
+    printf '%-9s %-24s %-34s %s\n' key "Ctrl+R" "" "search the command history"
+    printf '%-9s %-24s %-34s %s\n' key "Ctrl+T" "" "pick files under the cwd into the command line"
+    printf '%-9s %-24s %-34s %s\n' key "Alt+C" "" "cd into a directory picked under the cwd"
+} | sed 's/[[:space:]]*$//' | {
+    if command -v fuzzel >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        fuzzel --dmenu --width 110 >/dev/null || true
+    else
+        fzf --no-sort --layout=reverse --prompt='fish> ' >/dev/null || true
+    fi
+}

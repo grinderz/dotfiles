@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Focus any window by name: every window on every workspace, scratchpad
+# included, goes through menu-pick and the chosen one is focused wherever
+# it lives. launch-or-focus covers the apps that have a key of their own;
+# this is for everything else — the third terminal, the second browser
+# window, a dialog that opened behind something.
+#
+# Usage: focus-window
+
+set -euo pipefail
+
+swaymsg -t get_tree | jq -r '
+    recurse(.nodes[]?, .floating_nodes[]?)
+    | select(.type == "workspace")
+    | . as $ws
+    | recurse(.nodes[]?, .floating_nodes[]?)
+    | select((.type == "con" or .type == "floating_con")
+             and (.nodes | length) == 0 and .name != null)
+    | "\(.id)\t[\($ws.name | sub("^__i3_scratch$"; "scratch"))] "
+      + "\(.app_id // .window_properties.class // "?"): \(.name)"' \
+    | "$HOME/.local/bin/menu-pick" --with-nth=2 --prompt="window " \
+    | { read -r id _ && swaymsg "[con_id=$id] focus" >/dev/null; }

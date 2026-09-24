@@ -1,45 +1,35 @@
 #!/usr/bin/env bash
-# Toggle screen recording with wf-recorder: first call starts, the next one
-# stops, so a single sway binding does both. Files land in the XDG videos
-# dir as rec-YYYYmmdd-HHMMSS.mp4; start and stop raise notifications.
-# Requires wf-recorder, slurp (region mode), jq, libnotify.
+# Toggle screen recording with gpu-screen-recorder: first call starts, the
+# next one stops, so a single sway binding does both. Files land in the XDG
+# videos dir as rec-YYYYmmdd-HHMMSS.mp4; start and stop raise notifications.
+# The same recorder keeps the replay buffer (screen-replay); the two are
+# separate processes and can run at once. Requires gpu-screen-recorder,
+# slurp (region mode), jq, libnotify.
 #
-# Usage: screen-record [region|output|status] [--audio] [--software]
+# Usage: screen-record [region|output|status] [--audio|--mic] [--software]
 #   region      select an area with the mouse (default; drag = freeform,
 #               click = window or output, via region-select)
 #   output      the currently focused monitor
 #   status      waybar json for the recording indicator (signal 7)
-#   --audio     also capture the default pipewire source
-#   --software  x264 software encode even when vaapi is available
+#   --audio     the default output and the default input merged into one
+#               track: what the apps play plus the mic
+#   --mic       the default input only
+#   --software  encode on the CPU even when the GPU could
+#
+# gpu-screen-recorder calls this script after the file is written (-sc)
+# with the path and the kind of save; that branch cleans the audio up and
+# raises the notification.
 
 set -euo pipefail
 
-state="${XDG_RUNTIME_DIR:-/tmp}/screen-record.path"
+state="${XDG_RUNTIME_DIR:-/tmp}/screen-record.pid"
 
-# waybar indicator: red dot while wf-recorder runs (module signal 7)
-if [ "${1:-}" = status ]; then
-    if pgrep -x wf-recorder >/dev/null; then
-        printf '{"text": "REC", "tooltip": "recording — click to stop", "class": "recording"}\n'
-    else
-        printf '{"text": ""}\n'
-    fi
-    exit 0
-fi
-
-# a second invocation stops the running recording, whatever mode started it
-if pgrep -x wf-recorder >/dev/null; then
-    pkill -INT -x wf-recorder
-    # wait for the muxer to finalize the file before announcing it
-    for _ in $(seq 30); do
-        pgrep -x wf-recorder >/dev/null || break
-        sleep 0.1
-    done
-    pkill -RTMIN+7 waybar || true
-    file=$(cat "$state" 2>/dev/null || echo unknown)
-    rm -f "$state"
+# the -sc callback: <path> <regular|replay|screenshot>
+if [ $# -eq 2 ] && [ -f "$1" ]; then
+    file=$1
     # audio cleanup: pipewire pops when the capture stream opens — hard-mute
     # the first 400ms, short fade-in, then normalize to streaming loudness
-    if [ -f "$file" ] && ffprobe -v quiet -select_streams a \
+    if ffprobe -v quiet -select_streams a \
         -show_entries stream=codec_type -of csv=p=0 "$file" | grep -q audio; then
         tmp="${file%.mp4}.tmp.mp4"
         if ffmpeg -v error -y -i "$file" -c:v copy \
@@ -50,44 +40,77 @@ if pgrep -x wf-recorder >/dev/null; then
             rm -f "$tmp"
         fi
     fi
-    size=$(du -h "$file" 2>/dev/null | cut -f1)
-    notify-send -t 5000 "Recording saved" "$file${size:+ ($size)}"
+    size=$(du -h "$file" | cut -f1)
+    # a left click on the notification puts the path on the clipboard;
+    # notify-send waits for that, so it runs detached
+    (
+        if [ "$(notify-send -t 8000 -A default="Copy path" "Recording saved" \
+                "${file##*/} ($size), click for the path")" = default ]; then
+            printf '%s' "$file" | wl-copy
+        fi
+    ) &
+    exit 0
+fi
+
+running() { [ -r "$state" ] && kill -0 "$(cat "$state")" 2>/dev/null; }
+
+# waybar indicator: red dot while a recording runs (module signal 7)
+if [ "${1:-}" = status ]; then
+    if running; then
+        printf '{"text": "REC", "tooltip": "recording — click to stop", "class": "recording"}\n'
+    else
+        printf '{"text": ""}\n'
+    fi
+    exit 0
+fi
+
+# a second invocation stops the running recording, whatever mode started it;
+# SIGINT makes gpu-screen-recorder finish the file, then it calls back (-sc)
+if running; then
+    pid=$(cat "$state")
+    kill -INT "$pid"
+    for _ in $(seq 50); do
+        kill -0 "$pid" 2>/dev/null || break
+        sleep 0.1
+    done
+    rm -f "$state"
+    pkill -RTMIN+7 waybar || true
     exit 0
 fi
 
 mode=region
-software=0
-args=()
+audio=""
+encoder=gpu
 for arg in "$@"; do
     case $arg in
         region|output) mode=$arg ;;
-        --audio) args+=(--audio) ;;
-        --software) software=1 ;;
+        --audio) audio="default_output|default_input" ;;
+        --mic) audio="default_input" ;;
+        --software) encoder=cpu ;;
         *) echo "screen-record: unknown argument: $arg" >&2; exit 2 ;;
     esac
 done
-
-# hardware H.264 encode via the mesa vaapi driver (AMD iGPU): near-zero CPU
-# cost; quality at a given bitrate is a bit below x264, fine for screencasts
-if [ "$software" = 0 ] && [ -e /usr/lib/dri/radeonsi_drv_video.so ] \
-    && [ -e /dev/dri/renderD128 ]; then
-    args+=(-c h264_vaapi -d /dev/dri/renderD128)
-fi
 
 dir=$(xdg-user-dir VIDEOS 2>/dev/null || true)
 dir="${dir:-$HOME/videos}"
 mkdir -p "$dir"
 file="$dir/rec-$(date +%Y%m%d-%H%M%S).mp4"
 
+# h264 on the GPU (vaapi on the AMD iGPU), 30 fps is plenty for a screen
+args=(-f 30 -c mp4 -encoder "$encoder" -o "$file" -sc "$HOME/.local/bin/screen-record")
+[ -n "$audio" ] && args+=(-a "$audio")
+
 case $mode in
     region)
         geom=$("$HOME/.local/bin/region-select") || exit 0   # cancelled
-        args+=(-g "$geom")
+        # slurp says "X,Y WxH", gpu-screen-recorder wants WxH+X+Y
+        x=${geom%%,*}; rest=${geom#*,}; y=${rest%% *}; size=${geom##* }
+        args+=(-w region -region "${size}+${x}+${y}")
         what=region
         ;;
     output)
         out=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
-        args+=(-o "$out")
+        args+=(-w "$out")
         what="$out"
         ;;
     *)
@@ -96,10 +119,17 @@ case $mode in
         ;;
 esac
 
-printf '%s\n' "$file" >"$state"
-notify-send -t 2000 "Recording started" "$what → ${file##*/}"
-# background + signal so the waybar indicator lights up while recording
-wf-recorder "${args[@]}" -f "$file" &
+gpu-screen-recorder "${args[@]}" >"${XDG_RUNTIME_DIR:-/tmp}/screen-record.log" 2>&1 &
 pid=$!
+disown
+printf '%s\n' "$pid" >"$state"
+sleep 0.5
+if kill -0 "$pid" 2>/dev/null; then
+    notify-send -t 2000 "Recording started" "$what${audio:+ + audio} → ${file##*/}"
+else
+    rm -f "$state"
+    notify-send -u critical -t 6000 "Recording" "gpu-screen-recorder did not start, see screen-record.log"
+    exit 1
+fi
+# signal so the waybar indicator lights up while recording
 pkill -RTMIN+7 waybar || true
-wait "$pid"

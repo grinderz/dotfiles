@@ -3,7 +3,9 @@
 # output, via region-select): saves to the screenshots dir, copies to the
 # clipboard, raises a notification with a preview. With "clipboard" as the
 # argument nothing is written to disk — the throwaway crop that goes
-# straight into a chat window.
+# straight into a chat window. With "annotate" the crop opens in satty
+# first: arrows, boxes, numbers, text, pixelation; Enter copies the
+# result, writes it to the same screenshots dir and closes.
 
 set -euo pipefail
 
@@ -19,6 +21,24 @@ dir="${XDG_SCREENSHOTS_DIR:-$HOME/pictures/screenshots}"
 mkdir -p "$dir"
 file="$dir/$(date +%Y%m%d-%H%M%S).png"
 
-grim -g "$geom" "$file"
-wl-copy <"$file"
-notify-send -i "$file" "Screenshot" "${file##*/} (copied)"
+if [ "${1:-}" = annotate ]; then
+    # ppm over the pipe: nothing to compress and decompress for one hop
+    grim -g "$geom" -t ppm - | satty --filename - --output-filename "$file" \
+        --copy-command wl-copy \
+        --actions-on-enter save-to-clipboard,save-to-file,exit \
+        --actions-on-escape exit || exit 0
+    [ -s "$file" ] || exit 0    # closed without copying
+else
+    grim -g "$geom" "$file"
+    wl-copy <"$file"
+fi
+
+# a left click on the notification puts the path on the clipboard (the
+# image is there until then); notify-send waits for the click, so it runs
+# detached and the bind returns at once
+(
+    if [ "$(notify-send -i "$file" -A default="Copy path" \
+            "Screenshot" "${file##*/} (copied, click for the path)")" = default ]; then
+        printf '%s' "$file" | wl-copy
+    fi
+) &

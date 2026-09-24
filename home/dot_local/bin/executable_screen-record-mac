@@ -5,12 +5,21 @@
 # when set, the Linux default otherwise); start and stop raise
 # notifications and poke the bar.
 #
-# usage: screen-record-mac [window|output|status]
+# usage: screen-record-mac [window|output|status] [--audio|--mic]
 #   window   the focused AeroSpace window's rect (sway's region mode had
 #            a mouse selection; screencapture cannot select a video area
 #            interactively, the window frame from System Events stands in)
 #   output   the focused monitor (default)
 #   status   waybar json for the bar's recording indicator
+#   --mic    the default input (screencapture -g)
+#   --audio  what the apps play plus the mic. macOS gives no such source,
+#            so it is built: the system output is switched to the
+#            "Recording Out" multi-output (speakers + BlackHole) for the
+#            duration, screencapture records the "Recording" aggregate
+#            (mic + BlackHole, -G by uid), and the file is downmixed to
+#            stereo afterwards. Both devices come from audio-device
+#            (the darwin-audio-device chezmoi script); volume keys are
+#            dead on a multi-output, the output is put back on stop
 
 set -euo pipefail
 
@@ -18,6 +27,7 @@ state="${XDG_CACHE_HOME:-$HOME/.cache}/screen-record-mac"
 mkdir -p "$state"
 pidfile="$state/pid"
 pathfile="$state/path"
+outputfile="$state/output"   # the system output to put back after --audio
 
 notify() { notify-mac "$1" screen-record "$2"; }
 
@@ -44,18 +54,54 @@ if running; then
     file=$(cat "$pathfile" 2>/dev/null || echo unknown)
     rm -f "$pidfile" "$pathfile"
     sketchybar --trigger recording_change >/dev/null 2>&1 || true
+    if [ -f "$outputfile" ]; then
+        audio-device default-output "$(cat "$outputfile")" || true
+        rm -f "$outputfile"
+        # the aggregate is three channels (mic, BlackHole L, BlackHole R):
+        # fold the mic into both sides of a stereo track
+        if command -v ffmpeg >/dev/null 2>&1 && [ -f "$file" ]; then
+            tmp="${file%.mov}.tmp.mov"
+            if ffmpeg -v error -y -i "$file" -c:v copy \
+                -af "pan=stereo|c0=c0+c1|c1=c0+c2,loudnorm=I=-14" "$tmp" 2>/dev/null; then
+                mv "$tmp" "$file"
+            else
+                rm -f "$tmp"
+            fi
+        fi
+    fi
     size=$(du -h "$file" 2>/dev/null | cut -f1)
     notify "Recording saved" "${file##*/}${size:+ ($size)}"
     exit 0
 fi
 
-mode="${1:-output}"
+mode=output
+audio=""
+for arg in "$@"; do
+    case $arg in
+        window|output) mode=$arg ;;
+        --audio|--mic) audio=$arg ;;
+        *) echo "screen-record-mac: unknown argument: $arg" >&2; exit 2 ;;
+    esac
+done
 # the same default as user-dirs.dirs on Linux
 dir="${XDG_VIDEOS_DIR:-$HOME/videos}"
 mkdir -p "$dir"
 file="$dir/rec-$(date +%Y%m%d-%H%M%S).mov"
 
 args=(-x -v)
+case $audio in
+    --mic) args+=(-g) ;;
+    --audio)
+        if ! command -v audio-device >/dev/null 2>&1 \
+            || ! audio-device uid recording_in >/dev/null 2>&1; then
+            notify "Recording" "no Recording aggregate: brew install --cask blackhole-2ch, then chezmoi apply"
+            exit 1
+        fi
+        audio-device default-output >"$outputfile"
+        audio-device default-output "Recording Out"
+        args+=(-G recording_in)
+        ;;
+esac
 case $mode in
     window)
         pid=$(aerospace list-windows --focused --format '%{app-pid}')
@@ -94,5 +140,5 @@ exec 3<>"$fifo"
 screencapture "${args[@]}" "$file" <&3 >/dev/null 2>&1 &
 echo $! >"$pidfile"
 sketchybar --trigger recording_change >/dev/null 2>&1 || true
-notify "Recording started" "$what → ${file##*/}"
+notify "Recording started" "$what${audio:+ + ${audio#--}} → ${file##*/}"
 wait "$(cat "$pidfile")" || true

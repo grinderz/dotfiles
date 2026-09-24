@@ -1,0 +1,13 @@
+[Unit]
+Description=clipboard history watcher (%i) for cliphist
+# one instance per clipboard type, text and image; both are wanted by
+# sway-session.target, so they come up with the Wayland session and go
+# down with it. A sway `exec` line would not survive a config reload
+# (exec runs once, exec_always would stack watchers)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/wl-paste --type %i --watch cliphist store
+Restart=on-failure
+RestartSec=5

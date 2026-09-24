@@ -8,9 +8,16 @@
 # Order inside the block is options, per_product, per_host — the JVM takes
 # the last of two conflicting values, so the more specific key wins.
 #
-# Not run_onchange_: an IDE upgrade creates a new config directory
-# (GoLand2026.2 -> GoLand2026.3) without changing this script, so the hash
-# would not move and the new version would start without the options.
+# run_onchange_, keyed by two things below: the set of IDE config
+# directories, so an upgrade that puts GoLand2026.3 next to GoLand2026.2
+# reruns this without any edit here, and the [data.jetbrains] block, so an
+# option change does too. Anything else leaves diff and status clean.
+{{- $root := joinPath .chezmoi.homeDir ".config/JetBrains" }}
+{{- if eq .chezmoi.os "darwin" }}
+{{-     $root = joinPath .chezmoi.homeDir "Library/Application Support/JetBrains" }}
+{{- end }}
+# IDE directories:{{ range glob (joinPath $root "*") }} {{ base . }}{{ end }}
+# options: {{ dig "jetbrains" (dict) . | toJson | sha256sum }}
 set -eu
 
 {{ if eq .chezmoi.os "darwin" -}}

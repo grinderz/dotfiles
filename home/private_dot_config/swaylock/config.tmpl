@@ -1,0 +1,34 @@
+ignore-empty-password
+color=000000
+show-keyboard-layout
+
+# The ring reports state instead of a bare black screen, in the roles of
+# [theme] in .chezmoidata.toml: the ring turns ok-green while the password
+# is checked, critical-red when it was wrong (and on Backspace), warning-
+# yellow while caps lock is on; the segment that lights per keystroke is
+# the foreground. Shown after the first key.
+indicator-caps-lock
+indicator-radius=80
+indicator-thickness=12
+inside-color={{ .theme.bg }}
+inside-clear-color={{ .theme.bg }}
+inside-ver-color={{ .theme.bg }}
+inside-wrong-color={{ .theme.bg }}
+inside-caps-lock-color={{ .theme.bg }}
+ring-color={{ .theme.focused }}
+ring-clear-color={{ .theme.focused }}
+ring-ver-color={{ .theme.ok }}
+ring-wrong-color={{ .theme.critical }}
+ring-caps-lock-color={{ .theme.warning }}
+key-hl-color={{ .theme.fg }}
+bs-hl-color={{ .theme.critical }}
+line-uses-inside
+separator-color={{ .theme.bg }}
+text-color={{ .theme.fg }}
+text-clear-color={{ .theme.fg }}
+text-ver-color={{ .theme.ok }}
+text-wrong-color={{ .theme.critical }}
+text-caps-lock-color={{ .theme.warning }}
+layout-bg-color={{ .theme.bg }}
+layout-text-color={{ .theme.fg }}
+layout-border-color={{ .theme.focused }}

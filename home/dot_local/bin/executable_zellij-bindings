@@ -3,7 +3,8 @@
 # never drift from reality: every bind in the keybinds block with its mode,
 # its actions and the // comment above it, shown in fuzzel. Selection is
 # just for browsing (nothing runs). Same four columns as sway-bindings and
-# aerc-bindings: context, keys, action, description.
+# aerc-bindings: context, keys, action, description. fuzzel under sway,
+# fzf in the terminal on the mac.
 
 set -euo pipefail
 
@@ -78,4 +79,10 @@ awk '
         depth += braces($0)
         if (depth <= 0) in_kb = 0
     }
-' "$config" | fuzzel --dmenu --width 110 >/dev/null || true
+' "$config" | {
+    if command -v fuzzel >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        fuzzel --dmenu --width 110 >/dev/null || true
+    else
+        fzf --no-sort --layout=reverse --prompt='zellij> ' >/dev/null || true
+    fi
+}

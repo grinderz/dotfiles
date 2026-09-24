@@ -39,7 +39,7 @@ if [ -z "$text" ]; then
 fi
 
 # the loudest class wins, as the later rules do in style.css
-color=0xffffffff
+color="$FG_COLOR"
 case " $class " in
     *" critical "*|*" battery-critical "*|*" red "*|*" recording "*) color=$CRITICAL_COLOR ;;
     *" warning "*|*" battery-low "*|*" yellow "*|*" dnd "*) color=$WARNING_COLOR ;;

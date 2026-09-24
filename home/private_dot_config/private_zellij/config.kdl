@@ -371,6 +371,8 @@ load_plugins {
 // Default: default
 //
 // theme "default"
+// Tokyo Night Storm from themes/tokyonight_storm.kdl (folke/tokyonight.nvim extras)
+theme "tokyonight_storm"
 
 // The name of the default layout to load on startup
 // Default: "default"

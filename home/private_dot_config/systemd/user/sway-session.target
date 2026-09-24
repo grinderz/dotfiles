@@ -8,5 +8,6 @@ BindsTo=graphical-session.target
 Wants=graphical-session-pre.target
 After=graphical-session-pre.target
 # services that need the Wayland session come with it (waybar.service
-# ships in the package, the alarm notifier lives next to this file)
-Wants=waybar.service evolution-alarm-notify.service
+# ships in the package, the alarm notifier and the clipboard watchers
+# live next to this file)
+Wants=waybar.service evolution-alarm-notify.service cliphist@text.service cliphist@image.service

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Replay buffer with gpu-screen-recorder: the focused monitor is kept in RAM
+# for the last minute, nothing is written until asked, so "that just
+# happened — keep it" works after the fact. The buffer is a background
+# process; saving is a signal to it. Recordings you start on purpose are
+# screen-record, the same recorder without a buffer. Requires
+# gpu-screen-recorder, jq,
+# libnotify; audio is the default output and the default input merged into
+# one track.
+#
+# Usage: screen-replay [start|stop|toggle|save [10|30|60]|status]
+#   start    keep the last 60 s of the focused monitor (default when idle)
+#   stop     drop the buffer
+#   toggle   start when idle, stop when running (the sway bind)
+#   save     write the last 60 s (or 10/30) to the XDG videos dir under
+#            replays/; gpu-screen-recorder names the file itself
+#   status   waybar json for the indicator (signal 8)
+#
+# gpu-screen-recorder also calls this script after every save (-sc) with
+# the file path and the kind of save; that branch raises the notification.
+
+set -euo pipefail
+
+pattern='^gpu-screen-recorder .* -r '   # the buffer, not a plain recording
+running() { pgrep -f "$pattern" >/dev/null; }
+
+# the -sc callback: <path> <regular|replay|screenshot>
+if [ $# -eq 2 ] && [ -f "$1" ]; then
+    file=$1
+    size=$(du -h "$file" | cut -f1)
+    # a left click on the notification puts the path on the clipboard;
+    # notify-send waits for that, so it runs detached
+    (
+        if [ "$(notify-send -t 8000 -A default="Copy path" "Replay saved" \
+                "${file##*/} ($size), click for the path")" = default ]; then
+            printf '%s' "$file" | wl-copy
+        fi
+    ) &
+    exit 0
+fi
+
+cmd=${1:-toggle}
+case $cmd in
+    status)
+        if running; then
+            printf '{"text": "RPL", "tooltip": "replay buffer: last 60 s kept — click to save, right click to stop", "class": "replay"}\n'
+        else
+            printf '{"text": ""}\n'
+        fi
+        exit 0
+        ;;
+    toggle)
+        if running; then cmd=stop; else cmd=start; fi
+        ;;
+esac
+
+case $cmd in
+    start)
+        running && { notify-send -t 2000 "Replay" "buffer already running"; exit 0; }
+        out=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+        dir=$(xdg-user-dir VIDEOS 2>/dev/null || true)
+        dir="${dir:-$HOME/videos}/replays"
+        mkdir -p "$dir"
+        # h264 on the GPU (vaapi), 30 fps is plenty for a screen, RAM buffer
+        gpu-screen-recorder -w "$out" -f 30 -c mp4 -r 60 -replay-storage ram \
+            -a "default_output|default_input" \
+            -o "$dir" -sc "$HOME/.local/bin/screen-replay" \
+            >"${XDG_RUNTIME_DIR:-/tmp}/screen-replay.log" 2>&1 &
+        disown
+        sleep 0.5
+        if running; then
+            notify-send -t 2000 "Replay" "keeping the last 60 s of $out"
+        else
+            notify-send -u critical -t 6000 "Replay" "gpu-screen-recorder did not start, see screen-replay.log"
+        fi
+        pkill -RTMIN+8 waybar || true
+        ;;
+    stop)
+        running || exit 0
+        pkill -INT -f "$pattern"
+        notify-send -t 2000 "Replay" "buffer dropped"
+        pkill -RTMIN+8 waybar || true
+        ;;
+    save)
+        running || { notify-send -u low -t 3000 "Replay" "no buffer running"; exit 0; }
+        case ${2:-60} in
+            10) sig=RTMIN+1 ;;
+            30) sig=RTMIN+2 ;;
+            60) sig=USR1 ;;      # the whole buffer
+            *) echo "screen-replay: save takes 10, 30 or 60" >&2; exit 2 ;;
+        esac
+        pkill "-$sig" -f "$pattern"
+        ;;
+    *)
+        echo "screen-replay: unknown command: $cmd" >&2
+        exit 2
+        ;;
+esac

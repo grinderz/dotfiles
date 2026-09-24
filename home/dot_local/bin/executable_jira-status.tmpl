@@ -78,9 +78,9 @@ out=$(jq -rc --arg mode "$cmd" --arg server "$server" \
     # raw output carries only the status name, no category: color by name,
     # in-work yellow, queue grey-blue, anything unknown neutral grey
     def ccolor:
-        if IN("In Progress", "In Review", "Review", "Testing") then "#f1c40f"
-        elif IN("Open", "Backlog", "To Do", "Reopened") then "#a5c5dd"
-        else "#90b1b1" end;
+        if IN("In Progress", "In Review", "Review", "Testing") then "#{{ .theme.warning }}"
+        elif IN("Open", "Backlog", "To Do", "Reopened") then "#{{ .theme.info }}"
+        else "#{{ .theme.fg_dim }}" end;
 
     now as $now
     | [.[]?

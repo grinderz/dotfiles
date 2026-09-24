@@ -18,5 +18,10 @@ msg=""
 }root: global reserve in use — near ENOSPC, clean up now"
 [ -z "$msg" ] && exit 0
 
-# fixed replace-id: repeated runs update one notification instead of stacking
-notify-send -u critical -r 9991 "Low disk space" "$msg"
+# fixed replace-id: repeated runs update one notification instead of
+# stacking. A click opens dua on / in a terminal; notify-send waits for
+# the click, and the timer's oneshot unit would take that wait down with
+# it, so it runs as a transient unit of its own
+systemd-run --user --quiet --collect --unit "disk-space-notify-action-$$" \
+    sh -c 'if [ "$(notify-send -u critical -r 9991 -A default="What takes the space" \
+            "Low disk space" "$1")" = default ]; then foot -e dua i /; fi' _ "$msg"

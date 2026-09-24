@@ -24,14 +24,17 @@ PLUGIN_DIR="$CONFIG_DIR/plugins"
 # would survive in the cache: start them over
 rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/sketchybar/popup-"*.rows
 
+# the 1px border is waybar's top line; sketchybar draws it around the
+# whole bar, the other three sides sit on the screen edges
 sketchybar --bar position=bottom height=30 color=$BAR_COLOR sticky=on \
+    border_width=1 border_color=$BORDER_COLOR \
     padding_left=4 padding_right=4 shadow=off
 
 sketchybar --default \
     padding_left=2 padding_right=2 \
     icon.font="{{ .fonts.icons }}:Regular:{{ .fonts.bar_size }}.0" \
     label.font="{{ .fonts.icons }}:Regular:{{ .fonts.bar_size }}.0" \
-    icon.color=0xffffffff label.color=0xffffffff \
+    icon.color="$FG_COLOR" label.color="$FG_COLOR" \
     icon.padding_left=4 icon.padding_right=2 \
     label.padding_left=2 label.padding_right=4 \
     background.height=24 background.corner_radius=4
@@ -75,7 +78,7 @@ sketchybar --add item scratchpad left \
 # mode swallows plain h/j/k/l, so it wears the urgent colour
 sketchybar --add item mode left \
     --set mode drawing=off icon.drawing=off \
-        label.font="{{ .fonts.icons }}:Italic:{{ .fonts.bar_size }}.0" label.color=0xffffffff \
+        label.font="{{ .fonts.icons }}:Italic:{{ .fonts.bar_size }}.0" label.color="$FG_COLOR" \
         background.color=$CRITICAL_COLOR background.drawing=on
 
 # what is playing (waybar's mpris): on the left, after the workspaces;
@@ -283,17 +286,15 @@ sketchybar --add item displays.driver right \
     --subscribe displays.driver display_change
 
 
-# framed clusters like waybar's groups (#system, #work, #outside)
+# clusters on a tinted pill like waybar's groups (#system, #work, #outside)
 sketchybar --add bracket toggles toggles.handle nosuspend lowpower focus "Control Center,FocusModes" \
     --set toggles background.color=0x26000000 \
-        background.border_color=0x59ffffff background.border_width=1 \
         background.corner_radius=6 background.height=26
 for group in "system:battery volume wifi eth bluetooth stats syncthing" "work:jira gitlab" \
              "outside:weather"; do
     # shellcheck disable=SC2086
     sketchybar --add bracket "${group%%:*}" ${group#*:} \
         --set "${group%%:*}" background.color=0x26000000 \
-            background.border_color=0x59ffffff background.border_width=1 \
             background.corner_radius=6 background.height=26
 done
 

@@ -4,7 +4,7 @@ CHEZMOI_SRC := $(CURDIR)/home
 
 # every target here is a command, not a file
 .PHONY: setup.pyinfra setup.pyinfra.upgrade lint.shellcheck lint.ruff lint \
-	install.export install.validate dotfiles.diff dotfiles.apply dotfiles.merge-all
+	install.export install.validate FORCE
 
 # --- setup ---
 
@@ -38,7 +38,14 @@ install.export:
 	pacman -Qqen >| install/export/packages-native.txt
 	pacman -Qqem >| install/export/packages-foreign.txt
 	systemctl list-unit-files --state=enabled --no-legend | awk '{print $$1}' >| install/export/enabled-units.txt
-	systemctl list-units --type=service --state=running --no-legend --plain | awk '{print $$1}' | sort >| install/export/running-services.txt
+	@# services that run on their own; a bus-activated one that is not
+	@# enabled (snapperd, upower, rtkit...) is up only while someone talks
+	@# to it and would flap in and out of the list between exports
+	systemctl list-units --type=service --state=running --no-legend --plain | awk '{print $$1}' | while read -r u; do \
+		p=$$(systemctl show "$$u" -p UnitFileState -p Type); \
+		case "$$p" in *Type=dbus*) case "$$p" in *UnitFileState=enabled*) ;; *) continue ;; esac ;; esac; \
+		echo "$$u"; \
+	done | sort >| install/export/running-services.txt
 	systemctl list-units --type=timer --state=active --no-legend --plain | awk '{print $$1}' | sort >| install/export/timers.txt
 	flatpak list --app --columns=application >| install/export/flatpaks.txt
 	@# per-app permission overrides: the files themselves, user scope then
@@ -62,26 +69,28 @@ install.validate:
 
 # --- dotfiles (chezmoi) ---
 
-dotfiles.diff:
-	chezmoi diff --source $(CHEZMOI_SRC)
+CHEZMOI := chezmoi --source $(CHEZMOI_SRC)
 
-dotfiles.apply:
-	chezmoi apply --source $(CHEZMOI_SRC) $(args)
+# any chezmoi verb that takes no path: make dotfiles.diff, dotfiles.status,
+# dotfiles.apply, dotfiles.merge-all, dotfiles.verify ...; extra flags go
+# through args ("make dotfiles.apply args=--dry-run"). FORCE stands in for
+# .PHONY, which does not reach pattern rules.
+dotfiles.%: FORCE
+	$(CHEZMOI) $* $(args)
 
 # usage: make dotfiles.add/.config/fish/config.fish  (path relative to $HOME)
-dotfiles.add/%:
-	chezmoi add --source $(CHEZMOI_SRC) $(HOME)/$* $(args)
+dotfiles.add/%: FORCE
+	$(CHEZMOI) add $(HOME)/$* $(args)
 
 # three-way merge for a file edited in place: source, target and the last
 # applied state go into $EDITOR (vimdiff by default), so a hand-tweaked
-# config comes back into the repo without losing template markup
+# config comes back into the repo without losing template markup; the
+# same for every file that differs is dotfiles.merge-all above
 # usage: make dotfiles.merge/.config/fish/config.fish  (path relative to $HOME)
-dotfiles.merge/%:
-	chezmoi merge --source $(CHEZMOI_SRC) $(HOME)/$* $(args)
+dotfiles.merge/%: FORCE
+	$(CHEZMOI) merge $(HOME)/$* $(args)
 
-# same, for every file that differs from the source
-dotfiles.merge-all:
-	chezmoi merge-all --source $(CHEZMOI_SRC) $(args)
+FORCE:
 
 # --- infra (pyinfra) ---
 # usage: make infra.linux.<host> deploy=pacman args="--dry"

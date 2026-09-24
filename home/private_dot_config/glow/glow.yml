@@ -1,0 +1,6 @@
+# glow: Markdown in the terminal. Dark style on the Storm terminal palette;
+# long documents go through the pager, width stays readable on a wide pane
+style: dark
+pager: true
+width: 100
+mouse: false

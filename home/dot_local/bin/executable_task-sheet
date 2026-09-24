@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Cheatsheet of taskwarrior as configured: every report with its
+# description (`task reports`, so the ones added in taskrc are in) and the
+# contexts with their read and write filters. Same four columns as the
+# keybinding sheets: context, name, filter, description. fuzzel under
+# sway, fzf elsewhere.
+
+set -euo pipefail
+
+command -v task >/dev/null 2>&1 || exit 0
+
+{
+    task rc.verbose=nothing reports 2>/dev/null | sed '1d' | sed 's/\x1b\[[0-9;]*m//g' \
+        | awk 'NF { name = $1; $1 = ""; sub(/^ +/, ""); printf "%-9s %-24s %-34s %s\n", "report", name, "", $0 }'
+    task rc.verbose=nothing show context 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' \
+        | awk '/^context\.[^.]+\.(read|write) / {
+                   split($1, p, "."); n = p[2]; k = p[3]; $1 = ""; sub(/^ +/, "")
+                   v[n, k] = $0; seen[n] = 1
+               }
+               END { for (n in seen) printf "%-9s %-24s %-34s %s\n", "context", n, "read: " v[n, "read"], "write: " v[n, "write"] }' | sort
+} | sed 's/[[:space:]]*$//' | {
+    if command -v fuzzel >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
+        fuzzel --dmenu --width 110 >/dev/null || true
+    else
+        fzf --no-sort --layout=reverse --prompt='task> ' >/dev/null || true
+    fi
+}

@@ -3,6 +3,7 @@
        (dict "font_size" <n>) where a machine needs its own size */ -}}
 {
 	"theme": "Default Dark.sublime-theme",
+	"color_scheme": "Packages/User/tokyonight_storm.tmTheme",
 	"remember_open_files": false,
 	"hot_exit": false,
 	"update_check": false{{ with (get . "font_size") }},

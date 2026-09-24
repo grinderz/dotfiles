@@ -1,0 +1,5 @@
+{
+	// the diff pane of the Merge Dark theme in Tokyo Night Storm; the
+	// scheme is the Sublime Text one, from folke/tokyonight.nvim extras
+	"color_scheme": "Packages/User/tokyonight_storm.tmTheme",
+}

@@ -1,5 +1,17 @@
 /* Copy of the default /etc/xdg/waybar/style.css with only colors changed:
- * decorative per-module backgrounds removed, state indication kept as text color. */
+ * decorative per-module backgrounds removed, state indication kept as text color.
+ * The colours are the roles of [theme] in .chezmoidata.toml (Tokyo Night
+ * Storm); nothing below names a colour of its own. */
+
+@define-color bg #{{ .theme.bg }};
+@define-color bg_soft #{{ .theme.bg_soft }};
+@define-color fg #{{ .theme.fg }};
+@define-color fg_dim #{{ .theme.fg_dim }};
+@define-color focused #{{ .theme.focused }};
+@define-color border #{{ .theme.border }};
+@define-color info #{{ .theme.info }};
+@define-color warning #{{ .theme.warning }};
+@define-color critical #{{ .theme.critical }};
 
 * {
     /* `otf-font-awesome` is required to be installed for icons */
@@ -8,9 +20,9 @@
 }
 
 window#waybar {
-    background-color: #285577;
-    border-top: 3px solid #4c7899;
-    color: #ffffff;
+    background-color: @bg;
+    border-top: 1px solid @border;
+    color: @fg;
     transition-property: background-color;
     transition-duration: .5s;
 }
@@ -24,16 +36,16 @@ window#waybar.empty {
     background-color: transparent;
 }
 window#waybar.solo {
-    background-color: #FFFFFF;
+    background-color: @fg;
 }
 */
 
 window#waybar.termite {
-    background-color: #3F3F3F;
+    background-color: @bg_soft;
 }
 
 window#waybar.chromium {
-    background-color: #000000;
+    background-color: @bg_soft;
     border: none;
 }
 
@@ -48,7 +60,7 @@ button {
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 button:hover {
     background: inherit;
-    box-shadow: inset 0 3px #ffffff;
+    box-shadow: inset 0 3px @fg;
 }
 
 /* you can set a style on hover for any module like this */
@@ -59,7 +71,7 @@ button:hover {
 #workspaces button {
     padding: 0 5px;
     background-color: transparent;
-    color: #ffffff;
+    color: @fg;
 }
 
 #workspaces button:hover {
@@ -67,19 +79,19 @@ button:hover {
 }
 
 #workspaces button.focused, #workspaces button.active {
-    background-color: #64727D;
-    box-shadow: inset 0 3px #ffffff;
+    background-color: @focused;
+    box-shadow: inset 0 3px @fg;
 }
 
 #workspaces button.urgent {
-    background-color: #eb4d4b;
+    background-color: @critical;
 }
 
 /* a mode swallows plain h/j/k/l, so it has to be impossible to miss */
 #mode {
-    background-color: #eb4d4b;
-    color: #ffffff;
-    box-shadow: inset 0 3px #ffffff;
+    background-color: @critical;
+    color: @fg;
+    box-shadow: inset 0 3px @fg;
 }
 
 #clock,
@@ -105,7 +117,7 @@ button:hover {
 #power-profiles-daemon,
 #mpris {
     padding: 0 10px;
-    color: #ffffff;
+    color: @fg;
 }
 
 #window,
@@ -129,30 +141,30 @@ button:hover {
 
 /* plugged but not mounted: dim until a click mounts it */
 #custom-usb.plugged {
-    color: #a5c5dd;
+    color: @info;
 }
 
 #battery {
     background-color: transparent;
-    color: #ffffff;
+    color: @fg;
 }
 
 #battery.charging, #battery.plugged {
-    color: #ffffff;
+    color: @fg;
     background-color: transparent;
 }
 
 @keyframes blink {
     to {
         background-color: transparent;
-        color: #ffffff;
+        color: @fg;
     }
 }
 
 /* Using steps() instead of linear as a timing function to limit cpu usage */
 #battery.critical:not(.charging) {
     background-color: transparent;
-    color: #f53c3c;
+    color: @critical;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: steps(12);
@@ -166,21 +178,21 @@ button:hover {
 
 #power-profiles-daemon.performance {
     background-color: transparent;
-    color: #f53c3c;
+    color: @critical;
 }
 
 #power-profiles-daemon.balanced {
     background-color: transparent;
-    color: #ffffff;
+    color: @fg;
 }
 
 #power-profiles-daemon.power-saver {
     background-color: transparent;
-    color: #ffffff;
+    color: @fg;
 }
 
 label:focus {
-    background-color: #000000;
+    background-color: @bg_soft;
 }
 
 
@@ -192,17 +204,17 @@ label:focus {
 
 #network.disconnected {
     background-color: transparent;
-    color: #f53c3c;
+    color: @critical;
 }
 
 #pulseaudio {
     background-color: transparent;
-    color: #ffffff;
+    color: @fg;
 }
 
 #pulseaudio.muted {
     background-color: transparent;
-    color: #90b1b1;
+    color: @fg_dim;
 }
 
 
@@ -211,27 +223,32 @@ label:focus {
 
 
 #custom-system-stats.critical {
-    color: #eb4d4b;
+    color: @critical;
 }
 
 #custom-gitlab.critical {
-    color: #eb4d4b;
+    color: @critical;
 }
 
 /* disarmed / battery getting low: yellow; alarm / battery too low to
    start: red — the later rule wins when both apply */
 #custom-starline.warning,
 #custom-starline.battery-low {
-    color: #f9c74f;
+    color: @warning;
 }
 
 #custom-starline.critical,
 #custom-starline.battery-critical {
-    color: #eb4d4b;
+    color: @critical;
 }
 
 #custom-recording.recording {
-    color: #f53c3c;
+    color: @critical;
+    padding: 0 10px;
+}
+
+#custom-replay.replay {
+    color: @info;
     padding: 0 10px;
 }
 
@@ -239,15 +256,15 @@ label:focus {
 #custom-gitlab.running,
 /* syncthing moving data: dim; a device away: yellow; folder errors: red */
 #custom-syncthing.running {
-    color: #a5c5dd;
+    color: @info;
 }
 
 #custom-syncthing.warning {
-    color: #f9c74f;
+    color: @warning;
 }
 
 #custom-syncthing.critical {
-    color: #eb4d4b;
+    color: @critical;
 }
 
 #tray {
@@ -260,7 +277,7 @@ label:focus {
 
 #tray > .needs-attention {
     -gtk-icon-effect: highlight;
-    background-color: #eb4d4b;
+    background-color: @critical;
 }
 
 
@@ -271,7 +288,7 @@ label:focus {
 
 #language {
     background: transparent;
-    color: #ffffff;
+    color: @fg;
     padding: 0 5px;
     margin: 0 5px;
     min-width: 16px;
@@ -289,20 +306,21 @@ label:focus {
 }
 
 #mpris.paused {
-    color: #90b1b1;
+    color: @fg_dim;
 }
 
-/* module groups: framed clusters, tighter padding inside (the tray is
- * framed too so its assorted icons read as one cluster) */
+/* module groups: clusters on a slightly darker pill, no outline — a
+ * line had the bar's top stripe to collide with; tighter padding
+ * inside (the tray is a pill too so its assorted icons read as one
+ * cluster) */
 #outside,
 #work,
 #devices,
 #system,
 #toggles,
 #tray {
-    /* vertical margin keeps the frame clear of the bar's 3px top stripe */
-    margin: 2px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    /* the top margin also clears the bar's 1px top line */
+    margin: 3px 2px 2px;
     border-radius: 6px;
     background-color: rgba(0, 0, 0, 0.15);
 }
@@ -321,16 +339,16 @@ label:focus {
 }
 
 #custom-notify.dnd {
-    color: #f1c40f;
+    color: @warning;
 }
 
 /* traffic level: class comes from the feed's color */
 #custom-car-traffic.yellow {
-    color: #f1c40f;
+    color: @warning;
 }
 
 #custom-car-traffic.red {
-    color: #f53c3c;
+    color: @critical;
 }
 
 #privacy {

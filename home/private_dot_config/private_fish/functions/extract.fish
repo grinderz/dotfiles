@@ -1,4 +1,4 @@
-function extract
+function extract -d "unpack an archive by its extension (tar.zst/gz/bz2, zip)"
     switch $argv[1]
         case '*.tar.zst';        zstd -dc $argv[1] | tar -xf -
         case '*.tar.gz' '*.tgz'; tar xzf $argv[1]

@@ -37,7 +37,7 @@ if [ "${SENDER:-}" = mouse.clicked ]; then
 fi
 
 if running; then
-    sketchybar --set "$NAME" icon.color=0xffffffff
+    sketchybar --set "$NAME" icon.color="$FG_COLOR"
 else
     sketchybar --set "$NAME" icon.color=$MUTED_COLOR
 fi

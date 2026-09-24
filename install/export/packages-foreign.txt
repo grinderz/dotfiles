@@ -1,6 +1,7 @@
 asciinema-agg-bin
 brave-bin
 claude-code
+clickhouse
 cyrus-sasl-xoauth2-git
 datagrip
 datagrip-jre
@@ -14,6 +15,7 @@ kubelogin-bin
 limine-mkinitcpio-hook
 limine-snapper-sync
 localsend-bin
+maildir-rank-addr
 oama-bin
 openshift-client-bin
 pkg_scripts
@@ -22,6 +24,7 @@ pycharm
 sublime-merge
 sublime-text-4
 systemd-oomd-defaults
+tokyonight-gtk-theme-storm-git
 usign
 yay-bin
 yubico-authenticator-bin
