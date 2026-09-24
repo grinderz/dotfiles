@@ -25,6 +25,7 @@
 .local/bin/screen-record-mac
 Library
 .chezmoiscripts/darwin-trackpad-gestures.sh
+.chezmoiscripts/reload-aerospace.sh
 .chezmoiscripts/darwin-audio-device.sh
 .local/share/audio-device
 {{ end }}
@@ -104,6 +105,7 @@ Library
 .local/bin/msmtp-queue
 .config/maildir-rank-addr
 .chezmoiscripts/reload-aerc.sh
+.chezmoiscripts/reload-sway.sh
 # systemd user environment; PATH and the editor come from fish on macOS
 .config/environment.d
 .local/bin/system-stats

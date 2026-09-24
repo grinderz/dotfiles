@@ -1,0 +1,10 @@
+#!/bin/sh
+# The mac twin of reload-sway: AeroSpace rereads its config, sketchybar
+# its rc, only when one of their sources (or the shared palette) changed.
+# aerospace: {{ include "private_dot_config/aerospace/aerospace.toml.tmpl" | sha256sum }}
+# sketchybarrc: {{ include "private_dot_config/sketchybar/executable_sketchybarrc.tmpl" | sha256sum }}
+# sketchybar env: {{ include "private_dot_config/sketchybar/env.sh.tmpl" | sha256sum }}
+# data: {{ include ".chezmoidata.toml" | sha256sum }}
+export PATH="/opt/homebrew/bin:$PATH"
+command -v aerospace >/dev/null 2>&1 && aerospace reload-config 2>/dev/null || true
+command -v sketchybar >/dev/null 2>&1 && sketchybar --reload 2>/dev/null || true

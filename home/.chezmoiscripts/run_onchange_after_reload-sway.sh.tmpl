@@ -1,0 +1,16 @@
+#!/bin/sh
+# The session picks an apply up without a hand reload — but only when one
+# of these sources changed, that is what the hashes are for: sway rereads
+# its config (exec_always lines included), waybar its style on SIGUSR2
+# (a separate user unit, swaymsg reload never reaches it), mako its
+# settings. The palette and fonts in .chezmoidata feed all three, so it
+# counts too.
+# sway: {{ include "private_dot_config/sway/config.tmpl" | sha256sum }}
+# waybar config: {{ include "private_dot_config/waybar/config.jsonc.tmpl" | sha256sum }}
+# waybar style: {{ include "private_dot_config/waybar/style.css.tmpl" | sha256sum }}
+# mako: {{ include "private_dot_config/mako/config.tmpl" | sha256sum }}
+# data: {{ include ".chezmoidata.toml" | sha256sum }}
+[ -n "${SWAYSOCK:-}" ] || exit 0          # no session (ssh): nothing to reload
+swaymsg reload >/dev/null 2>&1 || true
+pkill -SIGUSR2 -x waybar 2>/dev/null || true
+makoctl reload 2>/dev/null || true

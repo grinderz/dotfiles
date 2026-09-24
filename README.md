@@ -15,7 +15,7 @@ Two tools, split by scope:
 # dotfiles
 make dotfiles.status                                # what differs, one line per file
 make dotfiles.diff                                  # preview, never changes anything
-make dotfiles.apply
+make dotfiles.apply                                 # reloads sway/waybar/mako (AeroSpace/sketchybar) only when their configs changed
 make dotfiles.add/.config/foo/bar.conf              # adopt a file, path relative to $HOME
 make dotfiles.merge/.config/foo/bar.conf            # three-way merge an edited file back
 make dotfiles.merge-all                             # same, for everything that differs
