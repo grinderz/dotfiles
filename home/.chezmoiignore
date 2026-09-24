@@ -84,6 +84,8 @@ Library
 .local/bin/screen-record
 .local/bin/smart-screenshot
 .local/bin/clip-history
+.config/fish/functions/aur.fish
+.config/fish/completions/aur.fish
 # traffic and car modules stay on Linux
 .local/bin/car-traffic
 .local/bin/starline-status

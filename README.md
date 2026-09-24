@@ -381,7 +381,7 @@ Per deploy, once per host:
   notifier timer is enabled by the systemd deploy (run dotfiles apply
   first — the unit files come from chezmoi); the GTK theme is Tokyo
   Night Storm from the own `aur` repo
-  (`yay -B ~/src/personal/aur/tokyonight-gtk-theme-storm-git`), named
+  (`aur tokyonight-gtk-theme-storm-git` in fish, `yay -Bi` behind it), named
   in `[gtk]` of `.chezmoidata.toml` — the settings.ini of both GTK
   versions, the libadwaita links in `gtk-4.0` and the dconf side
   (`gtk-settings.sh` runs gsettings for theme, icons and prefer-dark)
