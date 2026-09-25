@@ -18,6 +18,7 @@
 {{- end }}
 # IDE directories:{{ range glob (joinPath $root "*") }} {{ base . }}{{ end }}
 # options: {{ dig "jetbrains" (dict) . | toJson | sha256sum }}
+# host: {{ .chezmoi.hostname }}   (per_host is keyed by it — a renamed machine reruns this)
 set -eu
 
 {{ if eq .chezmoi.os "darwin" -}}

@@ -1,0 +1,5 @@
+# Deliberately not managed by chezmoi: `task context <name>` rewrites this
+# file with its choice, and a managed one would lose it on the next apply.
+# Everything else lives in chezmoi.rc. Created once, then it is yours.
+include ~/.config/task/chezmoi.rc
+context=personal

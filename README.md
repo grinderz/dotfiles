@@ -68,6 +68,12 @@ personal_key = "~/.ssh/id_ed25519_sk_rk_personal-sa"
 personal_key_by_host = { "<hostname>" = "~/.ssh/id_ed25519_sk_rk_personal-<machine>" }
 ```
 
+The hostname is `.chezmoi.hostname`, the kernel one. On the mac that
+follows the DHCP lease unless `HostName` is pinned — the router once
+renamed the lease and every per-host map missed — so set it once:
+`sudo scutil --set HostName lpt1` (ComputerName and
+LocalHostName are separate and can stay as they are).
+
 which `config.personal.inc.tmpl` uses for `user.signingKey` and
 `.ssh/config` for every `IdentityFile` — the forges, the home LAN and the
 VPS alike — one key per machine,
@@ -147,7 +153,10 @@ Taskwarrior splits work, personal and family life by the project a task
 belongs to (`work.*`, `personal.*`, `family.*`), with a context per
 sphere in `taskrc`: the `read` filter decides what a report shows, the
 `write` one stamps the project on whatever is added while that context is
-on, so `task context work` is the only thing to remember. `personal` also
+on, so `task context work` is the only thing to remember; `personal` is
+the default (`taskrc` itself is created once with `context=personal` and
+then left to taskwarrior, which writes the switch into it — the managed
+settings are in `chezmoi.rc`, included from there). `personal` also
 matches tasks with no project, which is where everything added before the
 split still lives. `task context none` shows all three again, and
 taskwarrior-tui has the same switch behind its context menu.

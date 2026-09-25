@@ -1,4 +1,9 @@
-# Taskwarrior; sync via the syncthing-carried folder: `task sync` writes
+# Taskwarrior, the chezmoi-managed part. ~/.config/task/taskrc includes
+# this file and holds only the active context: `task context <name>`
+# writes into taskrc, and a managed taskrc would lose the choice on the
+# next apply, so that one is created once (create_) and never rewritten.
+#
+# sync via the syncthing-carried folder: `task sync` writes
 # versioned operation blobs there, taskchampion merges histories on its own
 sync.local.server_dir=~/sync/common/task
 
@@ -8,7 +13,9 @@ data.location=~/.local/share/task
 news.version=3.4.2
 
 # the shipped theme, not a copy in the repo (task ships them all)
-include /usr/share/doc/task/rc/solarized-dark-256.theme
+# the shipped themes live where the package puts its docs: /usr/share on
+# Arch, brew's prefix on the mac
+include {{ if eq .chezmoi.os "darwin" }}/opt/homebrew{{ else }}/usr{{ end }}/share/doc/task/rc/solarized-dark-256.theme
 
 search.case.sensitive=no
 # an empty middle priority so a task can be H, L or simply unset
