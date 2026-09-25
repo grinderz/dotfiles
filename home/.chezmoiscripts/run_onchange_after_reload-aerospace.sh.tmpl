@@ -4,6 +4,7 @@
 # aerospace: {{ include "private_dot_config/aerospace/aerospace.toml.tmpl" | sha256sum }}
 # sketchybarrc: {{ include "private_dot_config/sketchybar/executable_sketchybarrc.tmpl" | sha256sum }}
 # sketchybar env: {{ include "private_dot_config/sketchybar/env.sh.tmpl" | sha256sum }}
+# popup-watch: {{ include "private_dot_config/sketchybar/popup-watch.swift" | sha256sum }}
 # data: {{ include ".chezmoidata.toml" | sha256sum }}
 export PATH="/opt/homebrew/bin:$PATH"
 command -v aerospace >/dev/null 2>&1 && aerospace reload-config 2>/dev/null || true

@@ -32,6 +32,9 @@ strip='def strip: gsub("<[^>]*>"; "")
 text=$(jq -r "$strip"' .text // "" | strip' <<<"$out")
 class=$(jq -r '.class // [] | if type == "array" then join(" ") else . end' <<<"$out")
 mapfile -t tip < <(jq -r "$strip"' .tooltip // "" | strip' <<<"$out")
+# an empty tooltip is one empty line to mapfile, which would be one blank
+# popup row: an empty box
+[ "${#tip[@]}" -eq 1 ] && [ -z "${tip[0]}" ] && tip=()
 
 if [ -z "$text" ]; then
     sketchybar --set "$NAME" drawing=off

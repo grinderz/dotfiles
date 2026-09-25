@@ -44,6 +44,10 @@ while true {
             try? task.run()
             task.waitUntilExit()
             missedTicks = 0
+            // a popup the closer does not know stays up: no need to
+            // retry it three times a second
+            usleep(2_000_000)
+            continue
         }
     }
     usleep(150_000)
