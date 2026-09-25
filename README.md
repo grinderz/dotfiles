@@ -920,7 +920,9 @@ The sway session extras have macOS scripts of their own, all under
 `notify-mac`, terminal-notifier in place of notify-send): `screenshot-mac` (area,
 clipboard, window, monitor; files land in `XDG_SCREENSHOTS_DIR`, the
 same path as on Linux), `ocr-mac`, `qr-mac`, `aerospace-bindings` (the
-cheatsheet, fzf in a floating terminal), `screen-record-mac` (one key
+cheatsheet, fzf in a floating terminal), `notify-send` (the libnotify
+command line over notify-mac, so hooks and shared scripts that call it
+— repo-tools' — notify here too), `screen-record-mac` (one key
 starts and stops; the focused window's frame or the monitor, since
 screencapture has no interactive video area; `--audio` records what the
 apps play plus the mic — macOS has no such source, so `audio-device`,

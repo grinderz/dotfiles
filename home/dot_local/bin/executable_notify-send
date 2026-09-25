@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# notify-send for macOS: the libnotify command line, delivered through
+# notify-mac (terminal-notifier). Exists so anything written against
+# notify-send — the repo-tools hooks, scripts shared with sway — works
+# here unchanged. Understood: SUMMARY [BODY], -a/--app-name (the
+# notification group), -i/--icon (a picture path). Ignored: urgency,
+# timeout, hints, categories, replace-id. -A/--action and -w/--wait are
+# not possible with terminal-notifier: -A prints nothing and exits 0, as
+# if the notification was dismissed; -p prints 0.
+
+set -euo pipefail
+
+app="notify-send"; icon=""; print_id=0; args=()
+while [ $# -gt 0 ]; do
+    case $1 in
+        -a|--app-name) app=$2; shift 2 ;;
+        --app-name=*) app=${1#*=}; shift ;;
+        -i|--icon) icon=$2; shift 2 ;;
+        --icon=*) icon=${1#*=}; shift ;;
+        -u|--urgency|-t|--expire-time|-c|--category|-h|--hint|-r|--replace-id|-A|--action) shift 2 ;;
+        --urgency=*|--expire-time=*|--category=*|--hint=*|--replace-id=*|--action=*) shift ;;
+        -p|--print-id) print_id=1; shift ;;
+        -e|--transient|-w|--wait) shift ;;
+        -v|--version) echo "notify-send (notify-mac shim)"; exit 0 ;;
+        -\?|--help) echo "usage: notify-send [options] SUMMARY [BODY]"; exit 0 ;;
+        --) shift; args+=("$@"); break ;;
+        -*) shift ;;
+        *) args+=("$1"); shift ;;
+    esac
+done
+[ ${#args[@]} -gt 0 ] || { echo "notify-send: no summary specified" >&2; exit 1; }
+summary=${args[0]}; body=${args[1]:-}
+[ -f "$icon" ] || icon=""
+"$HOME/.local/bin/notify-mac" "$summary" "$app" "${body:-$summary}" ${icon:+"$icon"}
+[ "$print_id" = 1 ] && echo 0
+exit 0

@@ -16,6 +16,7 @@
 .local/bin/aerospace-workspace-cycle
 .local/bin/screenshot-mac
 .local/bin/notify-mac
+.local/bin/notify-send
 .local/bin/ocr-mac
 .local/bin/qr-mac
 .local/bin/aerospace-bindings
