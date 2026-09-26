@@ -17,8 +17,11 @@
 # set, so the default config dir is passed explicitly. That also moves
 # the global config (login, onboarding, per-project trust) from
 # ~/.claude.json to ~/.claude/.claude.json; chezmoi keeps the latter a
-# symlink to the former, so both ways of starting claude share one
-# account. Anything outside the roots runs claude untouched.
+# symlink to the former. On macOS the login itself sits in the Keychain
+# under a name that carries a hash of CLAUDE_CONFIG_DIR when it is set
+# and no hash when it is not: two entries, two logins, one of them
+# always going stale. So the variable is set outside the roots as well,
+# and every start shares one entry.
 #
 # Adding a root: another [[data.claude.sync]] entry in chezmoi.toml on
 # every machine, chezmoi apply, and move any existing
@@ -68,4 +71,4 @@ for entry in {{ range .claude.sync }}"$HOME/{{ .root }}:$HOME/{{ .dir }}:$HOME/{
     CLAUDE_CONFIG_DIR=$config CLAUDE_CODE_PROJECT_DIR_NAME=$name exec "$real" "$@"
 done
 
-exec "$real" "$@"
+CLAUDE_CONFIG_DIR=$config exec "$real" "$@"
