@@ -5,6 +5,9 @@ lockfile                /run/lock/btrbk.lock
 ssh_identity            {{ conf.ssh.identity }}
 ssh_user                {{ conf.ssh.user }}
 {% endif %}
+{% if conf.get('send_compressed_data') %}
+send_compressed_data    {{ conf.send_compressed_data }}
+{% endif %}
 snapshot_preserve_min   {{ conf.snapshot_preserve_min }}
 snapshot_preserve       {{ conf.snapshot_preserve }}
 
