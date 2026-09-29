@@ -776,13 +776,18 @@ open -a AeroSpace                 # registers itself as a login item
 ```
 
 The workspace swipe has no package; it is built from source once per
-machine (the config it reads comes from chezmoi):
+machine, from a fork that carries local fixes on top of upstream (the
+config it reads comes from chezmoi):
 
 ```sh
-git clone https://github.com/acsandmann/aerospace-swipe ~/.local/share/aerospace-swipe
-cd ~/.local/share/aerospace-swipe
+git clone git@github.com:<user>/aerospace-swipe ~/src/personal/aerospace-swipe   # the fork
+cd ~/src/personal/aerospace-swipe
+git remote add upstream https://github.com/acsandmann/aerospace-swipe
 make install                      # builds, ad-hoc signs, loads the launch agent
 ```
+
+Taking upstream changes: `git fetch upstream && git rebase upstream/main`,
+push, then rebuild (see the Accessibility note below).
 
 Run that `open` from a plain terminal, never from a shell inside Claude
 Code (or any tool that marks its children): `open` hands its environment
@@ -834,9 +839,13 @@ then in System Settings:
   about one time in four. A rebuild changes the ad-hoc
   signature, which invalidates the Accessibility grant without asking
   again: `tccutil reset Accessibility com.example.swipe`, then
-  `make restart`, and approve the prompt. It survives an AeroSpace
-  restart, unlike the SwipeAeroSpace app it replaced (that one never
-  reconnected to the socket, which is why `autostart-mac` used to
+  `make restart`, and approve the prompt. The fork's fix: hours or days
+  in, the tap keeps receiving gesture events with no touches in them
+  (upstream #14, "stops responding after sleep"), and only a new process
+  gets them back, so the daemon exits after 500 such events in a row and
+  launchd starts it again (`/tmp/swipe.err` logs it). It survives an
+  AeroSpace restart, unlike the SwipeAeroSpace app it replaced (that one
+  never reconnected to the socket, which is why `autostart-mac` used to
   start it after AeroSpace). Its event tap is listen-only, so the swipe
   also reaches whatever is underneath, and a browser reads a horizontal
   one as back/forward. The fix is to let macOS swallow it first: the
@@ -844,12 +853,12 @@ then in System Settings:
   (`TrackpadFourFingerHorizSwipeGesture = 2` on both trackpads and
   `com.apple.trackpad.fourFingerHorizSwipeGesture` in globals, applied
   after a re-login), and since every display holds a single Space it has
-  nowhere to switch and does nothing visible. The daemon reads raw
-  touches through MultitouchSupport, a layer below the event system, so
-  it still fires — and two-finger back/forward keeps working in the
-  browser, which turning page-swipe navigation off there would have
-  cost. A display with a second Space breaks the trick: any app going
-  full screen makes one, and then the four-finger swipe walks into it.
+  nowhere to switch and does nothing visible. The daemon's event tap
+  sits at the HID level, ahead of the gesture recogniser, so it still
+  sees the touches and fires — and two-finger back/forward keeps
+  working in the browser, which turning page-swipe navigation off there
+  would have cost. A display with a second Space breaks the trick: any
+  app going full screen makes one, and then the four-finger swipe walks into it.
   The three-finger swipes (Mission Control, App Exposé) stay off, as
   does three-finger drag (it ate the first fingers of a swipe)
 * Media keys stay with the bar's `media` item instead of opening Music:
