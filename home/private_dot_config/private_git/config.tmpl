@@ -107,8 +107,11 @@
 	defaultRemote = origin
 
 [rerere]
+	# remembers how a conflict was resolved and applies it again next time
+	# (a fork rebased onto each upstream release); the file is left unstaged
+	# on purpose, so the replayed resolution shows in git diff before it is
+	# added
 	enabled = 1
-	autoupdate = 1
 
 [sequence]
 	editor = interactive-rebase-tool
