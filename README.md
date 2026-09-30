@@ -182,6 +182,16 @@ of them while the backup machines never see it. The `memory` symlink
 inside each project points back into the `dotfiles` folder and is made
 per machine by the wrapper, so syncthing ignores it.
 
+File versioning is off for this folder on both desktops, unlike the
+other folders (`syncthing cli config folders ai versioning type set ""`
+on each; syncthing's config is not in chezmoi). A transcript only ever
+grows, so each version syncthing kept in `.stversions` was an earlier
+prefix of the same file, tens of MB a copy and five copies a session,
+written every time the other machine sent a longer one — and every copy
+went into the btrbk snapshots of `@home` here and into Time Machine on
+the mac. It also kept a session the other machine had pruned for up to a
+year. The backups are the history.
+
 `claude-prune-sessions` drops the ones nobody came back to. Age counts
 from the last *use*: resuming appends to the transcript, so its newest
 record marks the last visit (`/home` is `noatime`, the file system does
@@ -390,8 +400,8 @@ Per deploy, once per host:
   notifier timer is enabled by the systemd deploy (run dotfiles apply
   first — the unit files come from chezmoi); the GTK theme is Tokyo
   Night Storm from the own `aur` repo
-  (`aur tokyonight-gtk-theme-storm-git` in fish, `yay -Bi` behind it), named
-  in `[gtk]` of `.chezmoidata.toml` — the settings.ini of both GTK
+  (`aur -S tokyonight-gtk-theme-storm-git` in fish, `yay -Bi` behind it),
+  named in `[gtk]` of `.chezmoidata.toml` — the settings.ini of both GTK
   versions, the libadwaita links in `gtk-4.0` and the dconf side
   (`gtk-settings.sh` runs gsettings for theme, icons and prefer-dark)
   all follow from there

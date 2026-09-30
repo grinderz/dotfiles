@@ -49,10 +49,13 @@ section "subvolume parents (flat layout; needs sudo)"
 # every subvolume must live at the top level (parent id 5) — the
 # classic snapper trap is a .snapshots created NESTED under @ by a
 # naive `snapper create-config`. Snapshots themselves legitimately
-# nest under the two snapshot-storage subvolumes and are filtered out.
+# nest under the two snapshot-storage subvolumes and are filtered out,
+# and so is anything nested inside @home: those are directories taken
+# out of the snapshots on purpose (unbacked-links.sh --subvol), which
+# the "unbacked dead paths" section below accounts for.
 if sudo -n true 2>/dev/null; then
     sudo btrfs subvolume list / | awk '{print $NF}' \
-        | grep -vE '^(@snapshots|@btrbk_snapshots)/' \
+        | grep -vE '^(@snapshots|@btrbk_snapshots|@home)/' \
         | sort | diff <(cut -f1 subvolumes.map | sed 's|^/||' | grep -v '^$' | sort) - || fail=1
 else
     echo "skipped (no sudo)"
@@ -60,6 +63,11 @@ fi
 
 section "unbacked links (missing < / extra >)"
 bash ../unbacked-links.sh --scan | diff unbacked-links.map - || fail=1
+
+section "unbacked dead paths (dangling links, data without a link, lost subvolumes)"
+# the backups it lists are not a fault, only what it warns about is
+bash ../unbacked-links.sh --check 2>&1 | grep -vE '^(ok|backup .*)$'
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail=1
 
 section "snapper + btrbk (present only after the pyinfra deploys)"
 if command -v snapper > /dev/null; then
@@ -79,9 +87,13 @@ fi
 section "failed units (system)"
 systemctl --failed --no-legend --plain | awk '{print $1}' | grep . && fail=1
 
-section "running services (hw/session noise expected on VMs)"
-systemctl list-units --type=service --state=running --no-legend --plain \
-    | awk '{print $1}' | sort | diff running-services.txt - || fail=1
+section "running boot services (hw noise expected on VMs)"
+# only what default.target pulls in, the same filter as `make install.export`:
+# a service started by hand, a socket, D-Bus or a device is not in the export
+{ systemctl list-dependencies --all --plain --no-legend default.target | awk '{print "boot", $1}'
+    systemctl list-units --type=service --state=running --no-legend --plain | awk '{print "up", $1}'; } \
+    | awk '$1 == "boot" { boot[$2] = 1; next } boot[$2] { print $2 }' \
+    | sort | diff running-services.txt - || fail=1
 
 section "active timers"
 systemctl list-units --type=timer --state=active --no-legend --plain \

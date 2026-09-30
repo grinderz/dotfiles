@@ -51,6 +51,7 @@ Library
 .config/wireplumber
 .config/yubikey-touch-detector
 .config/yay
+.config/pacman
 .config/user-dirs.dirs
 .config/user-dirs.locale
 .config/aerc
@@ -112,6 +113,8 @@ Library
 .local/bin/system-stats
 .local/share/applications
 .local/share/flatpak
+# ~/.unbacked is a btrfs subvolume of the linux install
+.local/bin/unbacked
 {{ end }}
 
 {{ if not (hasKey . "work") }}

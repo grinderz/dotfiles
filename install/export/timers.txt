@@ -1,4 +1,5 @@
 archlinux-keyring-wkd-sync.timer
+btrbk-resume-ssh.timer
 btrbk-snapshot.timer
 btrfs-free-check.timer
 btrfs-scrub@-.timer

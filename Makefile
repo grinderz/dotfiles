@@ -38,14 +38,14 @@ install.export:
 	pacman -Qqen >| install/export/packages-native.txt
 	pacman -Qqem >| install/export/packages-foreign.txt
 	systemctl list-unit-files --state=enabled --no-legend | awk '{print $$1}' >| install/export/enabled-units.txt
-	@# services that run on their own; a bus-activated one that is not
-	@# enabled (snapperd, upower, rtkit...) is up only while someone talks
-	@# to it and would flap in and out of the list between exports
-	systemctl list-units --type=service --state=running --no-legend --plain | awk '{print $$1}' | while read -r u; do \
-		p=$$(systemctl show "$$u" -p UnitFileState -p Type); \
-		case "$$p" in *Type=dbus*) case "$$p" in *UnitFileState=enabled*) ;; *) continue ;; esac ;; esac; \
-		echo "$$u"; \
-	done | sort >| install/export/running-services.txt
+	@# services the boot itself pulls in: running and in the dependency tree
+	@# of default.target. One that is up only because of a manual start, a
+	@# socket, D-Bus or a device (docker, pcscd, upower, bluetooth...) comes
+	@# and goes between exports, so it stays out. validate.sh filters alike.
+	{ systemctl list-dependencies --all --plain --no-legend default.target | awk '{print "boot", $$1}'; \
+		systemctl list-units --type=service --state=running --no-legend --plain | awk '{print "up", $$1}'; } \
+		| awk '$$1 == "boot" { boot[$$2] = 1; next } boot[$$2] { print $$2 }' \
+		| sort >| install/export/running-services.txt
 	systemctl list-units --type=timer --state=active --no-legend --plain | awk '{print $$1}' | sort >| install/export/timers.txt
 	flatpak list --app --columns=application >| install/export/flatpaks.txt
 	@# per-app permission overrides: the files themselves, user scope then

@@ -19,6 +19,7 @@ systemd-resolved-monitor.socket
 systemd-resolved-varlink.socket
 systemd-userdbd.socket
 remote-fs.target
+btrbk-resume-ssh.timer
 btrbk-snapshot.timer
 btrfs-free-check.timer
 btrfs-stats-check.timer

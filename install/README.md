@@ -96,28 +96,159 @@ columns, no user name in it.
 ./unbacked-links.sh --apply .config     # only paths under .config
 ./unbacked-links.sh --scan              # dump the live layout
 ./unbacked-links.sh --add .npm npm      # move a new path out, then link it
+./unbacked-links.sh --add -n ./.venv    # only show what --add would do
+./unbacked-links.sh --restore ./.venv   # put the backup back, drop the link
+./unbacked-links.sh --subvol ./checkout # make it a nested subvolume in place
+./unbacked-links.sh --list              # every link and subvolume, any depth
+./unbacked-links.sh --check             # report what has gone dead
+./unbacked-links.sh --forget ./.venv    # drop the record of a path
+./unbacked-links.sh --suggest           # what else might be worth moving out
+./unbacked-links.sh --keep sync/notes   # never suggest this path again
 ```
+
+chezmoi links it as `~/.local/bin/unbacked` (linux only), so inside a
+checkout the same thing is `unbacked --add -n ./.venv`. The link points
+into the working tree: the script stays next to the map, and an edit to
+it needs no `chezmoi apply`.
 
 On a fresh machine nothing exists yet, so `--apply` only creates targets
 and symlinks (VM-checked: a bare `$HOME` plus `~/.unbacked` reproduces
 the map exactly). Where the data is still in place — the reference
-machine — it is moved first: `cp -a --reflink=auto` (a CoW clone within
-the same filesystem, no extra space), an `rsync -n` comparison, and only
-then `rm -rf` plus the symlink. A path some process has open is skipped
-unless `--force`; anything unexpected is left alone with a warning and a
-non-zero exit. Re-running is a no-op.
+machine — it is moved first: a backup clone, `cp -a --reflink=auto` (a
+CoW clone within the same filesystem, no extra space), an `rsync -n`
+comparison, and only then `rm -rf` plus the symlink. A path some process
+has open is skipped unless `--force`; anything unexpected is left alone
+with a warning and a non-zero exit. Re-running is a no-op.
 
-Grow the layout with `--add <path under $HOME> <path under ~/.unbacked>`,
-then `make install.export` to refresh the map — never by editing the map
-first, since `--add` is what moves the existing data out safely.
-`validate.sh` diffs the live layout against the map.
+Moving a new path out, in order:
+
+1. `unbacked --add -n <path>`: the size, the target and whatever holds
+   the path open. Nothing is touched.
+2. Close what holds it, then `unbacked --add <path>`.
+3. Use the program that owns the path and see that it still works.
+4. If it does not: `unbacked --restore <path>`, then remove the copy the
+   restore reports as left under `~/.unbacked`.
+5. If it does: remove the backup, `~/.unbacked/.moved/<time>`.
+6. For a path up to three levels deep, `make install.export` and commit
+   the refreshed map. A deeper one does not change the map.
+
+Never edit the map first: `--add <path> [<path under ~/.unbacked>]` is
+what moves the existing data out safely. `validate.sh` diffs the live
+layout against the map. The path is relative to `$HOME` as in the map,
+absolute, or `./`-relative to the current directory; without the second
+argument the target keeps the same relative path.
+
+The backup clone lands in `~/.unbacked/.moved/<time>/<path>` before the
+original is removed: also a reflink, and outside every snapshot.
+`--restore <path>` copies the newest one back in place of the link. It
+leaves the moved copy under `~/.unbacked` alone (it may have changed
+since), so remove that by hand before moving the same path again; the
+clones in `.moved` are likewise never removed by the script.
+
+### A directory that has to keep its path: `--subvol`
+
+A symlink changes `pwd -P`, and tools keyed on the physical path lose
+their state (Claude Code sessions, direnv, IDE indexes). It also dangles
+inside a container that bind-mounts the checkout, and a docker build
+cannot `COPY` through a link that leaves its context. For those cases
+`--subvol <directory>` turns the directory into a btrfs subvolume nested
+where it stands: a snapshot of `@home` does not descend into a nested
+subvolume, so the path is out of the snapshots with nothing moved and
+nothing linked. The steps are the same as for `--add` (`-n` first, a
+backup clone, `--restore` to undo); `--restore` puts the backup back as a
+plain directory and moves what the subvolume held next to the backups.
+
+Use it for a whole checkout that is built in place (dozens of `build/`
+directories that `clean` deletes and recreates cannot be linked one by
+one) or a cache a container writes through a bind mount. What it costs:
+
+* the checkout is not backed up at all: unpushed commits, stashes and
+  ignored local files live on this disk only
+* a restored snapshot of `@home` has an empty directory in its place
+* rolling `@home` back by swapping the subvolume leaves the nested one
+  inside the old `@home`; move it across (a rename) before deleting that
+* `rm -rf` followed by a rebuild makes a plain directory again
+* `du -x` and `find -xdev` stop at it, and `mv` across it copies
+
+Run it from outside the directory and name it by path
+(`unbacked --subvol ~/src/work/app`, not `--subvol .`). The directory is
+swapped for the new subvolume, so a shell standing in it would be left in
+the one that is gone; the in-use guard sees that shell and skips the
+path.
+
+### Dead paths: `--check`
+
+A link is its own record only while it exists, and a subvolume looks like
+any other directory. So every link and subvolume made here is also
+written to `~/.local/state/unbacked/layout`; a no-op `--apply` or
+`--add` records a link that was made before the file existed. The file
+sits in `~/.local/state` and not in `~/.unbacked` so that the backup
+holds it: after `@home` comes back from a snapshot the subvolumes are
+empty directories, and this file is what says which ones to convert
+again before they fill up. `--check` holds the record against the disk
+and the disk against the record, and reports where they part, changing
+nothing. What the record names and the disk no longer has:
+
+* a link whose target is missing
+* a recorded link that is gone — a tool deleted it and rebuilt a real
+  directory in its place, which is back in the snapshots, or the checkout
+  went away — with its data still under `~/.unbacked`
+* a recorded link that points somewhere else now
+* a recorded subvolume that is a plain directory again
+
+What the disk has and the record does not name:
+
+* a link into `~/.unbacked` nothing records, one made with `ln -s` (the
+  message gives the `--add` line that writes it down)
+* a nested subvolume nothing records (`--subvol` on it records it)
+* data under `~/.unbacked` that no link points at and nothing records
+
+The backups still kept under `.moved` are listed as well, without
+counting as a fault. What to do with a finding is a decision: `--add` the
+path again after removing the stale copy, delete the orphan, or
+`--forget <path>` when the path is meant to stay as it is now.
+`validate.sh` runs the check in its own section.
+
+### What else could go: `--suggest`
+
+`--check` looks at what was moved. `--suggest` looks at the snapshotted
+part of `$HOME` for what might be worth moving, by two signs:
+
+* a directory git ignores inside a checkout, 20M or more: by the
+  project's own word it is not source (`.venv`, `node_modules`, build
+  output). One that holds a checkout further down is marked, since
+  somebody's work may sit in it.
+* a directory outside the checkouts whose files changed by 5M or more
+  over the last 7 days, summed under the first three levels of the path.
+  A snapshot pays for change, not for size.
+
+Neither is a verdict, and the second list names data that belongs in the
+backup (synced notes, session transcripts) as readily as a cache.
+`--keep <path>` takes a path off both lists for good; the kept paths are
+in `~/.local/state/unbacked/keep`, and `--forget <path>` takes one off
+again. Nested subvolumes and `~/.unbacked` are not walked: they are out
+of the snapshots already.
+
+`--scan` looks three levels deep. A path further down, such as a `.venv`
+inside a checkout, can be moved the same way and stays out of the map: it
+belongs to the checkout, not to the machine layout. Two things to know
+before moving one of those:
+
+* git does not take a symlink for a directory, so a `.venv/` line in
+  `.gitignore` stops matching and the link shows up as untracked. The
+  same goes for a cache ignored only by a `.gitignore` inside itself
+  (`.mypy_cache`). The global ignore chezmoi installs
+  (`~/.config/git/ignore`) lists the bare names for that reason.
+* the link holds an absolute host path, so it dangles inside a container
+  that bind-mounts the checkout. Harmless for a virtualenv the container
+  never uses, not for a cache the tools in the container write into.
 
 Not chezmoi on purpose: chezmoi applies a declaration, so a `symlink_`
 entry aimed at a path that still holds data deletes that data on the
 next `chezmoi apply`. Moving data out with a verified copy is imperative
 work. The script's header lists what is deliberately left backed up
-(`~/src` needs a bind mount instead — a symlink changes `pwd -P` and
-tools keyed on the physical path lose their state; vdirsyncer state
+(`~/src` as a whole — source is what a backup is for, and a checkout
+that must leave goes by `--subvol`, not by a link; vdirsyncer state
 holds OAuth tokens; `~/.claude/projects` holds the per-project memory).
 
 ## Validation

@@ -1,0 +1,31 @@
+# Global ignore: git reads $XDG_CONFIG_HOME/git/ignore when
+# core.excludesFile is unset. Only what my own tools leave in a checkout
+# goes here; what a project builds belongs in its own .gitignore.
+
+# Directories that can be symlinks into ~/.unbacked (install/
+# unbacked-links.sh --add). A project's `.venv/` line matches a directory
+# only, and git does not take a symlink for one; the caches ignore
+# themselves with a .gitignore inside, which git never reads through a
+# link. A bare name matches the directory and the link alike.
+.venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Python bytecode
+__pycache__/
+
+# JetBrains IDEs
+.idea/
+
+# direnv layouts
+.direnv/
+
+# Claude Code, per-user settings and instructions. The first line was here
+# on both machines before chezmoi took the file over, presumably appended
+# by Claude Code itself; it keeps that exact form so nothing adds it again.
+**/.claude/settings.local.json
+CLAUDE.local.md
+
+# macOS Finder
+.DS_Store
