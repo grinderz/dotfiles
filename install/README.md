@@ -7,6 +7,10 @@ stick, an untouched swap-reserve partition, 25 flat btrfs subvolumes,
 LUKS invisible to `pre_mounted_config` — pushed all the real work out
 of it anyway, leaving only pacstrap+locale+user, which is this script.)
 
+Everything here is the linux machine, except what carries a `mac-`
+prefix and `export/mac/`: the mac has no disks to prepare, so its part
+is the exports and their check alone (section at the end).
+
 Split of responsibility:
 
 * `disk-prep.sh` — LUKS2, btrfs, the subvolume scheme from
@@ -329,3 +333,37 @@ regenerates `unbacked-links.map` via `unbacked-links.sh --scan` and
 (`flatpaks.txt` only lists what is installed, not how it is sandboxed).
 `mkinitcpio.conf.template` mirrors `/etc/mkinitcpio.conf` — update on hook
 changes.)
+
+## macOS
+
+The mac has no disks to prepare: macOS installs itself, and what this
+repo owns sits on top. `export/mac/` is the reference for a fresh one,
+made on the mac by `make install.export.mac` (`mac-export.sh`) and
+committed from linux after a pull, like every other export:
+
+* `Brewfile` — `brew bundle dump`: taps, formulae, casks, go and uv
+  tools. No VS Code extensions: editor state is not dotfiles
+* `brew-services.txt` — the brew services meant to be running
+* `launch-agents.txt` — `~/Library/LaunchAgents`, to notice what third
+  parties add
+* `applications.txt` — `/Applications` by origin: `cask <token>`,
+  `appstore` (a receipt inside the bundle) or `manual`
+* `macos-version.txt` — release and architecture
+
+A fresh mac, in order:
+
+1. Xcode command line tools (`xcode-select --install`), then Homebrew.
+2. Clone the dotfiles, `brew bundle --file=install/export/mac/Brewfile`.
+   Karabiner-Elements is a pkg: run it in a real terminal, it asks for
+   sudo.
+3. The `appstore` lines of `applications.txt` from the App Store by hand,
+   the `manual` ones from their vendors.
+4. chezmoi init and apply (top-level README), then `brew services start`
+   for each line of `brew-services.txt`.
+5. The pyinfra macOS deploys (`infra/macos.py`, openconnect).
+6. The macOS window manager section of the top-level README: the
+   Accessibility and Screen Recording grants, and the swipe daemon built
+   from the fork.
+7. `make install.validate.mac` (`mac-validate.sh`): runs the export into
+   a temporary directory and diffs every file against `export/mac/`, so a
+   missing formula shows as `<` and an extra one as `>`.

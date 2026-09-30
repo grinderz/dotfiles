@@ -4,7 +4,7 @@ CHEZMOI_SRC := $(CURDIR)/home
 
 # every target here is a command, not a file
 .PHONY: setup.pyinfra setup.pyinfra.upgrade lint.shellcheck lint.ruff lint \
-	install.export install.validate FORCE
+	install.export install.validate install.export.mac install.validate.mac FORCE
 
 # --- setup ---
 
@@ -66,6 +66,16 @@ install.export:
 
 install.validate:
 	bash install/validate.sh
+
+# the mac has no disks to prepare, only what sits on top of macOS: the
+# exports are its Brewfile and friends, made and checked on the mac itself
+install.export.mac:
+	@test "$$(uname -s)" = Darwin || { echo "error: mac-only target" >&2; exit 1; }
+	bash install/mac-export.sh
+	git diff --stat -- install/export/mac
+
+install.validate.mac:
+	bash install/mac-validate.sh
 
 # --- dotfiles (chezmoi) ---
 

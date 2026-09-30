@@ -1,0 +1,62 @@
+appstore	Amazon Kindle.app
+appstore	AmneziaWG.app
+appstore	DevCleaner.app
+appstore	LocalSend.app
+appstore	OpenSpeedTest-Server.app
+appstore	Pandan.app
+appstore	RabbitHole.app
+appstore	Shareful.app
+appstore	Telegram.app
+appstore	WhatsApp.app
+appstore	Windows App.app
+appstore	WireGuard.app
+appstore	Yubico Authenticator.app
+cask aerospace	AeroSpace.app
+cask alacritty	Alacritty.app
+cask ayugram	AyuGram.app
+cask beyond-compare	Beyond Compare.app
+cask brave-browser	Brave Browser.app
+cask connectmenow	ConnectMeNow4.app
+cask datagrip	DataGrip.app
+cask double-commander	Double Commander.app
+cask firefox@esr	Firefox.app
+cask foobar2000	foobar2000.app
+cask goland	GoLand.app
+cask helium-browser	Helium.app
+cask iina	IINA.app
+cask imazing	iMazing.app
+cask imazing-profile-editor	iMazing Profile Editor.app
+cask karabiner-elements	Karabiner-Elements.app
+cask karing	Karing.app
+cask keepassxc	KeePassXC.app
+cask keet	Keet.app
+cask keka	Keka.app
+cask librewolf	LibreWolf.app
+cask megasync	MEGAsync.app
+cask mountmate	MountMate.app
+cask notunes	noTunes.app
+cask obsidian	Obsidian.app
+cask openmtp	OpenMTP.app
+cask openvpn-connect	OpenVPN Connect.app
+cask pluralplay-flclashx	FlClashX.app
+cask pycharm	PyCharm.app
+cask qflipper	qFlipper.app
+cask raycast	Raycast.app
+cask roblox	Roblox.app
+cask sf-symbols	SF Symbols.app
+cask sublime-merge	Sublime Merge.app
+cask sublime-text	Sublime Text.app
+cask supersonic	Supersonic.app
+cask thunderbird@esr	Thunderbird.app
+cask tuta-mail	Tuta Mail.app
+cask ungoogled-chromium	Chromium.app
+cask utm	UTM.app
+cask vivaldi	Vivaldi.app
+cask xnviewmp	XnViewMP.app
+cask yandex-music-unofficial	Yandex Music Unofficial.app
+manual	Karabiner-EventViewer.app
+manual	Mighty Mitts.app
+manual	Proton Authenticator.app
+manual	Safari.app
+manual	Ultimate Software.app
+manual	zoom.us.app
