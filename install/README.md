@@ -342,7 +342,11 @@ made on the mac by `make install.export.mac` (`mac-export.sh`) and
 committed from linux after a pull, like every other export:
 
 * `Brewfile` — `brew bundle dump`: taps, formulae, casks, go and uv
-  tools. No VS Code extensions: editor state is not dotfiles
+  tools. No VS Code extensions: editor state is not dotfiles. Three casks
+  (alacritty, ayugram, rar) come from an own tap, `homebrew-tap`:
+  Homebrew disabled the official ones on 2026-09-01 for failing the
+  Gatekeeper check. The tap's name carries the GitHub account, written
+  here as `@GITHUB_USER@`
 * `brew-services.txt` — the brew services meant to be running
 * `launch-agents.txt` — `~/Library/LaunchAgents`, to notice what third
   parties add
@@ -353,9 +357,12 @@ committed from linux after a pull, like every other export:
 A fresh mac, in order:
 
 1. Xcode command line tools (`xcode-select --install`), then Homebrew.
-2. Clone the dotfiles, `brew bundle --file=install/export/mac/Brewfile`.
+2. Clone the dotfiles, then feed brew the Brewfile with the account put
+   back:
+   `sed 's/@GITHUB_USER@/<account>/' install/export/mac/Brewfile | brew bundle --file=-`.
    Karabiner-Elements is a pkg: run it in a real terminal, it asks for
-   sudo.
+   sudo. The three unsigned apps from the own tap come out quarantined;
+   its README says how to let them start.
 3. The `appstore` lines of `applications.txt` from the App Store by hand,
    the `manual` ones from their vendors.
 4. chezmoi init and apply (top-level README), then `brew services start`

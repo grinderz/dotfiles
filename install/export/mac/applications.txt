@@ -18,7 +18,6 @@ cask beyond-compare	Beyond Compare.app
 cask brave-browser	Brave Browser.app
 cask connectmenow	ConnectMeNow4.app
 cask datagrip	DataGrip.app
-cask double-commander	Double Commander.app
 cask firefox@esr	Firefox.app
 cask foobar2000	foobar2000.app
 cask goland	GoLand.app

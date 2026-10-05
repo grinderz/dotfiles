@@ -3,6 +3,7 @@ tap "ameshkov/tap"
 tap "buo/cask-upgrade", trusted: true
 tap "felixkratz/formulae", "https://github.com/FelixKratz/homebrew-formulae"
 tap "garethgeorge/backrest-tap"
+tap "@GITHUB_USER@/tap", trusted: true
 tap "homebrew/core"
 tap "mediosz/tap", trusted: { casks: ["swipeaerospace"] }
 tap "minio/stable"
@@ -10,7 +11,7 @@ tap "nikitabobko/tap"
 tap "supersonic-app/supersonic", trusted: true
 tap "teamookla/speedtest"
 tap "ungive/media-control", trusted: true
-brew "openssl@3", link: true
+brew "openssl@3"
 brew "python@3.14"
 brew "ansible"
 brew "bash"
@@ -51,6 +52,7 @@ brew "forgit"
 brew "gfold"
 brew "ghidra"
 brew "git"
+brew "git-cliff"
 brew "git-delta"
 brew "git-interactive-rebase-tool"
 brew "gitlab-ci-linter"
@@ -148,9 +150,9 @@ brew "garethgeorge/backrest-tap/backrest", trusted: true
 brew "minio/stable/mc", trusted: true
 brew "teamookla/speedtest/speedtest", trusted: true
 cask "nikitabobko/tap/aerospace", trusted: true
-cask "alacritty"
+cask "@GITHUB_USER@/tap/alacritty", trusted: true
 cask "android-platform-tools"
-cask "ayugram"
+cask "@GITHUB_USER@/tap/ayugram", trusted: true
 cask "beyond-compare"
 cask "blackhole-2ch"
 cask "brave-browser"
@@ -158,7 +160,6 @@ cask "claude-code@latest"
 cask "clickhouse"
 cask "connectmenow"
 cask "datagrip"
-cask "double-commander"
 cask "firefox@esr"
 cask "font-3270-nerd-font"
 cask "font-agave-nerd-font"
@@ -202,7 +203,7 @@ cask "openvpn-connect"
 cask "pluralplay-flclashx"
 cask "pycharm"
 cask "qflipper"
-cask "rar"
+cask "@GITHUB_USER@/tap/rar", trusted: true
 cask "raycast"
 cask "roblox"
 cask "sf-symbols"

@@ -3,7 +3,8 @@
 # fresh one: the counterpart of `make install.export` on linux. Runs on the
 # mac; the files are plain text, so linux commits them after a pull or a copy.
 #
-#   Brewfile           brew bundle dump: taps, formulae, casks, go and uv tools
+#   Brewfile           brew bundle dump: taps, formulae, casks, go and uv tools,
+#                      with @GITHUB_USER@ where the own tap names the account
 #   brew-services.txt  the brew services meant to be running
 #   launch-agents.txt  ~/Library/LaunchAgents, to notice what third parties add
 #   applications.txt   /Applications by origin: a cask, the App Store (a
@@ -18,6 +19,18 @@ mkdir -p "$out"
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" HOMEBREW_NO_AUTO_UPDATE=1
 
 brew bundle dump --file="$out/Brewfile" --force --no-describe --no-vscode
+
+# The casks Homebrew disabled for failing the Gatekeeper check come from an
+# own tap, and its name carries the GitHub account, which this repository
+# does not name. The account is the one this checkout is pushed to; in the
+# Brewfile it becomes a placeholder, to be put back before `brew bundle`
+# (install/README.md).
+owner=$(git -C "$(dirname "$0")" remote get-url origin 2> /dev/null \
+    | sed -nE 's#.*github\.com[:/]([^/]+)/.*#\1#p')
+if [ -n "$owner" ]; then
+    sed "s#\"$owner/#\"@GITHUB_USER@/#g" "$out/Brewfile" > "$out/Brewfile.tmp"
+    mv "$out/Brewfile.tmp" "$out/Brewfile"
+fi
 
 brew services list | awk 'NR > 1 && $2 == "started" { print $1 }' | sort > "$out/brew-services.txt"
 
