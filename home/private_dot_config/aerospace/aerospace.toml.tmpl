@@ -18,9 +18,11 @@
        regexes on the monitor name (first match in left-to-right order),
        1-based indexes in that order, or main; both Dells share a name,
        so "the right Dell" is index 2 (with one Dell left of the laptop
-       that is the laptop, like eDP-1 on sway). Override with
+       that is the laptop, like eDP-1 on sway). The Samsung does not
+       carry its maker in the name macOS gives it ("SA300/350/360"), so
+       it is matched by model as well. Override with
        aerospace_monitor_odd / _even under [data.desktop]. */ -}}
-{{- $odd := dig "desktop" "aerospace_monitor_odd" (list "dell.*" "samsung.*" "main") . -}}
+{{- $odd := dig "desktop" "aerospace_monitor_odd" (list "dell.*" "samsung.*" "sa300.*" "main") . -}}
 {{- $even := dig "desktop" "aerospace_monitor_even" (list "2" "main") . -}}
 # managed by chezmoi: home/private_dot_config/aerospace/aerospace.toml.tmpl
 # reference: https://nikitabobko.github.io/AeroSpace/guide

@@ -901,7 +901,7 @@ Optional overrides in the private `chezmoi.toml`, all under
 
 ```toml
 aerospace_mod = "alt"                            # default "ctrl" (see above)
-aerospace_monitor_odd  = ["dell.*", "samsung.*", "main"]  # 1 3 5 7 9: as sway,
+aerospace_monitor_odd  = ["dell.*", "samsung.*", "sa300.*", "main"]  # 1 3 5 7 9: as sway,
 aerospace_monitor_even = ["2", "main"]                    # 2 4 6 8 10: right Dell
 ```
 
