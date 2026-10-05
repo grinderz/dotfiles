@@ -1,0 +1,44 @@
+#!/usr/bin/swift
+// Wake an external display that stays black after sleep while macOS
+// lists it as online: the hub keeps hot-plug asserted through the sleep,
+// so nothing re-sends the mode to its HDMI side. Switching every external
+// display to another refresh rate and back makes the hub set the mode
+// again; the resolution stays, so the windows do not move.
+
+import CoreGraphics
+import Foundation
+
+let pause: UInt32 = 2
+
+var ids = [CGDirectDisplayID](repeating: 0, count: 16)
+var count: UInt32 = 0
+CGGetOnlineDisplayList(UInt32(ids.count), &ids, &count)
+
+for id in ids.prefix(Int(count)) where CGDisplayIsBuiltin(id) == 0 {
+    guard let current = CGDisplayCopyDisplayMode(id),
+          let modes = CGDisplayCopyAllDisplayModes(id, nil) as? [CGDisplayMode]
+    else { continue }
+
+    let usable = modes.filter {
+        $0.isUsableForDesktopGUI() && $0.ioDisplayModeID != current.ioDisplayModeID
+    }
+    // the same size at another rate; any other mode only when there is none
+    guard let other = usable.first(where: {
+        $0.width == current.width && $0.height == current.height
+    }) ?? usable.first else {
+        print("display \(id): no second mode to switch to")
+        continue
+    }
+
+    print("display \(id): \(current.width)x\(current.height)@\(Int(current.refreshRate))"
+        + " -> \(other.width)x\(other.height)@\(Int(other.refreshRate)) and back")
+    guard CGDisplaySetDisplayMode(id, other, nil) == .success else {
+        print("display \(id): the switch failed")
+        continue
+    }
+    sleep(pause)
+    if CGDisplaySetDisplayMode(id, current, nil) != .success {
+        print("display \(id): the switch back failed")
+        exit(1)
+    }
+}

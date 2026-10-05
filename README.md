@@ -951,7 +951,10 @@ over BlackHole (`brew install --cask blackhole-2ch`, then
 `sudo killall coreaudiod` once) and flips the system output for the
 duration), `scratch-term-mac` (the
 drop-down terminal, parked on the hidden workspace S and centered with
-System Events on every show) and `autostart-mac` (after-startup-command:
+System Events on every show), `display-kick` (`d` in the service mode:
+an external display that stays black after sleep although macOS lists it
+as online gets its mode set again, another refresh rate for two seconds
+and back) and `autostart-mac` (after-startup-command:
 a random wallpaper when the wallpaper dir exists on the machine, the
 `dev` zellij and `cli` terminals on workspaces 2 and 1). Browser, chats
 and notes start as Login Items and the window rules place them. The

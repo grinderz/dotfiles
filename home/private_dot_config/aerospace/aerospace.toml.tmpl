@@ -293,6 +293,8 @@ run = 'layout floating'
     esc = ['reload-config', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     r = ['flatten-workspace-tree', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     backspace = ['close-all-windows-but-current', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
+    # an external display left black after sleep: set its mode again
+    d = ['exec-and-forget display-kick', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     {{ $mod }}-shift-h = ['join-with left', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     {{ $mod }}-shift-j = ['join-with down', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']
     {{ $mod }}-shift-k = ['join-with up', 'mode main', 'exec-and-forget sketchybar --set mode drawing=off']

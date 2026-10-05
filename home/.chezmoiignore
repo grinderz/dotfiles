@@ -24,6 +24,7 @@
 .local/bin/autostart-mac
 .local/bin/system-stats-mac
 .local/bin/screen-record-mac
+.local/bin/display-kick
 Library
 .chezmoiscripts/darwin-trackpad-gestures.sh
 .chezmoiscripts/reload-aerospace.sh
