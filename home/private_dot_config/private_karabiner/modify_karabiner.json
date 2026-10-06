@@ -16,6 +16,11 @@
 # instead. Karabiner sits below WindowServer, so this is also the place to
 # swallow a system shortcut macOS will not let go of (a manipulator with
 # an empty `to`).
+#
+# Play/Pause from the keyboard goes to media-control, and only while some
+# app is playing: a Bluetooth keyboard's key reaches MediaRemote through
+# bluetoothd, not through rcd (which disable-rcd unloads), and with no
+# player around MediaRemote launches Music for it.
 
 import json
 import sys
@@ -39,9 +44,26 @@ def swap(src, dst, description):
     }
 
 
+# Karabiner runs this with the system PATH, so brew's binary by full path
+MEDIA = (
+    "m=/opt/homebrew/bin/media-control; now=$($m get 2>/dev/null);"
+    ' [ -n "$now" ] && [ "$now" != null ] && $m toggle-play-pause'
+)
+
 RULES = [
     swap("command", "control", f"{OURS} physical Super sends ctrl (AeroSpace's modifier)"),
     swap("control", "command", f"{OURS} physical Ctrl sends cmd (the app shortcuts)"),
+    {
+        "description": f"{OURS} Play/Pause toggles the playing app, never launches Music",
+        "manipulators": [
+            {
+                "type": "basic",
+                "from": {"consumer_key_code": "play_or_pause", "modifiers": {"optional": ["any"]}},
+                "to": [{"shell_command": MEDIA}],
+                "conditions": [{"type": "device_if", "identifiers": ZMK}],
+            }
+        ],
+    },
 ]
 
 raw = sys.stdin.read()

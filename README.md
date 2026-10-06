@@ -876,7 +876,11 @@ then in System Settings:
   the first press. `Library/LaunchAgents/com.user.disable-rcd.plist`
   (chezmoi, macOS only) unloads that agent at login; it takes effect on
   the next login, or right away with
-  `launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist`
+  `launchctl unload -w /System/Library/LaunchAgents/com.apple.rcd.plist`.
+  A Bluetooth keyboard's Play/Pause bypasses rcd (bluetoothd hands it to
+  MediaRemote itself, which launches Music when nothing plays), so the
+  Karabiner script binds it on the ZMK keyboard to `media-control
+  toggle-play-pause`, and only while `media-control get` sees a player
 * Low Power Mode from the bar (`lowpower` toggle) needs `pmset` without
   a password, `sudo visudo -f /etc/sudoers.d/lowpower`:
   `<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1`;
