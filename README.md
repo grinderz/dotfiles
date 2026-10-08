@@ -159,7 +159,9 @@ then left to taskwarrior, which writes the switch into it — the managed
 settings are in `chezmoi.rc`, included from there). `personal` also
 matches tasks with no project, which is where everything added before the
 split still lives. `task context none` shows all three again, and
-taskwarrior-tui has the same switch behind its context menu.
+taskwarrior-tui has the same switch behind its context menu. With no
+context on nothing stamps a project, so `default.project=personal` catches
+what is added then; a context's `write` filter overrides it.
 
 Machine differences stay in the templates (`.chezmoi.os`, and maps keyed
 by `.chezmoi.hostname` such as `personal_key_by_host`), not in

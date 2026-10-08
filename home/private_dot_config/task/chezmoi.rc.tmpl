@@ -39,13 +39,17 @@ report.annotated.sort=urgency-
 # filters what a report shows, write stamps the project on anything added
 # while the context is on, so `task context work` plus `task add ...` needs
 # no project argument. personal also picks up the tasks that predate the
-# split (project:) until they are sorted.
+# split (project:) until they are sorted. With no context on (`task
+# context none`, or before taskrc exists) nothing stamps a project, so the
+# default sends such entries to personal as well; a context's write filter
+# still wins over it.
 context.personal.read=project:personal or project:
 context.personal.write=project:personal
 context.work.read=project:work
 context.work.write=project:work
 context.family.read=project:family
 context.family.write=project:family
+default.project=personal
 
 # taskwarrior-tui reads its settings from here too, prefixed uda.
 # The sync is the point: `task sync` writes to the syncthing-carried
