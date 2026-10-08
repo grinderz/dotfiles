@@ -1,0 +1,6 @@
+# cloud-sync/.env of ~/src/personal/homelab, rendered by dotfiles from
+# [data.homelab.cloud_sync] in the private toml (keys as in .env.example).
+# The homelab Makefile copies it to cloud-sync/.env; make secrets.push ships it
+{{- range $k, $v := .homelab.cloud_sync }}
+{{ $k }}={{ $v }}
+{{- end }}

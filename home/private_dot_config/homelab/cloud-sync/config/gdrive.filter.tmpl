@@ -1,0 +1,6 @@
+# rclone --filter-from list for the gdrive remote of cloud-sync, rendered by
+# dotfiles from [data.homelab.cloud_sync_filters].gdrive in the private toml.
+# The homelab Makefile copies it to cloud-sync/config/gdrive.filter
+{{- range .homelab.cloud_sync_filters.gdrive }}
+{{ . }}
+{{- end }}
