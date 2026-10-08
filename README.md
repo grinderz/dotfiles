@@ -882,7 +882,11 @@ then in System Settings:
   A Bluetooth keyboard's Play/Pause bypasses rcd (bluetoothd hands it to
   MediaRemote itself, which launches Music when nothing plays), so the
   Karabiner script binds it on the ZMK keyboard to `media-control
-  toggle-play-pause`, and only while `media-control get` sees a player
+  toggle-play-pause`, and only while `media-control get` sees a player.
+  Headphones take the same path over AVRCP (the OnePlus Buds send Play when
+  they go into the case), which nothing can intercept, so noTunes (cask) sits
+  behind it all and quits Music the moment it launches; it is a Login Item,
+  started once by hand after the install
 * Low Power Mode from the bar (`lowpower` toggle) needs `pmset` without
   a password, `sudo visudo -f /etc/sudoers.d/lowpower`:
   `<user> ALL=(root) NOPASSWD: /usr/bin/pmset -a lowpowermode 0, /usr/bin/pmset -a lowpowermode 1`;
