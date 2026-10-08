@@ -1,0 +1,5 @@
+# openwrt-feed-builder (~/src/personal/openwrt-feed-builder): the build host
+# `make deploy` syncs to and the web server `make publish` pushes the feed to,
+# from [data.openwrt] in the private toml. A repo-local local.mk overrides this
+DEPLOY_DEST := {{ .openwrt.build_host }}:{{ .openwrt.build_src }}/openwrt-feed-builder
+PUBLISH_DEST := {{ .openwrt.publish_dest }}

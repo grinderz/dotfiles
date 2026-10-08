@@ -1,0 +1,27 @@
+# openwrt-openconnect (~/src/personal/openwrt-openconnect): rendered by
+# dotfiles from the [[data.work.openconnect_profiles]] entry named in
+# [data.openwrt_openconnect] and the [[data.routers]] entry flagged
+# openconnect. Sourced as shell by vpn-auth.sh, vpn-auth-sso.sh and deploy.sh;
+# see vpn.conf.example in the repo for every key
+{{- $cfg := .openwrt_openconnect }}
+{{- $p := dict }}
+{{- range .work.openconnect_profiles }}{{ if eq .name $cfg.profile }}{{ $p = . }}{{ end }}{{ end }}
+VPN_SERVER="{{ $p.host }}"
+VPN_USER="{{ $p.username }}"
+VPN_GROUP="{{ $p.group }}"
+VPN_SSO_GROUP="{{ $cfg.sso_group }}"
+VPN_PROTOCOL="anyconnect"
+PASSWORD_CMD="{{ $p.vpn_password_cmd }} | head -n 1"
+EXTRA_OPTS="--disable-ipv6 --useragent=AnyConnect"
+{{- range .routers }}{{ if get . "openconnect" }}
+OC_HOST="{{ default .name (get . "ssh") }}"
+{{- end }}{{ end }}
+{{- with get $cfg "router_config" }}
+
+# /etc/openconnect-vpn/config values deploy.sh patches into the repo template
+# before uploading; with any RC_ set the router's copy is replaced (previous
+# kept as config.bak). From [data.openwrt_openconnect.router_config]
+{{- range $k, $v := . }}
+RC_{{ $k }}="{{ if kindIs "slice" $v }}{{ join " " $v }}{{ else }}{{ $v }}{{ end }}"
+{{- end }}
+{{- end }}

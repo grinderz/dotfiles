@@ -128,6 +128,26 @@ Library
 .chezmoiscripts/jetbrains-vmoptions.sh
 {{ end }}
 
+# OpenWrt script configs render only with the router inventory / the vpn
+# profile pick in the private toml
+{{ if not (hasKey . "routers") }}
+.config/openwrt-scripts
+{{ end }}
+{{ if not (and (hasKey . "openwrt_openconnect") (hasKey . "work")) }}
+.config/openwrt-openconnect
+{{ end }}
+
+# OpenWrt build/publish hosts render only with [data.openwrt] in the private toml
+{{ if not (hasKey . "openwrt") }}
+.config/openwrt-feed-builder
+.config/openwrt-buildroot
+{{ end }}
+
+# homelab deploy target renders only with [data.homelab] in the private toml
+{{ if not (hasKey . "homelab") }}
+.config/homelab
+{{ end }}
+
 # car status module renders only with [data.starline] in the private toml
 {{ if not (hasKey . "starline") }}
 .config/starline-status

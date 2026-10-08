@@ -1,0 +1,205 @@
+# openwrt-feed-builder configuration, rendered by dotfiles into
+# ~/.config/openwrt-feed-builder/config.yaml (base_url from [data.openwrt] in
+# the private toml). The repo's Makefile copies it to config.yaml in the
+# checkout whenever this one is newer: the tool resolves ./paths from the
+# config's directory and `make deploy` ships that copy to the build host.
+# Edit this template, not the copy.
+#
+#
+# Collects .ipk packages from HTTP sources and builds a signed opkg custom feed.
+# The output tree mirrors downloads.openwrt.org/releases/ (see the layout
+# section); every feed directory gets its own Packages / Packages.gz (and
+# Packages.sig when signing is enabled).
+
+output_dir: ./output/releases  # generated feed goes here; builds merge
+                            # into it incrementally, --full recreates it
+cache_dir: ./.cache         # raw downloads are cached here between runs
+
+# Public URL where the feed will be served. Embedded into the generated
+# per-release add.sh so the one-line router installer points at the right host.
+base_url: "{{ .openwrt.feed_base_url }}"
+
+# opkg feed-name prefix in add.sh / src/gz lines (default "custom").
+feed_prefix: grinderz
+
+# Optional: only keep packages for these architectures (plus 'all').
+# Leave empty to keep every architecture encountered.
+architectures: ["aarch64_cortex-a53", "mipsel_24kc"]
+
+# Optional: only keep packages for these targets/subtargets. Applies to the
+# target/subtarget detected from the asset file name (kmod-* and other
+# SoC-specific packages). Architecture-generic packages (luci-app-*, *_all,
+# anything with no detectable target) are always kept.
+# An entry may be a full "target/subtarget", a lone subtarget, or a lone target
+# family — any matches:
+#   ramips/mt7621   -> only that subtarget
+#   mt7621          -> subtarget regardless of target name
+#   mediatek        -> every subtarget under the mediatek target
+# Leave empty to keep every target.
+targets: ["ramips/mt7621", "mediatek/filogic"]
+
+# Output layout — mirrors downloads.openwrt.org/releases/:
+#   packages-24.10/<arch>/<feed>/                            userspace (shared)
+#   <release>/targets/<target>/<subtarget>/packages/         userspace (release-bound)
+#   <release>/targets/<target>/<subtarget>/kmods/<kernel>/   kmods
+layout:
+  # Point releases the feed carries — one or a list, each 3-part and all on one
+  # branch. Source tags are only used for routing when they match one of these.
+  version: ["24.10.7"]
+  default_feed: packages
+  # kmod_version: "24.10.7" # fallback release for kmods from sources without a
+                            # release tag (default: newest of version list)
+
+sign:
+  enabled: true             # key id 65fbfb2089e0dc03 (from genkey)
+  secret_key_cmd: "passp show feed/openwrt/usign"
+  public_key: ./keys/public.key
+  # OpenWrt 25.12+ (apk) EC key, same scheme: make genkey.apk, then
+  #   passp insert -m feed/openwrt/apk < keys/apk-private.pem && rm keys/apk-private.pem
+  #apk_secret_key_cmd: "passp show feed/openwrt/apk"
+  #apk_public_key: ./keys/apk-public.pem
+  # Or read the secret key from a command (stdout = key); set EITHER this OR
+  # secret_key. Handy with a password manager:
+  #   secret_key_cmd: "pass show openwrt/feed-secret-key"
+
+serve:
+  host: 0.0.0.0
+  port: 8080
+
+sources:
+  # Each source is best-effort: if one fails (404, timeout, rate limit, bad
+  # config) it is skipped with a warning and the build continues with the rest.
+  # Set `enabled: false` on any source to skip it without deleting it.
+
+  # 1) Explicit .ipk URLs.
+  #    A URL may contain a wildcard in the file name: the directory is listed
+  #    and only the LATEST version of each matching package is downloaded
+  #    (requires the server to expose an HTML directory listing / autoindex).
+  - type: ipk
+    name: direct-urls
+    enabled: false
+    urls:
+      - https://example.com/packages/bar_*_all.ipk        # -> newest bar_<ver>_all.ipk
+      - https://example.com/packages/foo_1.0-1_x86_64.ipk  # exact URL, no wildcard
+
+  # 2) Mirror selected packages from an existing opkg feed (parses Packages.gz).
+  - type: feed
+    name: upstream-luci
+    enabled: false
+    url: https://downloads.openwrt.org/releases/24.10.0/packages/x86_64/luci
+    include: ["luci-app-*"]   # glob match on the Package name
+    exclude: ["luci-app-*-i18n-*"]
+
+  # 3) .ipk assets attached to a GitHub release (set GITHUB_TOKEN to avoid rate limits).
+  - type: github
+    name: someproject
+    enabled: false
+    repo: owner/project
+    tag: latest               # or a specific tag like "v1.4.2"
+    asset_match: "*_x86_64.ipk"
+
+  # 4) Scrape an HTML directory listing / autoindex page for .ipk links.
+  - type: html
+    name: autoindex
+    enabled: false
+    url: https://example.com/myrepo/
+    pattern: "*.ipk"
+
+  # 5) Whole directory inside a GitHub repo (via the GitHub Contents API).
+  #    Paste a tree URL (optionally ending in a glob) ...
+  - type: github_dir
+    name: gspotx2f-2410
+    enabled: true
+    url: https://github.com/gSpotx2f/packages-openwrt/tree/master/24.10/*.ipk
+
+  # 6) GitHub releases whose assets embed the target/subtarget in the file name
+  #    (<pkg>_<ver>_<arch>_<target>_<subtarget>.ipk); the target/subtarget is
+  #    detected automatically and used in the output path.
+  # disabled: the feed no longer carries 24.10.6 (layout.version) and 24.10.7
+  # is built from source by the sdk source below; a tag absent from
+  # layout.version would misroute its kmods into the default release
+  - type: github
+    name: awg-openwrt
+    enabled: true
+    repo: Slava-Shchipunov/awg-openwrt
+    tags: [v24.10.7]           # several releases in one pass; each tag routes
+                                # its kmods/userspace into that release
+    asset_match: "*.ipk"
+
+  - type: github
+    name: ssclash
+    enabled: true
+    repo: zerolabnet/SSClash
+    tag: latest
+    asset_match: "*.ipk"
+
+  # 7) Raw binary repacked into a locally built .ipk: the mihomo binary
+  #    SSClash expects at /opt/clash/bin/clash. One .ipk per arch_map entry
+  #    (opkg architecture -> token in the URL). Placeholders in url / extract /
+  #    install: {version} {tag} {arch} {pkg_arch}.
+  - type: binary
+    name: ssclash-mihomo-mini
+    enabled: true
+    upx: true
+    repo: MetaCubeX/mihomo    # optional: resolve the version from a release tag
+    tag: latest               # version follows the release tag; pin with tag: v1.19.28
+    url: https://github.com/MetaCubeX/mihomo/releases/download/{tag}/mihomo-linux-{arch}-{tag}.gz
+    install: /opt/clash/bin/clash
+    mode: "0755"
+    section: net
+    description: mihomo (clash.meta) binary for SSClash compressed with upx
+    arch_map:
+      mipsel_24kc: mipsle-softfloat
+      aarch64_cortex-a53: arm64
+
+  - type: binary
+    name: ssclash-mihomo
+    enabled: true
+    repo: MetaCubeX/mihomo    # optional: resolve the version from a release tag
+    tag: latest               # version follows the release tag; pin with tag: v1.19.28
+    url: https://github.com/MetaCubeX/mihomo/releases/download/{tag}/mihomo-linux-{arch}-{tag}.gz
+    install: /opt/clash/bin/clash
+    mode: "0755"
+    section: net
+    description: mihomo (clash.meta) binary for SSClash
+    arch_map:
+      mipsel_24kc: mipsle-softfloat
+      aarch64_cortex-a53: arm64
+
+  # 8) Compiled from source with the OpenWrt SDK via an openwrt-buildroot
+  #    checkout (needs docker + gmake >= 4.4 and versions/<release>.mk in the
+  #    buildroot for every release built). One SDK container run per
+  #    (release x target) builds all listed packages; the matrix defaults to
+  #    layout.version x targets —
+  #    narrowed here to 24.10.7 (the buildroot has no 24.10.6 version file).
+  #    Alternative to the awg-openwrt github releases above for the same
+  #    release — the github source is pinned to v24.10.6, this one builds
+  #    24.10.7 (enable both for one release and the packages would collide).
+#  - type: sdk
+#    name: amneziawg-src
+#    enabled: true
+#    buildroot: ../openwrt-buildroot
+#    releases: ["24.10.7"]
+#    feeds:
+#      - src-git awg https://github.com/Slava-Shchipunov/awg-openwrt.git
+#    packages: [kmod-amneziawg, amneziawg-tools, luci-proto-amneziawg]
+
+  #    sdk sources sharing the buildroot and a release/target are batched into
+  #    the same container run as the source above (feeds merged, packages
+  #    built together) — an extra sdk source costs one compile, not another
+  #    feeds clone.
+#  - type: sdk
+#    name: modemfeed-src
+#    enabled: true
+#    buildroot: ../openwrt-buildroot
+#    releases: ["24.10.7"]
+#    feeds:
+#      - src-git modemfeed https://github.com/koshev-msk/modemfeed.git
+#    packages: [ethstatus]
+
+  - type: github
+    name: beszel-agent-openwrt
+    enabled: true
+    repo: vernette/beszel-agent-openwrt
+    tag: latest
+    asset_match: "*.ipk"

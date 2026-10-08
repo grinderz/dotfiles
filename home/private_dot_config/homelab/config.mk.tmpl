@@ -1,0 +1,5 @@
+# homelab (~/src/personal/homelab): the docker host `make deploy` and the
+# compose targets talk to, from [data.homelab] in the private toml. A
+# repo-local local.mk overrides this file
+DEPLOY_HOST := {{ .homelab.deploy_host }}
+DEPLOY_PATH := {{ .homelab.deploy_path }}

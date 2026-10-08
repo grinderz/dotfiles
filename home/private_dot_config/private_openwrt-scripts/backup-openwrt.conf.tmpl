@@ -1,0 +1,9 @@
+# backup-openwrt.sh (~/src/personal/openwrt-scripts): rendered by dotfiles
+# from [[data.routers]] (backup = true) and [data.openwrt_scripts].
+# Shell KEY=VALUE, see backup-openwrt.conf.example in the repo for the keys
+HOSTS="{{ range $i, $r := .routers }}{{ if get $r "backup" }}{{ if $i }} {{ end }}{{ default $r.name (get $r "ssh") }}{{ end }}{{ end }}"
+BACKUP_DIR="{{ .openwrt_scripts.backup_dir }}"
+TYPES="{{ .openwrt_scripts.backup_types }}"
+KEEP={{ .openwrt_scripts.backup_keep }}
+SSH_OPTS="{{ .openwrt_scripts.ssh_opts }}"
+USER_PACKAGES_OPTS="{{ .openwrt_scripts.user_packages_opts }}"

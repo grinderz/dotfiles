@@ -1,0 +1,6 @@
+# openwrt-buildroot (~/src/personal/openwrt-buildroot): the build host
+# `make deploy` syncs to and the public URL of the asu proxy, from
+# [data.openwrt] in the private toml. Build selection (OWRT_RELEASE,
+# SRC_TARGET, images) stays in the repo-local local.mk, which overrides this
+DEPLOY_DEST := {{ .openwrt.build_host }}:{{ .openwrt.build_src }}/openwrt-buildroot
+ASU_UPSTREAM_CUSTOM := {{ .openwrt.asu_upstream }}

@@ -1,0 +1,13 @@
+# deploy.sh (~/src/personal/openwrt-scripts): rendered by dotfiles from
+# [[data.routers]] (deploy = the file map of a host) and [data.openwrt_scripts].
+# Shell KEY=VALUE, see deploy.conf.example in the repo for the format
+DEST_DIR="/usr/bin"
+SSH_OPTS="{{ .openwrt_scripts.ssh_opts }}"
+
+DEPLOY="
+{{- range .routers }}
+{{- if get . "deploy" }}
+{{ default .name (get . "ssh") }} {{ .deploy }}
+{{- end }}
+{{- end }}
+"
