@@ -1,18 +1,21 @@
 # openwrt-feed-builder configuration, rendered by dotfiles into
 # ~/.config/openwrt-feed-builder/config.yaml (base_url from [data.openwrt] in
-# the private toml). The repo's Makefile copies it to config.yaml in the
-# checkout whenever this one is newer: the tool resolves ./paths from the
-# config's directory and `make deploy` ships that copy to the build host.
-# Edit this template, not the copy.
+# the private toml; signing keys come from passp). The repo's Makefile copies
+# it to config.yaml in the checkout whenever this one is newer: the tool
+# resolves ./paths from the config's directory and `make deploy` ships that
+# copy to the build host. Edit this template, not the copy.
 #
 #
-# Collects .ipk packages from HTTP sources and builds a signed opkg custom feed.
-# The output tree mirrors downloads.openwrt.org/releases/ (see the layout
-# section); every feed directory gets its own Packages / Packages.gz (and
-# Packages.sig when signing is enabled).
+# Collects packages from HTTP sources and builds a signed custom feed: opkg
+# (.ipk, Packages / Packages.gz / Packages.sig) for 24.10, apk (.apk, signed
+# packages.adb) for 25.12. The output tree mirrors
+# downloads.openwrt.org/releases/ (see the layout section).
 
-output_dir: ./output/releases  # generated feed goes here; builds merge
-                            # into it incrementally, --full recreates it
+output_dir: ./output/releases  # generated feed goes here (the default); builds
+                            # merge into it incrementally, --full recreates
+                            # it. output/ is a symlink out of the snapshotted
+                            # home (~/.unbacked); releases itself must stay a
+                            # real directory (see config.example.yaml).
 cache_dir: ./.cache         # raw downloads are cached here between runs
 
 # Public URL where the feed will be served. Embedded into the generated
@@ -39,13 +42,15 @@ architectures: ["aarch64_cortex-a53", "mipsel_24kc"]
 targets: ["ramips/mt7621", "mediatek/filogic"]
 
 # Output layout — mirrors downloads.openwrt.org/releases/:
-#   packages-24.10/<arch>/<feed>/                            userspace (shared)
+#   packages-<branch>/<arch>/<feed>/                         userspace (shared)
 #   <release>/targets/<target>/<subtarget>/packages/         userspace (release-bound)
 #   <release>/targets/<target>/<subtarget>/kmods/<kernel>/   kmods
 layout:
-  # Point releases the feed carries — one or a list, each 3-part and all on one
-  # branch. Source tags are only used for routing when they match one of these.
-  version: ["24.10.7"]
+  # Point releases the feed carries, each 3-part; 24.10.x feeds are opkg,
+  # 25.12.x feeds apk. Source tags are only used for routing when they match
+  # one of these. Packages without a release go to every branch of their
+  # format (.ipk -> 24.10, .apk -> 25.12) unless the source pins `openwrt:`.
+  version: ["24.10.7", "24.10.8", "25.12.5"]
   default_feed: packages
   # kmod_version: "24.10.7" # fallback release for kmods from sources without a
                             # release tag (default: newest of version list)
@@ -54,10 +59,9 @@ sign:
   enabled: true             # key id 65fbfb2089e0dc03 (from genkey)
   secret_key_cmd: "passp show feed/openwrt/usign"
   public_key: ./keys/public.key
-  # OpenWrt 25.12+ (apk) EC key, same scheme: make genkey.apk, then
-  #   passp insert -m feed/openwrt/apk < keys/apk-private.pem && rm keys/apk-private.pem
-  #apk_secret_key_cmd: "passp show feed/openwrt/apk"
-  #apk_public_key: ./keys/apk-public.pem
+  # apk (25.12) feeds: ECDSA P-256 keypair from `genkey --apk`
+  apk_secret_key_cmd: "passp show feed/openwrt/apk"
+  apk_public_key: ./keys/apk-public.pem
   # Or read the secret key from a command (stdout = key); set EITHER this OR
   # secret_key. Handy with a password manager:
   #   secret_key_cmd: "pass show openwrt/feed-secret-key"
@@ -112,6 +116,11 @@ sources:
     enabled: true
     url: https://github.com/gSpotx2f/packages-openwrt/tree/master/24.10/*.ipk
 
+  - type: github_dir
+    name: gspotx2f-2512
+    enabled: true
+    url: https://github.com/gSpotx2f/packages-openwrt/tree/master/25.12/*.apk
+
   # 6) GitHub releases whose assets embed the target/subtarget in the file name
   #    (<pkg>_<ver>_<arch>_<target>_<subtarget>.ipk); the target/subtarget is
   #    detected automatically and used in the output path.
@@ -122,16 +131,16 @@ sources:
     name: awg-openwrt
     enabled: true
     repo: Slava-Shchipunov/awg-openwrt
-    tags: [v24.10.7]           # several releases in one pass; each tag routes
+    tags: [v24.10.7, v24.10.8, v25.12.5]  # several releases in one pass; each tag routes
                                 # its kmods/userspace into that release
-    asset_match: "*.ipk"
+    asset_match: "*.[ai]pk"     # .ipk for the 24.10 tags, .apk for 25.12
 
   - type: github
     name: ssclash
     enabled: true
     repo: zerolabnet/SSClash
     tag: latest
-    asset_match: "*.ipk"
+    asset_match: "*.[ai]pk"     # luci-app-ssclash .ipk -> 24.10, .apk -> 25.12
 
   # 7) Raw binary repacked into a locally built .ipk: the mihomo binary
   #    SSClash expects at /opt/clash/bin/clash. One .ipk per arch_map entry
@@ -202,4 +211,4 @@ sources:
     enabled: true
     repo: vernette/beszel-agent-openwrt
     tag: latest
-    asset_match: "*.ipk"
+    asset_match: "*.[ai]pk"
