@@ -128,6 +128,11 @@ only puts symlinks in place:
 | `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper); the session transcripts live apart, in the `ai` folder below |
 
+The folder `work` (`~/sync/work`, the two laptops and the backup host)
+carries what is work-specific the same way: `repo-tools/` holds the real
+repo-tools configs with `config.yaml` a symlink to the current release
+one, linked as `~/.config/repo-tools` so `rt` finds it from anywhere.
+
 User units under `.config/systemd/user` are enabled by apply itself:
 `.chezmoiscripts/run_onchange_after_systemd-user.sh` reloads the user
 manager and runs `systemctl --user enable --now` for every deployed unit
