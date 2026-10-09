@@ -1,0 +1,37 @@
+# ASU server configuration, see https://github.com/openwrt/asu. Rendered by
+# dotfiles into ~/.config/openwrt-buildroot/asu.toml from [data.openwrt] in the
+# private toml; the repo Makefile copies it to asu/asu.toml (compose mounts it)
+# base_container is set via the BASE_CONTAINER env by make targets:
+#   asu.up      -> ghcr.io/openwrt/imagebuilder (official)
+#   asu.src.up  -> registry:5000/varch/openwrt-imagebuilder (src build)
+
+upstream_url = "https://downloads.openwrt.org"
+#upstream_url = "http://metadata"
+log_level = "INFO"
+
+# nginx caching proxy for package downloads between builds, runs inside
+# podman on the asu-build network (see docker-compose.yaml podman service)
+cache_url = "http://asu-cache"
+
+# private server: allow custom uci-defaults scripts in build requests
+allow_defaults = true
+
+# allowed external repository URL prefixes for build requests
+# (client-supplied repos are rejected unless they match one of these)
+repository_allow_list = [
+    "{{ .openwrt.feed_base_url }}/",
+{{- range .openwrt.asu_repository_allow_extra }}
+    "{{ . }}",
+{{- end }}
+#    "https://github.com/fantastic-packages/releases/raw/",
+#    "https://raw.githubusercontent.com/routerich/",
+#    "https://raw.githubusercontent.com/4IceG/",
+#    "https://dl.openwrt.ai/",
+]
+
+build_ttl = "1d"
+build_ttl_unversioned = "24h"
+build_defaults_ttl = "30m"
+build_failure_ttl = "1h"
+max_pending_jobs = 200
+job_timeout = "10m"
