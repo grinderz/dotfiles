@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# Diff a .flatpak bundle against the installed app before installing it:
+# the sandbox metadata (runtime, permissions, D-Bus policy) as a diff and
+# the changed files, text ones (metainfo, appstream, the flatpak-builder
+# manifest) as unified diffs, binaries with their sizes. The bundle is
+# unpacked into a scratch ostree repo next to a copy of the installed
+# commit, so no flatpak installation is touched and no polkit prompt
+# appears; the system repo is world-readable, which is all the copy needs.
+#
+# Usage: flatpak-bundle-diff [-v] [--color|--no-color] FILE.flatpak
+#   -v         also show the changes under files/share/locale and icons,
+#              which are otherwise only counted
+#   --color    colour the report (through delta when installed, else GNU
+#              diff's own colours) even when stdout is not a terminal, for
+#              a caller that pages it; --no-color turns it off on one
+
+set -euo pipefail
+
+verbose=0 color=auto
+while [ $# -gt 1 ]; do
+    case "$1" in
+        -v) verbose=1 ;;
+        --color) color=always ;;
+        --no-color) color=never ;;
+        *) break ;;
+    esac
+    shift
+done
+bundle="${1:?usage: flatpak-bundle-diff [-v] [--color|--no-color] FILE.flatpak}"
+[ -r "$bundle" ] || { echo "flatpak-bundle-diff: cannot read $bundle" >&2; exit 2; }
+[ "$color" != auto ] || { [ -t 1 ] && color=always || color=never; }
+dcolor=()
+if [ "$color" = always ] && ! command -v delta >/dev/null 2>&1; then dcolor=(--color=always); fi
+
+report() {
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+repo="$tmp/repo"
+ostree --repo="$repo" init --mode=bare-user-only >/dev/null
+ostree --repo="$repo" static-delta apply-offline "$bundle" >/dev/null
+# a bundle carries exactly one commit; apply-offline writes no ref for it
+new=$(find "$repo/objects" -name '*.commit' \
+    | sed -E 's#.*/([0-9a-f]{2})/([0-9a-f]+)\.commit$#\1\2#')
+[ -n "$new" ] || { echo "flatpak-bundle-diff: no commit in $bundle" >&2; exit 1; }
+
+ref=$(ostree --repo="$repo" show --print-metadata-key=xa.ref "$new" | tr -d "'")
+id=${ref#*/}; id=${id%%/*}
+new_meta=$(ostree --repo="$repo" cat "$new" /metadata)
+new_version=$(ostree --repo="$repo" cat "$new" "/files/share/metainfo/$id.metainfo.xml" 2>/dev/null \
+    | xmllint --xpath 'string(//release[1]/@version)' - 2>/dev/null || true)
+
+if ! old=$(flatpak info --show-commit "$id" 2>/dev/null); then
+    echo "$id: not installed; bundle has ${new_version:-?} (${new:0:12}), metadata:"
+    printf '%s\n' "$new_meta"
+    exit 0
+fi
+old_version=$(flatpak info "$id" | sed -n 's/^ *Version: *//p')
+location=$(flatpak info --show-location "$id")
+old_repo=${location%%/app/*}/repo
+ostree --repo="$repo" pull-local "$old_repo" "$old" >/dev/null 2>&1
+
+echo "$id: installed ${old_version:-?} (${old:0:12}), bundle ${new_version:-?} (${new:0:12})"
+[ "$old" != "$new" ] || { echo "same commit, nothing to install"; exit 0; }
+
+echo
+echo "metadata (runtime, permissions, D-Bus policy):"
+if diff -u "${dcolor[@]}" --label installed --label bundle \
+        <(ostree --repo="$repo" cat "$old" /metadata) <(ostree --repo="$repo" cat "$new" /metadata); then
+    echo "  identical"
+fi
+
+echo
+changes=$(ostree --repo="$repo" diff "$old" "$new")
+echo "files: $(grep -c '^A' <<<"$changes" || true) added," \
+     "$(grep -c '^M' <<<"$changes" || true) modified," \
+     "$(grep -c '^D' <<<"$changes" || true) removed"
+if [ "$verbose" = 0 ]; then
+    noise=$(grep -c -E '^[AMD] +/files/share/(locale|icons)/' <<<"$changes" || true)
+    changes=$(grep -v -E '^[AMD] +/files/share/(locale|icons)/' <<<"$changes" || true)
+fi
+
+# a file's content as text: gzip members unpacked, JSON and XML
+# pretty-printed so a one-line manifest or release list diffs by key
+content() {
+    case "$2" in
+        *.xml.gz) ostree --repo="$repo" cat "$1" "$2" | gzip -dc | xmllint --format - ;;
+        *.gz) ostree --repo="$repo" cat "$1" "$2" | gzip -dc ;;
+        *.json) ostree --repo="$repo" cat "$1" "$2" | python3 -I -m json.tool ;;
+        *.xml) ostree --repo="$repo" cat "$1" "$2" | xmllint --format - ;;
+        *) ostree --repo="$repo" cat "$1" "$2" ;;
+    esac
+}
+size() { ostree --repo="$repo" ls "$1" "$2" 2>/dev/null | awk '{ print $4 }'; }
+human() { numfmt --to=iec --suffix=B "$1"; }
+# head closes the pipe early, so ostree's broken-pipe complaint is noise
+is_text() { [ "$(content "$1" "$2" 2>/dev/null | head -c 65536 | file -b --mime-encoding -)" != binary ]; }
+limit=$((2 * 1024 * 1024))    # larger text files are listed, not diffed
+
+texts=()
+while read -r op path; do
+    [ -n "$path" ] || continue
+    case "$op" in
+        A) commit=$new ;;
+        D) commit=$old ;;
+        *) commit=$new ;;
+    esac
+    bytes=$(size "$commit" "$path")
+    if [ -z "$bytes" ]; then          # a directory or a symlink
+        echo "$op  $path"
+    elif ! is_text "$commit" "$path" || [ "$bytes" -gt "$limit" ]; then
+        kind=binary; is_text "$commit" "$path" && kind="too large to diff"
+        if [ "$op" = M ]; then
+            echo "$op  $path  ($(human "$(size "$old" "$path")") -> $(human "$bytes"), $kind)"
+        else
+            echo "$op  $path  ($(human "$bytes"), $kind)"
+        fi
+    else
+        echo "$op  $path"
+        texts+=("$op $path")
+    fi
+done <<<"$changes"
+[ "$verbose" = 1 ] || [ "${noise:-0}" = 0 ] \
+    || echo "  (+ $noise under files/share/locale and icons, -v shows them)"
+
+for entry in "${texts[@]}"; do
+    op=${entry%% *}; path=${entry#* }
+    echo
+    case "$op" in
+        A) diff -u "${dcolor[@]}" --label /dev/null --label "bundle:$path" /dev/null <(content "$new" "$path") || true ;;
+        D) diff -u "${dcolor[@]}" --label "installed:$path" --label /dev/null <(content "$old" "$path") /dev/null || true ;;
+        M) diff -u "${dcolor[@]}" --label "installed:$path" --label "bundle:$path" \
+               <(content "$old" "$path") <(content "$new" "$path") || true ;;
+    esac
+done
+}
+
+if [ "$color" = always ] && command -v delta >/dev/null 2>&1; then
+    # captured output has no terminal to measure: take the caller's COLUMNS
+    # (an interactive shell does not export its own), else the tty, else 100
+    width=${COLUMNS:-$(stty size </dev/tty 2>/dev/null | awk '{ print $2 }')}
+    report | delta --paging=never --width="${width:-100}"
+else
+    report
+fi

@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# Update a flatpak that is installed from a bundle, diff shown first.
+# A .flatpak bundle has no remote, so `flatpak update` never sees a newer
+# build of it; for every app that comes this way a file under
+# ~/.config/flatpak-bundles/<app-id>.conf says where its releases live
+# (see the comment in an existing one). Given an app id the script finds
+# the newest release there, downloads the bundle once into
+# ~/.cache/flatpak-bundles, prints the release notes, the changelog since
+# the installed version when the conf points at one, and flatpak-bundle-diff
+# (permissions, changed files), and installs on a `y`. Given a file or URL
+# it skips the lookup and does the same for that bundle. Without arguments
+# it lists, for every conf, the installed and the newest version, then
+# offers to go through the updates one by one the same way. The install is
+# `sudo flatpak install FILE`: the system scope needs polkit's
+# install-bundle action, which is auth_admin, and the sway session runs no
+# polkit agent to ask, so sudo asks instead; a running app keeps the old
+# version until restarted.
+#
+# Usage: flatpak-bundle-update [-y] [APP-ID | FILE.flatpak | URL]   (-y: no questions)
+
+set -euo pipefail
+
+confdir=${XDG_CONFIG_HOME:-$HOME/.config}/flatpak-bundles
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/flatpak-bundles
+me=${0%/*}
+
+yes=0
+[ "${1:-}" = -y ] && { yes=1; shift; }
+[ $# -le 1 ] || { echo "usage: flatpak-bundle-update [-y] [APP-ID | FILE.flatpak | URL]" >&2; exit 2; }
+target=${1:-}
+
+die() { echo "flatpak-bundle-update: $*" >&2; exit 1; }
+installed_version() { flatpak info "$1" 2>/dev/null | sed -n 's/^ *Version: *//p'; }
+
+# load <app-id>.conf into the release_* variables, failing on an unknown id
+load_conf() {
+    releases='' version_sed='' asset='*.flatpak' changelog=''
+    [ -r "$confdir/$1.conf" ] || return 1
+    # shellcheck source=/dev/null
+    . "$confdir/$1.conf"
+    [ -n "$releases" ] || die "$1.conf: releases= is missing"
+}
+
+# newest release of the loaded conf: sets tag, latest, name, url, size, notes
+lookup() {
+    local api release re
+    api=$(curl -fsSL --max-time 60 -H 'Accept: application/json' "$releases") \
+        || die "cannot fetch $releases"
+    re="^${asset//./\\.}\$"; re=${re//\*/.*}    # the asset glob as a regex
+    release=$(jq -c --arg re "$re" '
+        [.[] | select((.prerelease // false) == false and (.draft // false) == false)
+             | . as $r | (.assets // [])[] | select(.name | test($re))
+             | {tag: $r.tag_name, html: $r.html_url, notes: ($r.body // ""),
+                name, url: .browser_download_url, size}][0]' <<<"$api")
+    [ -n "$release" ] && [ "$release" != null ] || die "no release with an asset like $asset at $releases"
+    tag=$(jq -r .tag <<<"$release")
+    latest=$(sed -E "${version_sed:-s/^v//}" <<<"$tag")
+    name=$(jq -r .name <<<"$release")
+    url=$(jq -r .url <<<"$release")
+    size=$(jq -r .size <<<"$release")
+    html=$(jq -r .html <<<"$release")
+    notes=$(jq -r .notes <<<"$release")
+}
+
+newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n' "$1" "$2" | sort -V | tail -1)" = "$2" ]; }
+
+# download URL $1 as $cache/$2, expected size $3 (empty = unknown)
+fetch() {
+    local file="$cache/$2"
+    mkdir -p "$cache"
+    if [ -s "$file" ] && { [ -z "$3" ] || [ "$(stat -c %s "$file")" = "$3" ]; }; then
+        echo "$file"; return
+    fi
+    echo "downloading $2${3:+ ($(($3 / 1048576)) MB)}" >&2
+    curl -fL --max-time 1800 -o "$file.part" "$1" >&2
+    [ -z "$3" ] || [ "$(stat -c %s "$file.part")" = "$3" ] || die "size mismatch after download"
+    mv "$file.part" "$file"
+    echo "$file"
+}
+
+# diff bundle $1 (with the text $2, release notes and changelog, in front
+# of it, all in one pager run), ask, install
+install_bundle() {
+    local bundle=$1 intro=${2:-} report id
+    if [ -t 1 ]; then
+        report=$(COLUMNS=$(tput cols) "$me/flatpak-bundle-diff" --color "$bundle")
+        printf '%s%s\n' "${intro:+$intro$'\n\n'}" "$report" | ${PAGER:-less -FRX}
+    else
+        report=$("$me/flatpak-bundle-diff" "$bundle")
+        printf '%s%s\n' "${intro:+$intro$'\n\n'}" "$report"
+    fi
+    id=${report%%:*}    # the report opens with "<app-id>: installed ..."
+    echo
+    if [ "$yes" = 0 ]; then
+        read -r -p "install? [y/N] " answer || answer=n    # EOF on stdin counts as no
+        case "$answer" in y|Y|yes) ;; *) echo "kept as is"; return 0 ;; esac
+    fi
+    sudo flatpak install -y "$bundle"
+    echo "now: $(installed_version "$id") (restart the app to use it)"
+}
+
+# the whole path for one app id with a conf: lookup, notes, changelog,
+# download, diff, question, install
+update_app() {
+    local id=$1 have text intro
+    load_conf "$id" || die "no $confdir/$id.conf"
+    have=$(installed_version "$id")
+    [ -n "$have" ] || die "$id is not installed; install the first bundle by hand"
+    lookup
+    if ! newer "$have" "$latest"; then
+        echo "$id $have is current ($tag)"
+        return 0
+    fi
+    intro=$(
+        echo "$id $have -> $latest"
+        echo "  release: $html"
+        [ -z "$notes" ] || { echo; printf '%s\n' "$notes" | sed 's/^/  /'; }
+        if [ -n "$changelog" ]; then
+            echo
+            echo "changelog since $have:"
+            if text=$(curl -fsSL --max-time 60 "${changelog//\{version\}/$latest}"); then
+                awk -v v="$have" '$1 == v { exit } { print }' <<<"$text"
+            else
+                echo "  (not available)"
+            fi
+        fi
+    )
+    install_bundle "$(fetch "$url" "$name" "$size")" "$intro"
+}
+
+# no argument: a status line per conf, then every update in turn
+if [ -z "$target" ]; then
+    [ -d "$confdir" ] || die "no $confdir"
+    pending=()
+    for conf in "$confdir"/*.conf; do
+        [ -e "$conf" ] || die "no confs in $confdir"
+        id=${conf##*/}; id=${id%.conf}
+        load_conf "$id"
+        lookup
+        have=$(installed_version "$id")
+        if [ -z "$have" ]; then state="not installed"
+        elif newer "$have" "$latest"; then state="update available"; pending+=("$id")
+        else state="current"; fi
+        printf '%-32s %-10s %-10s %s\n' "$id" "${have:--}" "$latest" "$state"
+    done
+    [ ${#pending[@]} -gt 0 ] || exit 0
+    echo
+    if [ "$yes" = 0 ]; then
+        read -r -p "go through ${#pending[@]} update(s)? [y/N] " answer || answer=n    # EOF on stdin counts as no
+        case "$answer" in y|Y|yes) ;; *) exit 0 ;; esac
+    fi
+    for id in "${pending[@]}"; do
+        echo
+        update_app "$id"
+    done
+    exit 0
+fi
+
+# a file or a URL: diff and install it as is
+case "$target" in
+    *.flatpak|http://*|https://*)
+        if [ -r "$target" ]; then bundle=$target
+        else bundle=$(fetch "$target" "${target##*/}" ""); fi
+        install_bundle "$bundle"
+        exit 0 ;;
+esac
+
+update_app "$target"

@@ -660,6 +660,51 @@ over). Add `nofail` to the `/boot` fstab options so booting from the mirror
 does not drop to emergency when the primary stick is dead — the failed
 `boot.mount` is surfaced by the `failed-units-notify` user timer instead.
 
+### Flatpak bundles outside Flathub
+
+Some apps are not on Flathub and come as a `.flatpak` bundle from a
+project's releases (AyuGram, `com.ayugram.desktop`, from the CI-only fork
+`0FL01/AyuGramDesktop-flatpak` that builds every upstream tag). A bundle
+carries no repo URL, so `flatpak update` only ever touches its runtimes
+and the app stays put until a newer bundle is installed over it. Two
+scripts, both linux-only, handle that by hand — no timer, the diff is
+meant to be read first:
+
+* `flatpak-bundle-update [-y] [APP-ID | FILE.flatpak | URL]`. Each such
+  app has `~/.config/flatpak-bundles/<app-id>.conf` (shell variables,
+  documented in the AyuGram one): the releases API that publishes the
+  bundle (GitHub shape, which Gitea/Forgejo/Codeberg share), a sed
+  expression turning the tag into the version, the asset glob and an
+  optional changelog URL. With an app id the script finds the newest
+  release, downloads the bundle once into `~/.cache/flatpak-bundles`
+  (checked against the asset size the API reports), prints the release
+  notes, the changelog entries since the installed version and the
+  bundle diff, and installs on a `y` with `sudo flatpak install FILE`
+  (`-y` skips the question). sudo because the system scope goes through
+  polkit's `install-bundle` action, `auth_admin` by default, and the sway
+  session runs no polkit agent that could ask — runtime updates are
+  `yes` for an active user and pass without it, a bundle fails with
+  `InstallBundle not allowed for user`. With a file or URL it
+  does the diff-and-ask for that bundle, whatever its source. Without
+  arguments it prints one line per conf (installed version, newest,
+  state) and offers to go through the pending updates one by one the
+  same way. The report is coloured through delta and paged like a git
+  diff. A running app keeps the old version until restarted.
+* `flatpak-bundle-diff [-v] FILE.flatpak` is the generic half: it unpacks
+  the bundle into a scratch ostree repo next to a copy of the installed
+  commit (the system repo is world-readable) and shows the sandbox
+  metadata as a diff — runtime, permissions, D-Bus policy — and the
+  changed files the way yay shows a PKGBUILD: text ones (metainfo,
+  appstream, the flatpak-builder manifest) as unified diffs, gzip and
+  XML/JSON unpacked and pretty-printed first, binaries with their sizes;
+  `-v` adds the locale/icon noise. Nothing is installed and no prompt
+  appears.
+
+Such bundles are unsigned (`gpg-verify=false` on the remote the bundle
+creates), so the trust is in the release page alone. A new machine
+installs the first bundle by hand (`sudo flatpak install FILE.flatpak`,
+the file via `flatpak-bundle-update URL`), the conf covers the updates.
+
 ### Claude Code state shared between machines
 
 Claude Code keeps sessions (`--resume`), auto memory and todos per project

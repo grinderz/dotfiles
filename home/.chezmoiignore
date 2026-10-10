@@ -100,6 +100,9 @@ Library
 .local/bin/suspend-toggle
 .local/bin/usb-storage
 .local/bin/notify-toggle
+.local/bin/flatpak-bundle-diff
+.local/bin/flatpak-bundle-update
+.config/flatpak-bundles
 # mail stack (aerc/mbsync/notmuch) and its helpers are linux-only here
 .config/goimapnotify
 .config/msmtpq
