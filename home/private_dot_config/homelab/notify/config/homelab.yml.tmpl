@@ -1,0 +1,18 @@
+# Apprise config of the homelab notify stack (key "homelab"), rendered by
+# dotfiles from [[data.notify.channels]] in the private toml; {{ "{{passp:NAME}}" }}
+# placeholders become `passp show NAME` at apply time. The homelab Makefile
+# copies it to notify/config/homelab.yml; make secrets.push ships it.
+# Tags: primary = default channel, fallback = tried when primary fails,
+# critical = every channel at once.
+urls:
+{{- range .notify.channels }}
+{{- $u := .url }}
+{{- range regexFindAll "\\{\\{passp:[^}]+\\}\\}" $u -1 }}
+{{- $name := . | trimPrefix "{{passp:" | trimSuffix "}}" }}
+{{- $secret := output "sh" "-c" (printf "{ passp show %s 2>/dev/null || echo MISSING; } | head -n1" $name) | trim }}
+{{- $u = replace . $secret $u }}
+{{- end }}
+  # {{ .name }}
+  - {{ $u }}:
+      - tag: {{ join ", " .tags }}
+{{- end }}

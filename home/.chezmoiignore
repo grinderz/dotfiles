@@ -146,6 +146,13 @@ Library
 .config/openwrt-buildroot
 {{ end }}
 
+# alerts: the notify wrapper and the Apprise config render only with
+# [data.notify] in the private toml
+{{ if not (hasKey . "notify") }}
+.local/bin/notify
+.config/homelab/notify
+{{ end }}
+
 # homelab deploy target renders only with [data.homelab] in the private toml
 {{ if not (hasKey . "homelab") }}
 .config/homelab

@@ -1,0 +1,40 @@
+#!/bin/sh
+# notify [-t title] [-g primary|fallback|critical] [text...]: send an alert
+# through the homelab Apprise gateway ({{ .notify.url }}, from [data.notify]
+# in the private toml). Text from the arguments or stdin. Tag primary by
+# default; when the gateway reports a delivery failure (HTTP 424) the same
+# message goes out again with tag fallback. The hostname is prefixed to the
+# title so the source is visible on the phone.
+set -eu
+url='{{ .notify.url }}'
+title=""
+tag=primary
+while getopts "t:g:h" opt; do
+    case $opt in
+        t) title=$OPTARG ;;
+        g) tag=$OPTARG ;;
+        *) sed -n '2,8p' "$0"; exit 0 ;;
+    esac
+done
+shift $((OPTIND - 1))
+if [ $# -gt 0 ]; then body=$*; else body=$(cat); fi
+[ -n "$body" ] || { echo "notify: empty message" >&2; exit 1; }
+host=$(uname -n)
+title="[$host]${title:+ $title}"
+
+send() {
+    curl -s -m 10 --connect-timeout 5 -o /dev/null -w '%{http_code}' \
+        --data-urlencode "body=$body" --data-urlencode "title=$title" \
+        --data-urlencode "tag=$1" "$url" 2>/dev/null || true
+}
+code=$(send "$tag")
+case $code in
+    2??) exit 0 ;;
+esac
+if [ "$tag" = primary ]; then
+    echo "notify: primary failed ($code), trying fallback" >&2
+    code=$(send fallback)
+    case $code in 2??) exit 0 ;; esac
+fi
+echo "notify: delivery failed ($code)" >&2
+exit 1
