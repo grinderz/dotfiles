@@ -450,35 +450,34 @@ timers keep asking for expires only after the machine has been off; pass
 remains the only source of truth — the cache never touches disk and dies
 with the session.
 
-When rotating a password (company policy or otherwise), update the store
-and flush the cache in one go:
+After changing a password (company policy or otherwise), one command
+updates everything that read the old one:
 
 ```sh
-passw insert mail/work && pass-cache drop mail/work
+pass-rotate mail/work          # the entry is already updated in pass
+pass-rotate -i mail/work       # `passw insert -f mail/work` first
+pass-rotate -n mail/work       # plan only: "would run: ..."
 ```
+
+It finds the entry's store (work, then personal), flushes the cache
+(`pass-cache drop`), restarts goimapnotify (its IDLE session was logged in
+with the old password), runs `mbsync -V` on the account's channels and
+`vdirsyncer discover` + `sync` on its pairs once — the check that the new
+password works; discover because vdirsyncer's saved collections carry a
+hash of the storage config with the fetched password in it, and sync
+refuses with "Detected change in config file" until it is redone — and
+lists the readers that pick it up on their next call (msmtp,
+ewsctl). Who uses the entry is found by its name in the rendered configs,
+so the script knows no accounts. An entry on the `pass-rbw-sync` list is
+pushed to Bitwarden too (needs an unlocked rbw). Only this machine is
+touched: a router or another host that reads the entry is a separate step.
+Evolution is out of reach: it keeps its own copy in gnome-keyring and
+asks for the new password on its next start, the script only reminds.
 
 Skipping the drop leaves the timers retrying the stale password for up to
-a day — enough for an AD lockout. `pass-cache drop` with no entry flushes
-everything cached.
-
-Full Exchange rotation, zero lockout risk (davmail itself holds no
-credentials — only the clients below do):
-
-```sh
-systemctl --user stop mbsync.timer vdirsyncer.timer
-# close Evolution too — it keeps its own copy in gnome-keyring and retries
-
-# change the password in AD / the corporate portal, then:
-passw insert mail/work
-pass-cache drop mail/work
-mbsync -a -V                 # one manual run with the new password
-systemctl --user start mbsync.timer vdirsyncer.timer
-# Evolution prompts for the new password on next start
-```
-
-Strictly the stop/start is optional — between the portal change and the
-drop the timers fit at most one failed attempt, below any sane lockout
-threshold — but stopping costs nothing.
+a day — enough for an AD lockout. Between the portal change and the
+rotate the timers fit at most one failed attempt, below any sane lockout
+threshold; `pass-cache drop` with no entry flushes everything cached.
 
 ### Mail account changes
 
@@ -527,9 +526,9 @@ token if the account used one.
   first lines in the kernel keyring, and every hit pushes the day-long
   expiry out. One pinentry after boot, silence after. gpg-agent TTLs stay
   short on purpose, so interactive gpg (commit signing) still asks.
-* **Timers auth-fail after a password change?** You forgot `pass-cache
-  drop` — the cache serves the stale password until the timers stop asking
-  for it.
+* **Timers auth-fail after a password change?** You forgot `pass-rotate`
+  (or at least `pass-cache drop`) — the cache serves the stale password
+  until the timers stop asking for it.
 * **Meetings vs khal?** khal is the fast local view and personal events;
   anything with attendees, invitations or recurring-exception edits goes
   through Evolution (EWS handles iTIP, CalDAV via davmail does not).

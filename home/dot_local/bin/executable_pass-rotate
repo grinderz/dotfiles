@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# Everything that has to happen after a password changed in pass: flush
+# the pass-cache copy, restart goimapnotify (its IDLE session was opened
+# with the old one), one mbsync / vdirsyncer run as a check of the new
+# one, list the readers that pick it up on their own (msmtp, ewsctl),
+# and push it to Bitwarden when the entry is on the pass-rbw-sync list.
+# Only this machine is touched: a router or another host that reads the
+# entry is its own job. Who uses the entry is found by its name in the
+# rendered configs, so nothing here knows the accounts. Without the drop
+# the timers keep sending the stale password for up to a day — enough for
+# an AD lockout.
+#
+# Usage: pass-rotate [-n] [-i] [-c passp|passw|pass] ENTRY
+#
+#   -n  plan only: print "would run: ..." and run nothing
+#   -i  `<cmd> insert -f ENTRY` first (by default the entry is already new)
+#   -c  store command; default is the one holding ENTRY.gpg: work, then
+#       personal, then $PASSWORD_STORE_DIR / ~/.password-store
+#
+# Linux-only: the mail stack it serves lives here.
+
+set -euo pipefail
+
+usage() {
+    echo "usage: pass-rotate [-n] [-i] [-c passp|passw|pass] ENTRY" >&2
+    exit 2
+}
+
+dry=0 insert=0 cmd=
+while getopts ':nic:' opt; do
+    case $opt in
+    n) dry=1 ;;
+    i) insert=1 ;;
+    c) cmd=$OPTARG ;;
+    *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+[ $# -eq 1 ] || usage
+entry=$1
+
+# --- which store ----------------------------------------------------------
+personal=$HOME/sync/pass
+work=$HOME/sync/work/pass
+default=${PASSWORD_STORE_DIR:-$HOME/.password-store}
+if [ -z "$cmd" ]; then
+    if [ -f "$work/$entry.gpg" ]; then cmd=passw
+    elif [ -f "$personal/$entry.gpg" ]; then cmd=passp
+    elif [ -f "$default/$entry.gpg" ]; then cmd=pass
+    else
+        echo "pass-rotate: $entry is in no store ($work, $personal, $default)" >&2
+        exit 1
+    fi
+fi
+case $cmd in
+passw) store=$work ;;
+passp) store=$personal ;;
+pass) store=$default ;;
+*) echo "pass-rotate: -c takes passp, passw or pass, not $cmd" >&2; exit 2 ;;
+esac
+echo "entry $entry in $store ($cmd)"
+
+# --- helpers --------------------------------------------------------------
+run() {
+    if [ "$dry" = 1 ]; then
+        echo "would run: $*"
+    else
+        echo "run: $*"
+        "$@"
+    fi
+}
+# the entry as a whole word (ERE), so mts/x/pw never matches mts/x/pwd;
+# awk gets it through the environment, -v would eat the backslashes
+re="(^|[^A-Za-z0-9_./-])$(printf '%s' "$entry" | sed 's/[][\.*^$/+?(){}|]/\\&/g')([^A-Za-z0-9_./-]|$)"
+export re
+mentions() { grep -Eq "$re" "$@" 2>/dev/null; }
+join() { local IFS=' '; echo "$*"; }
+
+# --- insert -----------------------------------------------------------------
+if [ "$insert" = 1 ]; then
+    run "$cmd" insert -f "$entry"
+fi
+
+# --- cache ------------------------------------------------------------------
+run pass-cache drop "$entry"
+
+mail_touched=0
+
+# --- goimapnotify: one process, IDLE opened with the old password -----------
+cfg=$HOME/.config/goimapnotify/config.yaml
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    aliases=$(awk '
+        BEGIN { re = ENVIRON["re"] }
+        /^[[:space:]]*-[[:space:]]*alias:/ { sub(/.*alias:[[:space:]]*/, ""); alias = $0 }
+        /passwordCMD:/ && $0 ~ re { print alias }' "$cfg")
+    # shellcheck disable=SC2086
+    echo "goimapnotify: account(s) $(join $aliases)"
+    mail_touched=1
+    run systemctl --user restart goimapnotify.service
+fi
+
+# --- mbsync: account -> store -> channels (collapsed to a group) ------------
+cfg=$HOME/.config/isyncrc
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    channels=$(awk '
+        BEGIN { re = ENVIRON["re"] }
+        function flush() { if (kind == "Channel" && (fstore in hit)) { chan[name] = 1; order[++n] = name }; kind = ""; name = ""; fstore = "" }
+        /^IMAPAccount /  { flush(); kind = "IMAPAccount"; name = $2 }
+        /^IMAPStore /    { flush(); kind = "IMAPStore"; name = $2 }
+        /^MaildirStore / { flush() }
+        /^Channel /      { flush(); kind = "Channel"; name = $2 }
+        /^Group /        { flush(); kind = "Group"; name = $2 }
+        kind == "IMAPAccount" && /^PassCmd / && $0 ~ re { acct[name] = 1 }
+        kind == "IMAPStore" && /^Account / && ($2 in acct) { hit[name] = 1 }
+        kind == "Channel" && /^Far / { split($2, p, ":"); fstore = p[2] }
+        kind == "Group" && /^Channels / {
+            # a group whose channels are all hit is named instead of them
+            all = (NF > 1)
+            for (i = 2; i <= NF; i++) if (!($i in chan)) all = 0
+            if (all) { printf "%s ", name; for (i = 2; i <= NF; i++) delete chan[$i] }
+        }
+        END { flush(); for (i = 1; i <= n; i++) if (order[i] in chan) printf "%s ", order[i]; print "" }' "$cfg")
+    if [ -n "${channels// /}" ]; then
+        mail_touched=1
+        # shellcheck disable=SC2086
+        run mbsync -V $channels
+    fi
+fi
+
+# --- vdirsyncer: storage -> pairs -------------------------------------------
+cfg=$HOME/.config/vdirsyncer/config
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    pairs=$(awk '
+        BEGIN { re = ENVIRON["re"] }
+        /^\[storage / { kind = "storage"; name = $2; sub(/\]$/, "", name) }
+        /^\[pair /    { kind = "pair"; name = $2; sub(/\]$/, "", name) }
+        kind == "storage" && /password/ && $0 ~ re { hit[name] = 1 }
+        kind == "pair" && /^[ab] *= *"/ { s = $0; sub(/^[ab] *= *"/, "", s); sub(/".*/, "", s); side[name, s] = 1; n[name] = 1 }
+        END { for (p in n) for (s in hit) if (side[p, s]) printf "%s ", p; print "" }' "$cfg")
+    if [ -n "${pairs// /}" ]; then
+        mail_touched=1
+        # the saved collections carry a cache_key over the storage config
+        # with the fetched password in it, so after a rotation sync stops
+        # with "Detected change in config file" until discover runs again
+        # shellcheck disable=SC2086
+        run vdirsyncer discover $pairs
+        # shellcheck disable=SC2086
+        run vdirsyncer sync $pairs
+    fi
+fi
+
+# --- readers that pick the new password up on their next call ---------------
+cfg=$HOME/.msmtprc
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    accounts=$(awk '
+        BEGIN { re = ENVIRON["re"] }
+        /^account / { name = $2 }
+        /^passwordeval / && $0 ~ re { print name }' "$cfg")
+    mail_touched=1
+    # shellcheck disable=SC2086
+    echo "msmtp: account(s) $(join $accounts) read it on the next send, nothing to do"
+fi
+cfg=$HOME/.config/ewsctl/config.toml
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    accounts=$(awk '
+        BEGIN { re = ENVIRON["re"] }
+        /^\[accounts\./ { name = $0; sub(/^\[accounts\./, "", name); sub(/\].*/, "", name) }
+        /^password_cmd/ && $0 ~ re { print name }' "$cfg")
+    mail_touched=1
+    # shellcheck disable=SC2086
+    echo "ewsctl: account(s) $(join $accounts) read it on the next call, nothing to do"
+fi
+
+# --- Bitwarden --------------------------------------------------------------
+list=$HOME/.config/pass-rbw-sync.list
+if [ -f "$list" ]; then
+    line=$(awk -F'\t' -v e="$entry" '!/^#/ && $2 == e' "$list" | head -n1)
+    if [ -n "$line" ]; then
+        echo "bitwarden: $(printf '%s' "$line" | cut -f5)/$(printf '%s' "$line" | cut -f3) (needs an unlocked rbw)"
+        if [ "$dry" = 1 ]; then
+            echo "would run: pass-rbw-sync <list with this line>"
+        else
+            tmp=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/pass-rotate.XXXXXX")
+            trap 'rm -f "$tmp"' EXIT
+            printf '%s\n' "$line" >"$tmp"
+            run pass-rbw-sync "$tmp"
+        fi
+    fi
+fi
+
+# --- Evolution keeps its own copy -------------------------------------------
+if [ "$mail_touched" = 1 ] \
+    && grep -lqsE '^BackendName=(ews|imapx)$' "$HOME"/.config/evolution/sources/*.source; then
+    echo "evolution: has its own copy in gnome-keyring, asks for the new password on its next start"
+fi
