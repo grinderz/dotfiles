@@ -1,0 +1,10 @@
+# Host-specific mounts of the beszel agent: one read-only bind per extra disk,
+# the label after /extra-filesystems/ is what the UI shows. Rendered by dotfiles
+# from [data.homelab.beszel_extra_fs] in the private toml; the homelab Makefile
+# copies it to beszel/compose.override.yaml, docker compose merges it on its own
+services:
+  beszel-agent:
+    volumes:
+{{- range $label, $path := (default (dict) (get .homelab "beszel_extra_fs")) }}
+      - {{ $path }}:/extra-filesystems/{{ $label }}:ro
+{{- end }}

@@ -1,0 +1,6 @@
+# beszel/.env of ~/src/personal/homelab, rendered by dotfiles from
+# [data.homelab.beszel] in the private toml (keys as in .env.example).
+# The homelab Makefile copies it to beszel/.env; make secrets.push ships it
+{{- range $k, $v := .homelab.beszel }}
+{{ $k }}={{ $v }}
+{{- end }}
