@@ -1,0 +1,81 @@
+# gatus config of ~/src/personal/homelab, rendered by dotfiles from
+# [data.homelab.gatus_monitor] in the private toml; the homelab Makefile copies
+# it to gatus/config/config.yaml, make secrets.push ships it. Alerts go to the
+# notify stack (Apprise), tag primary; failures and recoveries both.
+{{- $m := .homelab.gatus_monitor }}
+storage:
+  type: sqlite
+  path: /data/data.db
+  caching: true
+
+web:
+  port: 8080
+
+alerting:
+  custom:
+    url: "http://notify:8000/notify/homelab"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body: |
+      {"title": "[ALERT_TRIGGERED_OR_RESOLVED] [ENDPOINT_GROUP]/[ENDPOINT_NAME]", "body": "[ALERT_DESCRIPTION]\n[RESULT_ERRORS]", "tag": "primary"}
+    placeholders:
+      ALERT_TRIGGERED_OR_RESOLVED:
+        TRIGGERED: "DOWN"
+        RESOLVED: "UP"
+    default-alert:
+      enabled: true
+      failure-threshold: {{ default 3 (get $m "failure_threshold") }}
+      success-threshold: {{ default 2 (get $m "success_threshold") }}
+      send-on-resolved: true
+      description: "{{ default "check failed" (get $m "description") }}"
+
+endpoints:
+{{- range $m.endpoints }}
+  - name: {{ .name }}
+    group: {{ .group }}
+    url: "{{ .url }}"
+    interval: {{ default "1m" (get . "interval") }}
+{{- with get . "headers" }}
+    headers:
+{{- range $h, $v := . }}
+      {{ $h }}: "{{ $v }}"
+{{- end }}
+{{- end }}
+{{- with get . "dns" }}
+    dns:
+      query-name: "{{ .query_name }}"
+      query-type: "{{ .query_type }}"
+{{- end }}
+    conditions:
+{{- $c := get . "conditions" }}
+{{- if $c }}
+{{- range $c }}
+      - "{{ . }}"
+{{- end }}
+{{- else if hasKey . "dns" }}
+      - "[DNS_RCODE] == NOERROR"
+{{- else if or (hasPrefix "icmp://" .url) (hasPrefix "tcp://" .url) }}
+      - "[CONNECTED] == true"
+{{- else }}
+      - "[STATUS] == 200"
+{{- end }}
+    alerts:
+      - type: custom
+{{- end }}
+
+# push endpoints: POST /api/v1/endpoints/<group>_<name>/external?success=…
+# with the bearer token; heartbeat = alert when no update arrives in time
+external-endpoints:
+{{- range $m.external }}
+  - name: {{ .name }}
+    group: {{ .group }}
+    token: "{{ includeTemplate "passp" $m.token }}"
+    heartbeat:
+      interval: {{ .heartbeat }}
+    alerts:
+      # one failed or missed run is already the news (a run per day)
+      - type: custom
+        failure-threshold: 1
+        success-threshold: 1
+{{- end }}

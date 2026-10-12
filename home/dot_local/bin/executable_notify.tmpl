@@ -31,6 +31,12 @@ code=$(send "$tag")
 case $code in
     2??) exit 0 ;;
 esac
+# the gateway does not retry a channel that blipped: one more try after 5s
+sleep 5
+code=$(send "$tag")
+case $code in
+    2??) exit 0 ;;
+esac
 if [ "$tag" = primary ]; then
     echo "notify: primary failed ($code), trying fallback" >&2
     code=$(send fallback)

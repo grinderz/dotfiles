@@ -6,12 +6,7 @@
 # critical = every channel at once.
 urls:
 {{- range .notify.channels }}
-{{- $u := .url }}
-{{- range regexFindAll "\\{\\{passp:[^}]+\\}\\}" $u -1 }}
-{{- $name := . | trimPrefix "{{passp:" | trimSuffix "}}" }}
-{{- $secret := output "sh" "-c" (printf "{ passp show %s 2>/dev/null || echo MISSING; } | head -n1" $name) | trim }}
-{{- $u = replace . $secret $u }}
-{{- end }}
+{{- $u := includeTemplate "passp" .url }}
   # {{ .name }}
   - {{ $u }}:
       - tag: {{ join ", " .tags }}
