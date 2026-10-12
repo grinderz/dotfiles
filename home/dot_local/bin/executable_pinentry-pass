@@ -1,36 +1,87 @@
 #!/bin/sh
-# A pinentry that answers from pass instead of asking. rbw only knows how
-# to get its master password through a pinentry, so this speaks the few
-# Assuan lines it uses and hands back the first line of a pass entry; the
-# only prompt left is gpg's own, and gpg-agent caches that one. Which
-# entry, and which store, comes from the environment:
+# A pinentry that answers the master password from pass instead of asking.
+# rbw only knows how to get its master password through a pinentry, so this
+# speaks the few Assuan lines it uses and hands back the first line of a
+# pass entry; the only prompt left is gpg's own, and gpg-agent caches that
+# one. Which entry, and which store, comes from the environment:
 #
-#   PINENTRY_PASS_ENTRY  entry name          (default sync/bitwarden.com)
-#   PINENTRY_PASS_CMD    pass, passp, passw  (default passp)
+#   PINENTRY_PASS_ENTRY     entry name          (default sync/bitwarden.com)
+#   PINENTRY_PASS_CMD       pass, passp, passw  (default passp)
+#   PINENTRY_PASS_FALLBACK  real pinentry       (default /usr/bin/pinentry)
 #
 #   rbw config set pinentry ~/.local/bin/pinentry-pass
 #
-# Not a general pinentry: no display, no confirm dialog, no retry.
+# Only the prompt "Master Password" is answered from pass. Anything else
+# rbw asks for -- the two-factor code at `rbw login` ("Authenticator App",
+# "Yubikey", "Email"), the API key at `rbw register` -- is a question for a
+# human and not a secret worth hiding while it is typed: under sway it is a
+# fuzzel line with the input visible (Esc cancels); without Wayland, or
+# without fuzzel, the session so far (OPTION and SET* lines) is replayed to
+# the real pinentry, which shows its dialog, and its answer is passed back.
+# Before this every GETPIN got the master password, so a login that needed
+# the second factor failed three times with "Two-step token is invalid".
 
 set -u
 
 entry=${PINENTRY_PASS_ENTRY:-sync/bitwarden.com}
 cmd=${PINENTRY_PASS_CMD:-passp}
+fallback=${PINENTRY_PASS_FALLBACK:-/usr/bin/pinentry}
 
+prompt=
+error=
+session=
 echo "OK Pleased to meet you"
 while IFS= read -r line; do
     case $line in
     GETPIN*)
-        # first line of the entry, percent-escaped the way Assuan wants
-        if pin=$("$cmd" show "$entry") && [ -n "$pin" ]; then
-            pin=${pin%%
+        if [ -z "$prompt" ] || [ "$prompt" = "Master Password" ]; then
+            # first line of the entry, percent-escaped the way Assuan wants
+            if pin=$("$cmd" show "$entry") && [ -n "$pin" ]; then
+                pin=${pin%%
 *}
-            pin=$(printf '%s' "$pin" | sed 's/%/%25/g; s/\r/%0D/g')
-            printf 'D %s\nOK\n' "$pin"
+                pin=$(printf '%s' "$pin" | sed 's/%/%25/g; s/\r/%0D/g')
+                printf 'D %s\nOK\n' "$pin"
+            else
+                echo "ERR 83886179 Operation cancelled <Pinentry>"
+            fi
+        elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v fuzzel >/dev/null 2>&1; then
+            # visible input; the last SETERROR ("... attempt 2/3") rides
+            # along in the prompt, since there is no other place for it
+            if code=$(fuzzel --dmenu --lines 0 --width 60 \
+                    --prompt "${prompt}${error:+ ($error)}: " </dev/null) \
+                && [ -n "$code" ]; then
+                code=$(printf '%s' "$code" | sed 's/%/%25/g')
+                printf 'D %s\nOK\n' "$code"
+            else
+                echo "ERR 83886179 Operation cancelled <Pinentry>"
+            fi
         else
-            echo "ERR 83886179 Operation cancelled <Pinentry>"
+            # the real pinentry gets the same options and texts, then the
+            # question; its D line (the answer) or ERR line is the reply.
+            # "$@" carries rbw's --ttyname so a curses fallback finds the tty.
+            reply=$(printf '%sGETPIN\nBYE\n' "$session" | "$fallback" "$@" \
+                | grep -E '^(D |ERR )' | head -n 1)
+            case $reply in
+            D\ *) printf '%s\nOK\n' "$reply" ;;
+            ERR*) echo "$reply" ;;
+            *) echo "ERR 83886179 Operation cancelled <Pinentry>" ;;
+            esac
         fi
         ;;
+    SETPROMPT*)
+        prompt=${line#SETPROMPT}; prompt=${prompt# }
+        session="$session$line
+"
+        echo "OK" ;;
+    SETERROR*)
+        error=${line#SETERROR}; error=${error# }
+        session="$session$line
+"
+        echo "OK" ;;
+    OPTION*|SET*)
+        session="$session$line
+"
+        echo "OK" ;;
     BYE*) echo "OK closing connection"; exit 0 ;;
     GETINFO*) echo "D pinentry-pass"; echo "OK" ;;
     *) echo "OK" ;;
