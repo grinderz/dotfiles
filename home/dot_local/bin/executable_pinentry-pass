@@ -7,7 +7,8 @@
 #
 #   PINENTRY_PASS_ENTRY     entry name          (default sync/bitwarden.com)
 #   PINENTRY_PASS_CMD       pass, passp, passw  (default passp)
-#   PINENTRY_PASS_FALLBACK  real pinentry       (default /usr/bin/pinentry)
+#   PINENTRY_PASS_FALLBACK  real pinentry       (default: the first of
+#                           /usr/bin/pinentry, brew's pinentry-mac, pinentry)
 #
 #   rbw config set pinentry ~/.local/bin/pinentry-pass
 #
@@ -15,9 +16,10 @@
 # rbw asks for -- the two-factor code at `rbw login` ("Authenticator App",
 # "Yubikey", "Email"), the API key at `rbw register` -- is a question for a
 # human and not a secret worth hiding while it is typed: under sway it is a
-# fuzzel line with the input visible (Esc cancels); without Wayland, or
-# without fuzzel, the session so far (OPTION and SET* lines) is replayed to
-# the real pinentry, which shows its dialog, and its answer is passed back.
+# fuzzel line with the input visible (Esc cancels), on macOS an AppleScript
+# dialog with a text field; anywhere else the session so far (OPTION and
+# SET* lines) is replayed to the real pinentry, which shows its dialog, and
+# its answer is passed back.
 # Before this every GETPIN got the master password, so a login that needed
 # the second factor failed three times with "Two-step token is invalid".
 
@@ -25,7 +27,26 @@ set -u
 
 entry=${PINENTRY_PASS_ENTRY:-sync/bitwarden.com}
 cmd=${PINENTRY_PASS_CMD:-passp}
-fallback=${PINENTRY_PASS_FALLBACK:-/usr/bin/pinentry}
+fallback=${PINENTRY_PASS_FALLBACK:-}
+if [ -z "$fallback" ]; then
+    for f in /usr/bin/pinentry /opt/homebrew/bin/pinentry-mac /opt/homebrew/bin/pinentry; do
+        [ -x "$f" ] && { fallback=$f; break; }
+    done
+fi
+
+# a visible text prompt for what is not a secret: the answer on stdout,
+# status 1 when cancelled, 2 when there is no such prompt on this machine
+ask() {
+    if [ -n "${WAYLAND_DISPLAY:-}" ] && command -v fuzzel >/dev/null 2>&1; then
+        fuzzel --dmenu --lines 0 --width 60 --prompt "$1: " </dev/null
+    elif [ "$(uname -s)" = Darwin ]; then
+        text=$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')
+        osascript -e "tell application \"System Events\" to display dialog \"$text\" default answer \"\" with title \"rbw\"" 2>/dev/null \
+            | sed -n 's/^.*text returned://p'
+    else
+        return 2
+    fi
+}
 
 prompt=
 error=
@@ -44,12 +65,10 @@ while IFS= read -r line; do
             else
                 echo "ERR 83886179 Operation cancelled <Pinentry>"
             fi
-        elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v fuzzel >/dev/null 2>&1; then
+        elif code=$(ask "${prompt}${error:+ ($error)}") || [ $? = 1 ]; then
             # visible input; the last SETERROR ("... attempt 2/3") rides
             # along in the prompt, since there is no other place for it
-            if code=$(fuzzel --dmenu --lines 0 --width 60 \
-                    --prompt "${prompt}${error:+ ($error)}: " </dev/null) \
-                && [ -n "$code" ]; then
+            if [ -n "$code" ]; then
                 code=$(printf '%s' "$code" | sed 's/%/%25/g')
                 printf 'D %s\nOK\n' "$code"
             else

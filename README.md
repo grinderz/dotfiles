@@ -566,9 +566,10 @@ Only the "Master Password" prompt is answered that way. `rbw login` also
 asks for the second factor (rbw never asks the server to remember the
 device, so every login does), and `rbw register` for the API key; those
 prompts `pinentry-pass` asks a human: under sway a fuzzel line with the
-input visible (a code is no secret while it is typed; Esc cancels),
-elsewhere the real pinentry (`/usr/bin/pinentry`, `PINENTRY_PASS_FALLBACK`
-to change) with the same options and texts, its answer relayed. A login
+input visible (a code is no secret while it is typed; Esc cancels), on
+macOS an AppleScript dialog with a text field, elsewhere the real pinentry
+(`/usr/bin/pinentry` or brew's `pinentry-mac`, `PINENTRY_PASS_FALLBACK` to
+change) with the same options and texts, its answer relayed. A login
 is only ever needed when the refresh token
 dies — Bitwarden answers `invalid_grant`, which rbw 1.15 reports as
 `failed to parse JSON: missing field access_token` — and then it is
