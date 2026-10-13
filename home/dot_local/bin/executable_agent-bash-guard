@@ -62,7 +62,9 @@ fi
 if grep -Eq '(^|[[:space:]="'"'"'])(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)?/\.?ssh/[^[:space:]]*id_(rsa|dsa|ecdsa|ed25519)[A-Za-z0-9_-]*([[:space:]"'"'"';|]|$)' <<<"$cmd"; then
     deny "that is a private ssh key; the .pub half is readable and usually the one you want"
 fi
-if grep -Eq '(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)/\.(netrc|npmrc|pypirc)([[:space:]"'"'"';|]|$)|/\.aws/credentials|/\.gnupg/private-keys|/\.docker/config\.json' <<<"$cmd"; then
+# ~/.netrc is left out on purpose: work tooling (artifactory, uv, local
+# Renovate runs) reads it, and those commands have to be runnable here
+if grep -Eq '(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)/\.(npmrc|pypirc)([[:space:]"'"'"';|]|$)|/\.aws/credentials|/\.gnupg/private-keys|/\.docker/config\.json' <<<"$cmd"; then
     deny "that file holds credentials in the clear"
 fi
 
