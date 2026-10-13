@@ -1,0 +1,62 @@
+{{- /* backrest/config/config.json of ~/src/personal/homelab: the seed backrest
+       copies into its data dir on the first start. Rendered by dotfiles from
+       [data.homelab.backrest_seed] in the private toml; secrets via passp.
+       Hooks: error -> notify (shoutrrr generic+http), success -> gatus heartbeat. */ -}}
+{{- $s := .homelab.backrest_seed }}
+{{- $pw := includeTemplate "passp" $s.repo_password }}
+{{- $tok := includeTemplate "passp" $s.gatus_token }}
+{
+  "modno": 1,
+  "version": 4,
+  "instance": "homelab",
+  "auth": { "disabled": true },
+  "repos": [
+    {
+      "id": "local",
+      "uri": "/repos/local",
+      "password": {{ $pw | quote }},
+      "autoInitialize": true,
+      "autoUnlock": true,
+      "prunePolicy": { "schedule": { "cron": "0 4 * * 1", "clock": "CLOCK_LOCAL" }, "maxUnusedPercent": 10 },
+      "checkPolicy": { "schedule": { "cron": "0 5 1 * *", "clock": "CLOCK_LOCAL" }, "readDataSubsetPercent": 10 }
+    }
+  ],
+  "plans": [
+{{- range $i, $p := $s.plans }}
+{{- if $i }},{{ end }}
+    {
+      "id": {{ $p.id | quote }},
+      "repo": "local",
+      "paths": {{ toJson $p.paths }},
+      "excludes": {{ toJson (default (list) (get $p "excludes")) }},
+      "schedule": { "cron": {{ $p.cron | quote }}, "clock": "CLOCK_LOCAL" },
+      "retention": { "policyTimeBucketed": { "daily": {{ default 7 (get $p "daily") }}, "weekly": {{ default 4 (get $p "weekly") }}, "monthly": {{ default 6 (get $p "monthly") }} } },
+      "skipIfUnchanged": true,
+      "hooks": [
+        {
+          "conditions": ["CONDITION_SNAPSHOT_ERROR", "CONDITION_ANY_ERROR"],
+          "onError": "ON_ERROR_IGNORE",
+          "actionShoutrrr": {
+            "shoutrrrUrl": "generic+http://notify:8000/notify/homelab?template=json&messagekey=body&titlekey=title&$tag=primary",
+            "template": "backrest: {{ "{{ .Plan.Id }}" }} {{ "{{ .EventName .Event }}" }}\n{{ "{{ .ShellEscape .Error }}" }}"
+          }
+        },
+        {
+          "conditions": ["CONDITION_SNAPSHOT_SUCCESS"],
+          "onError": "ON_ERROR_IGNORE",
+          "actionCommand": {
+            "command": "wget -qO- -T 10 --post-data '' --header 'Authorization: Bearer {{ $tok }}' 'http://gatus:8080/api/v1/endpoints/backrest_{{ $s.host }}-{{ $p.id }}/external?success=true' >/dev/null"
+          }
+        },
+        {
+          "conditions": ["CONDITION_SNAPSHOT_ERROR"],
+          "onError": "ON_ERROR_IGNORE",
+          "actionCommand": {
+            "command": "wget -qO- -T 10 --post-data '' --header 'Authorization: Bearer {{ $tok }}' 'http://gatus:8080/api/v1/endpoints/backrest_{{ $s.host }}-{{ $p.id }}/external?success=false&error=snapshot' >/dev/null"
+          }
+        }
+      ]
+    }
+{{- end }}
+  ]
+}

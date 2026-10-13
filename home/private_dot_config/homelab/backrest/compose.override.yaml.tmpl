@@ -1,0 +1,10 @@
+# Host-specific sources of backrest: one read-only bind per entry of
+# [data.homelab.backrest_mounts] in the private toml (host path = container
+# path). The homelab Makefile copies it to backrest/compose.override.yaml,
+# docker compose merges it on its own
+services:
+  backrest:
+    volumes:
+{{- range $host, $ctr := (default (dict) (get .homelab "backrest_mounts")) }}
+      - {{ $host }}:{{ $ctr }}:ro
+{{- end }}
