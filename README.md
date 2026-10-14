@@ -358,7 +358,11 @@ Per deploy, once per host:
   swap the vendored files and the `[theme]` block, nothing else names
   a colour
 * **sway session** (chezmoi) — packages: `kanshi` (output profiles),
-  `swayidle`/`swaylock`, `waybar`, `mako`, `fuzzel`, `sway-contrib`
+  `swayidle`/`swaylock`, `waybar`, `mako` (no sound of its own: its
+  `on-notify` plays the freedesktop theme through `pw-play`,
+  `sound-theme-freedesktop` — `message.oga` by default, the instant-message
+  one for mail, `bell.oga` for critical, nothing in dnd except critical),
+  `fuzzel`, `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
   (OCR bind), `gpu-screen-recorder` (both recorders: `screen-record` for
   planned recordings, `--audio` = what the apps play plus the mic in

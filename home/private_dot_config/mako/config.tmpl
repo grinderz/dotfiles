@@ -11,31 +11,40 @@ ignore-timeout=1
 # calendar reminder's "Snooze") in the same picker the bar menus use;
 # notifications without actions just close as before
 on-button-middle=exec makoctl menu -n "$id" -- $HOME/.local/bin/menu-pick --prompt="action "
+# mako has no sound of its own: a notification plays one of the
+# freedesktop theme's sounds (sound-theme-freedesktop) through pipewire.
+# The later, more specific sections below pick a different file or none
+on-notify=exec pw-play /usr/share/sounds/freedesktop/stereo/message.oga
 
 # New-mail notifications hang around long enough to catch after stepping
-# away (mail-notify sends with app name "mail")
+# away (mail-notify sends with app name "mail"), and sound like mail
 [app-name=mail]
 default-timeout=600000
 ignore-timeout=0
+on-notify=exec pw-play /usr/share/sounds/freedesktop/stereo/message-new-instant.oga
 
 # Calendar reminders (birthdays, meetings) stay until dismissed
 [app-name=evolution-alarm-notify]
 default-timeout=0
 ignore-timeout=0
 
-# "dnd" mode (waybar notify-toggle): hide everything but critical; the
-# later, more specific section wins. Hidden ones still land in history
+# "dnd" mode (waybar notify-toggle): hide everything but critical, and
+# keep quiet; the later, more specific section wins. Hidden ones still
+# land in history
 [mode=dnd]
 invisible=1
+on-notify=none
 
 [mode=dnd urgency=critical]
 invisible=0
 
 # Critical notifications stay until dismissed, and shout: the theme's
-# critical red as the background, dark text on it
+# critical red as the background, dark text on it, the bell even in dnd
+# (this section comes after [mode=dnd], so its on-notify wins there)
 [urgency=critical]
 default-timeout=0
 ignore-timeout=0
 background-color=#{{ .theme.critical }}
 text-color=#{{ .theme.bg }}
 border-color=#{{ .theme.critical }}
+on-notify=exec pw-play /usr/share/sounds/freedesktop/stereo/bell.oga
