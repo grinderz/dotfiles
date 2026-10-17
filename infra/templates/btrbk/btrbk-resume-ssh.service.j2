@@ -5,6 +5,10 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-# skip (not fail) when the network is not up
-ExecCondition=/usr/lib/systemd/systemd-networkd-wait-online -q --timeout=10
+# skip (not fail) when the network is not up. --any: one routable link is
+# enough; without it the wait covers every managed link, and a dock NIC
+# with no cable sits in no-carrier forever, so the timer run was skipped
+# every day. 60 s covers the wifi reconnect after a resume from suspend,
+# when the persistent timer fires right away.
+ExecCondition=/usr/lib/systemd/systemd-networkd-wait-online -q --any -o routable --timeout=60
 ExecStart=/usr/bin/btrbk resume ssh
