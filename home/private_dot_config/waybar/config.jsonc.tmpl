@@ -61,22 +61,25 @@
         "modules": ["custom/syncthing", "custom/system-stats", "network#eth", "network#wifi", "pulseaudio", "battery"]
     },
     // Modules configuration
-    // "sway/workspaces": {
-    //     "disable-scroll": true,
-    //     "all-outputs": true,
-    //     "warp-on-scroll": false,
-    //     "format": "{name}: {icon}",
-    //     "format-icons": {
-    //         "1": "",
-    //         "2": "",
-    //         "3": "",
-    //         "4": "",
-    //         "5": "",
-    //         "urgent": "",
-    //         "focused": "",
-    //         "default": ""
-    //     }
-    // },
+    // The label alone, without the "N:" prefix: the number is the key
+    // that gets there and only adds noise in the bar. Keys are the full
+    // sway names (sway/config set $wsN); a workspace without an entry
+    // (8, 10, the fresh ones from 11) falls back to its name. No scrolling:
+    // the trackpad brushing the bar used to switch workspaces.
+    "sway/workspaces": {
+        "disable-scroll": true,
+        "format": "{icon}",
+        "format-icons": {
+            "1:cli": "cli",
+            "2:dev": "dev",
+            "3:web": "web",
+            "4:ide": "ide",
+            "5:wrk": "wrk",
+            "6:eml": "eml",
+            "7:msg": "msg",
+            "9:doc": "doc"
+        }
+    },
     "sway/language": {
         "format": "{flag}",
         "tooltip-format": "{long}"

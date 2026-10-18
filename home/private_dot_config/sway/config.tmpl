@@ -22,7 +22,9 @@ set $menu fuzzel
 font pango:Monospace 10
 
 # Workspace names: number stays first so $mod+N binds and the keyboard
-# number layer keep working; the label shows up in waybar.
+# number layer keep working; the label shows up in waybar. 8 and 10 stay
+# unnamed on purpose: two spare slots on the right Dell under the hand
+# (fresh-workspace starts counting at 11).
 set $ws1 "1:cli"
 set $ws2 "2:dev"
 set $ws3 "3:web"
@@ -128,6 +130,10 @@ seat * hide_cursor when-typing enable
 # Focus stays put; stray trackpad hovers must not steal it
 #focus_follows_mouse no
 
+# $mod+N on workspace N goes back to the previous one, so the same key
+# toggles between two workspaces ($mod+Tab does it too)
+workspace_auto_back_and_forth yes
+
 ### Windows
 #
 # No border/titlebar edges for a lone window on an output
@@ -169,6 +175,10 @@ assign [app_id="brave-browser"] workspace $ws3
 assign [app_id="jetbrains-pycharm"] workspace $ws4
 assign [app_id="jetbrains-goland"] workspace $ws4
 assign [app_id="jetbrains-datagrip"] workspace $ws4
+# Two IDEs on one workspace go tabbed, each gets the whole screen
+# (dialogs and the splash are floating and keep out of it); the
+# workspace container takes the layout, so Sublime windows join the tabs
+for_window [app_id="^jetbrains-" tiling] layout tabbed
 assign [app_id="sublime_text"] workspace $ws4
 assign [app_id="smerge"] workspace $ws4
 assign [app_id="firefox"] workspace $ws5
@@ -178,13 +188,18 @@ assign [app_id="com.ayugram.desktop"] workspace $ws7
 assign [app_id="md.obsidian.Obsidian"] workspace $ws9
 
 # Autostart terminals on the primary workspaces: zellij dev (2, right
-# Dell) and zellij cli (1, left Dell). Dedicated app-ids keep the assign
-# rules away from ad-hoc $mod+Return terminals and avoid the startup race a
+# Dell), zellij cli (1, left Dell), and the mail stack on 6 (right Dell):
+# aerc and ikhal side by side, the same app-ids $mod+m / $mod+Shift+m
+# launch-or-focus. Dedicated app-ids keep the assign rules away from
+# ad-hoc $mod+Return terminals and avoid the startup race a
 # `swaymsg 'workspace N; exec ...'` chain would have.
 assign [app_id="foot-dev"] workspace $ws2
 assign [app_id="foot-cli"] workspace $ws1
+assign [app_id="khal"] workspace $ws6
 exec foot --app-id=foot-dev zellij attach --create dev
 exec foot --app-id=foot-cli zellij attach --create cli
+exec foot --app-id=aerc aerc
+exec foot --app-id=khal ikhal
 
 # Drop-down terminal living in the scratchpad: $mod+minus anywhere
 # (scratch-term). Spawned lazily on first use, then immediately shown and
@@ -446,6 +461,7 @@ bindsym $mod+Shift+r mode "resize"
 
     # launch-or-focus: one key always shows the app
     bindsym $mod+m exec $HOME/.local/bin/launch-or-focus aerc foot --app-id=aerc aerc   # mail
+    bindsym $mod+Shift+m exec $HOME/.local/bin/launch-or-focus khal foot --app-id=khal ikhal   # calendar
     bindsym $mod+t exec $HOME/.local/bin/launch-or-focus ayugram flatpak run com.ayugram.desktop   # telegram
     bindsym $mod+g exec $HOME/.local/bin/launch-or-focus obsidian obsidian        # notes
     bindsym $mod+Shift+t exec $HOME/.local/bin/launch-or-focus tasks foot --app-id=tasks taskwarrior-tui   # tasks

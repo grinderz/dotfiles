@@ -204,11 +204,12 @@ run = 'layout floating'
     {{ $mod }}-shift-comma = 'move-node-to-monitor --wrap-around left'
     {{ $mod }}-shift-period = 'move-node-to-monitor --wrap-around right'
 
-    # Workspaces
+    # Workspaces; $mod+N on workspace N goes back to the previous one
+    # (sway's workspace_auto_back_and_forth)
 {{- range $i := list 1 2 3 4 5 6 7 8 9 }}
-    {{ $mod }}-{{ $i }} = 'workspace {{ $i }}'
+    {{ $mod }}-{{ $i }} = 'workspace --auto-back-and-forth {{ $i }}'
 {{- end }}
-    {{ $mod }}-0 = 'workspace 10'
+    {{ $mod }}-0 = 'workspace --auto-back-and-forth 10'
 {{- range $i := list 1 2 3 4 5 6 7 8 9 }}
     {{ $mod }}-shift-{{ $i }} = 'move-node-to-workspace {{ $i }}'
 {{- end }}
