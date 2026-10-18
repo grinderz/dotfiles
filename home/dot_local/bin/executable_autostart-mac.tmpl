@@ -2,8 +2,8 @@
 # AeroSpace after-startup-command: what the sway config execs at session
 # start. A random wallpaper from the wallpaper dir (the private
 # chezmoi.toml [data.desktop], same as sway) when that dir exists here,
-# and the two long-lived terminals: zellij "dev" (workspace 2) and a
-# plain shell (workspace 1), titled so that the aerospace.toml rules can
+# and the two long-lived terminals: zellij "dev" (workspace 2) and
+# zellij "cli" (workspace 1), titled so that the aerospace.toml rules can
 # place them (dynamic title off, the shell must not rename them).
 # Long-lived apps (browser, chats, notes) are Login Items instead.
 
@@ -34,4 +34,4 @@ spawn() {
 }
 
 spawn dev -e zellij attach --create dev
-spawn cli
+spawn cli -e zellij attach --create cli
