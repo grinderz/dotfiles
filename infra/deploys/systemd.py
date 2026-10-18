@@ -254,3 +254,26 @@ if networks_changed:
         restarted=True,
         _sudo=True,
     )
+
+# iwd: faster periodic scans after a resume (see the template)
+files.directory(
+    name='ensure /etc/iwd',
+    path='/etc/iwd',
+    _sudo=True,
+)
+
+iwd_conf = files.put(
+    name='install iwd/main.conf',
+    src='templates/iwd/main.conf',
+    dest='/etc/iwd/main.conf',
+    mode='644',
+    _sudo=True,
+)
+
+if iwd_conf.changed:
+    systemd.service(
+        name='restart iwd',
+        service='iwd',
+        restarted=True,
+        _sudo=True,
+    )
