@@ -1,0 +1,5 @@
+{{- /* rbw (Bitwarden CLI) settings: the account from [data.personal],
+       the pinentry is the pass-backed one so the vault unlocks without
+       a dialog. rbw rewrites this file on `rbw config set`; change the
+       template instead. */ -}}
+{"email":"{{ .personal.email }}","sso_id":null,"base_url":null,"identity_url":null,"ui_url":null,"notifications_url":null,"lock_timeout":3600,"sync_interval":3600,"pinentry":"{{ .chezmoi.homeDir }}/.local/bin/pinentry-pass","client_cert_path":null}

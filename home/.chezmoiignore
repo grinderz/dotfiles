@@ -34,6 +34,7 @@ Library
 
 {{ if eq .chezmoi.os "darwin" }}
 .bash_profile
+.config/gh
 .config/fontconfig
 .config/foot
 .config/brave-flags.conf
@@ -183,9 +184,11 @@ Library
 {{ end }}
 
 # the pass -> Bitwarden list renders only when entries are picked in the
-# private toml; the script itself stays, it takes a list path as argument
+# private toml; the script itself stays, it takes a list path as argument.
+# The rbw settings go with it
 {{ if not (hasKey . "rbw") }}
 .config/pass-rbw-sync.list
+.config/rbw
 {{ end }}
 
 # calendar stack renders only when accounts are defined in the private toml
