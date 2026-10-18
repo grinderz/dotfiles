@@ -87,7 +87,7 @@ PATH = '/opt/homebrew/bin:${HOME}/.local/bin:${PATH}'
 {{- end }}
 
 # long-lived apps open on their dedicated workspace, same numbers as sway:
-# browser 3, work browser 5, IDE 4, notes 7, chats 9 (no mail stack here)
+# browser 3, work browser 5, IDE 4, chats 7, notes 9 (no mail stack here)
 [[on-window-detected]]
 if.app-id = 'com.brave.Browser'
 run = 'move-node-to-workspace 3'
@@ -118,15 +118,15 @@ run = 'move-node-to-workspace 5'
 
 [[on-window-detected]]
 if.app-id = 'md.obsidian'
-run = 'move-node-to-workspace 7'
+run = 'move-node-to-workspace 9'
 
 [[on-window-detected]]
 if.app-id = 'one.ayugram.AyuGramDesktop'
-run = 'move-node-to-workspace 9'
+run = 'move-node-to-workspace 7'
 
 [[on-window-detected]]
 if.app-id = 'ru.keepcoder.Telegram'
-run = 'move-node-to-workspace 9'
+run = 'move-node-to-workspace 7'
 
 # dialogs that make no sense tiled: the GPG/YubiKey pin prompt (as in
 # sway), Finder and System Settings windows

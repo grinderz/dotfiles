@@ -29,8 +29,8 @@ set $ws3 "3:web"
 set $ws4 "4:ide"
 set $ws5 "5:wrk"
 set $ws6 "6:eml"
-set $ws7 "7:doc"
-set $ws9 "9:msg"
+set $ws7 "7:msg"
+set $ws9 "9:doc"
 
 ### Output configuration
 #
@@ -163,7 +163,7 @@ for_window [app_id="xdg-desktop-portal-gtk"] floating enable, resize set width 8
 for_window [title="^Picture in picture$"] floating enable, sticky enable, border none
 
 # Long-lived apps open on their dedicated workspace: browser 3 and work
-# browser 5, notes 7 and chats 9 (left Dell), IDE 4 and mail 6
+# browser 5, chats 7 and notes 9 (left Dell), IDE 4 and mail 6
 # (right Dell)
 assign [app_id="brave-browser"] workspace $ws3
 assign [app_id="jetbrains-pycharm"] workspace $ws4
@@ -174,8 +174,8 @@ assign [app_id="smerge"] workspace $ws4
 assign [app_id="firefox"] workspace $ws5
 assign [app_id="org.gnome.Evolution"] workspace $ws6
 assign [app_id="aerc"] workspace $ws6
-assign [app_id="com.ayugram.desktop"] workspace $ws9
-assign [app_id="md.obsidian.Obsidian"] workspace $ws7
+assign [app_id="com.ayugram.desktop"] workspace $ws7
+assign [app_id="md.obsidian.Obsidian"] workspace $ws9
 
 # Autostart terminals on the primary workspaces: zellij dev (2, right
 # Dell) and zellij cli (1, left Dell). Dedicated app-ids keep the assign
