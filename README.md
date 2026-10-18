@@ -127,6 +127,7 @@ only puts symlinks in place:
 | `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
 | `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper) and `claude/CLAUDE.md`, the global instructions linked as `~/.claude/CLAUDE.md`; the session transcripts live apart, in the `ai` folder below |
+| `openwrt-feed-builder/config.yaml` | the feed's source list, linked as `~/.config/openwrt-feed-builder/config.yaml`; it changes with every release and is edited in place, the deploy hosts next to it (`config.mk`) still render from the private toml |
 
 The folder `work` (`~/sync/work`, the two laptops and the backup host)
 carries what is work-specific the same way: `repo-tools/` holds the real
