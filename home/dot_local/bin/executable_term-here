@@ -1,0 +1,32 @@
+#!/bin/sh
+# A new terminal in the directory of the focused one ($mod+Return in the
+# sway config): the shell under the focused foot is found through the
+# kernel's child lists (/proc/<pid>/task/*/children, no /proc scan), its
+# cwd is where the new foot starts. Under zellij the shell belongs to the
+# zellij server, not to the window, so the cwd comes from the file fish
+# writes at every prompt inside zellij (conf.d/term-here.fish): the last
+# prompt drawn is the pane being typed in. Any other focused window, a
+# browser or an IDE, opens the terminal in $HOME. Idea from omarchy's
+# omarchy-cmd-terminal-cwd.
+
+pid=$(swaymsg -t get_tree | jq '.. | select(.focused? == true) | .pid // empty')
+cwd=""
+if [ -n "$pid" ]; then
+    # the newest child is the shell (or the zellij client)
+    child=""
+    for f in /proc/"$pid"/task/*/children; do
+        for c in $(cat "$f" 2>/dev/null); do
+            [ "$c" -gt "${child:-0}" ] && child=$c
+        done
+    done
+    if [ -n "$child" ]; then
+        exe=$(readlink -f /proc/"$child"/exe 2>/dev/null)
+        if grep -Fqsx "$exe" /etc/shells; then
+            cwd=$(readlink -f /proc/"$child"/cwd 2>/dev/null)
+        elif [ "${exe##*/}" = zellij ]; then
+            cwd=$(cat "${XDG_RUNTIME_DIR:-/tmp}/term-here-cwd" 2>/dev/null)
+        fi
+    fi
+fi
+[ -d "$cwd" ] || cwd=$HOME
+exec foot -D "$cwd"
