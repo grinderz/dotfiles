@@ -227,6 +227,7 @@ email = "..."
 git_signing_key = "~/.ssh/..."     # work signs with its own YubiKey
 git_includes = """..."""           # verbatim [includeIf] git config blocks
 okd_url = "..."
+jira_pass = "..."                  # work pass entry with the Jira PAT (jira-status)
 
 [data.personal]
 name = "..."
@@ -991,7 +992,7 @@ under the mouse. The scripts stay portable through two helpers in
 `~/.local/bin`: `open-url` (xdg-open / open) and `menu-pick` (fuzzel /
 an AppleScript list dialog) for the pick menus. Each module hides itself
 without its setup, so on the Mac gitlab needs `glab auth login` and jira
-the `jira-cli` config and token. Bluetooth comes from `blueutil` (brew), what is
+the `jira-cli` config and the PAT in the work pass store. Bluetooth comes from `blueutil` (brew), what is
 playing from `media-control` (the mediaremote-adapter; sketchybar's own
 `media_change` event is dead on macOS 15.4+ where Apple locked
 MediaRemote down), polled every 5 s, a click toggles play/pause. There is

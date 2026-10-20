@@ -183,6 +183,11 @@ Library
 .config/ewsctl
 {{ end }}
 
+# the jira-cli wrapper needs the pass entry with the PAT
+{{ if not (and (hasKey . "work") (hasKey .work "jira_pass")) }}
+.config/fish/functions/jira.fish
+{{ end }}
+
 # the pass -> Bitwarden list renders only when entries are picked in the
 # private toml; the script itself stays, it takes a list path as argument.
 # The rbw settings go with it

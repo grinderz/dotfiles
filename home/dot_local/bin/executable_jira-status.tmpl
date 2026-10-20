@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Waybar module: my open Jira issues via jira-cli. Server and auth type live
-# in the jira-cli config; the PAT sits in ~/.config/jira-status/token because
-# jira-cli does not persist it. Without the CLI, its config or the token the
-# module prints empty text and stays hidden, so the config is safe to apply
-# on machines without a Jira setup.
+# in the jira-cli config; the PAT comes from the work pass store (entry
+# named by jira_pass under [data.work] in the private toml) because
+# jira-cli does not persist it: through pass-cache on linux, so waybar
+# meets the pinentry once a day at most, plain passw on the mac. Without
+# the CLI, its config or the entry the module prints empty text and stays
+# hidden, so the config is safe to apply on machines without a Jira setup.
 #
 # Usage: jira-status [options]   print waybar json
 #        jira-status open        open my issues in a browser
@@ -39,13 +41,17 @@ while [ $# -gt 0 ]; do
 done
 
 config="${XDG_CONFIG_HOME:-$HOME/.config}/.jira/.config.yml"
-token_file="${XDG_CONFIG_HOME:-$HOME/.config}/jira-status/token"
+pass_entry={{ if hasKey . "work" }}{{ get .work "jira_pass" | default "" | quote }}{{ else }}""{{ end }}
 command -v jira >/dev/null 2>&1 || hide
 command -v jq >/dev/null 2>&1 || hide
 [ -r "$config" ] || hide
-[ -r "$token_file" ] || hide
+[ -n "$pass_entry" ] || hide
 
-JIRA_API_TOKEN=$(<"$token_file")
+{{ if eq .chezmoi.os "darwin" -}}
+JIRA_API_TOKEN=$(passw show "$pass_entry" 2>/dev/null) || hide
+{{- else -}}
+JIRA_API_TOKEN=$(PASSWORD_STORE_DIR=$HOME/sync/work/pass pass-cache show "$pass_entry" 2>/dev/null) || hide
+{{- end }}
 export JIRA_API_TOKEN
 
 server=$(awk '/^server:/ { print $2; exit }' "$config")
