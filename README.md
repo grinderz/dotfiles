@@ -128,6 +128,7 @@ only puts symlinks in place:
 | `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper) and `claude/CLAUDE.md`, the global instructions linked as `~/.claude/CLAUDE.md`; the session transcripts live apart, in the `ai` folder below |
 | `openwrt-feed-builder/config.yaml` | the feed's source list, linked as `~/.config/openwrt-feed-builder/config.yaml`; it changes with every release and is edited in place, the deploy hosts next to it (`config.mk`) still render from the private toml |
+| `openwrt-buildroot/config.mk`, `asu.toml` | the buildroot host config (deploy host, asu proxy URL, release/target selection) and the asu server config, linked as `~/.config/openwrt-buildroot/*`; both change with every release and are edited in place, the repo Makefile copies them into the checkout |
 
 The folder `work` (`~/sync/work`, the two laptops and the backup host)
 carries what is work-specific the same way: `repo-tools/` holds the real
