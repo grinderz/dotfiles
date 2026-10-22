@@ -1,11 +1,12 @@
-function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/aur, or clean up after them"
-    set -l repo ~/src/personal/aur
+function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/aur or an AUR clone in ~/src/personal/aur-pub, or clean up after them"
+    # the own repository, and one clone per package published on the AUR
+    set -l repos ~/src/personal/aur ~/src/personal/aur-pub
     # the operations are yay's, for the hand that already knows them; a bare
     # package name is -S
     switch "$argv[1]"
         case -Sc --clean
             if test (count $argv) -eq 1
-                __aur_clean $repo
+                __aur_clean $repos
                 return
             end
             set argv
@@ -13,14 +14,17 @@ function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/au
             set -e argv[1]
     end
     if test (count $argv) -ne 1; or string match -q -- '-*' $argv[1]
-        echo "usage: aur -S PACKAGE     # build and install a directory under ~/src/personal/aur" >&2
+        echo "usage: aur -S PACKAGE     # build and install a directory under ~/src/personal/aur or aur-pub" >&2
         echo "       aur PACKAGE        # the same" >&2
         echo "       aur -Sc            # clean what the builds left, as yay -Sc does for the AUR" >&2
         return 2
     end
-    set -l dir $repo/$argv[1]
-    test -f $dir/PKGBUILD; or begin
-        echo "aur: no PKGBUILD in $dir" >&2
+    set -l dir
+    for r in $repos
+        test -f $r/$argv[1]/PKGBUILD; and set dir $r/$argv[1]; and break
+    end
+    test -n "$dir"; or begin
+        echo "aur: no $argv[1]/PKGBUILD under $repos" >&2
         return 1
     end
     # -B alone only builds; -i is what installs the result
@@ -28,11 +32,12 @@ function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/au
 end
 
 # yay -Sc cleans the AUR builds in ~/.cache/yay. The builds from the own
-# repository go to ~/.cache/makepkg instead (~/.config/pacman/makepkg.conf),
+# repository and the AUR clones go to ~/.cache/makepkg instead (~/.config/pacman/makepkg.conf),
 # where nothing else cleans. This removes the same things yay would: build
 # trees, built packages and downloaded sources. A VCS clone that a PKGBUILD
 # in the repository still names stays, it is what is slow to fetch again.
-function __aur_clean -a repo
+function __aur_clean
+    set -l repos $argv
     set -l cache ~/.cache/makepkg
     set -q XDG_CACHE_HOME; and set cache $XDG_CACHE_HOME/makepkg
     if not test -d $cache
@@ -43,7 +48,7 @@ function __aur_clean -a repo
     # the directory makepkg clones a VCS source into: the name before ::, or
     # the last part of the URL without .git, its #fragment and ?query
     set -l keep
-    for src in (cat $repo/*/.SRCINFO 2>/dev/null | string match -rg '^\s*source(?:_\w+)? = (.+)$')
+    for src in (cat $repos/*/.SRCINFO 2>/dev/null | string match -rg '^\s*source(?:_\w+)? = (.+)$')
         set -l parts (string split -m1 '::' -- $src)
         string match -qr '^(git|hg|svn|bzr|fossil)(\+|://)' -- $parts[-1]; or continue
         if test (count $parts) -eq 2

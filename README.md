@@ -123,12 +123,16 @@ only puts symlinks in place:
 |---|---|
 | `chezmoi/chezmoi.toml` | the private template data below, so it no longer has to be copied between machines by hand |
 | `ssh/allowed_signers` | git signing keys of every machine (see SSH / YubiKey) |
-| `ssh/known_hosts` | host keys accepted once, trusted everywhere |
 | `yubico/u2f_keys`, `u2f_keys_bio` | pam_u2f registrations for sudo and swaylock |
 | `wallpapers/` | the set `sync-brave-wallpapers` fills (`-n` lists what it would copy) and sway, `lock` and the macOS autostart pick from |
 | `claude/` | Claude Code auto memory of every synced checkout, work and personal (see the claude wrapper) and `claude/CLAUDE.md`, the global instructions linked as `~/.claude/CLAUDE.md`; the session transcripts live apart, in the `ai` folder below |
 | `openwrt-feed-builder/config.yaml` | the feed's source list, linked as `~/.config/openwrt-feed-builder/config.yaml`; it changes with every release and is edited in place, the deploy hosts next to it (`config.mk`) still render from the private toml |
 | `openwrt-buildroot/config.mk`, `asu.toml` | the buildroot host config (deploy host, asu proxy URL, release/target selection) and the asu server config, linked as `~/.config/openwrt-buildroot/*`; both change with every release and are edited in place, the repo Makefile copies them into the checkout |
+
+`ssh/known_hosts` was shared this way until 2026-10-22 and is not any
+more: ssh rewrites the file through a temporary file and a rename when
+`UpdateHostKeys` learns a host's other keys, which turns the symlink into
+a plain copy on every such login.
 
 The folder `work` (`~/sync/work`, the two laptops and the backup host)
 carries what is work-specific the same way: `repo-tools/` holds the real

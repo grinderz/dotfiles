@@ -31,7 +31,8 @@ host {{ $h.name }}
 Include ~/.colima/ssh_config
 {{ end -}}
 
-{{- $all := concat .personal.hosts .personal.git_hosts .personal.oth_hosts -}}
+{{- /* oth_hosts: hosts with no key of ours, may be absent */ -}}
+{{- $all := concat .personal.hosts .personal.git_hosts (default (list) (get .personal "oth_hosts")) -}}
 {{- if hasKey . "work" }}{{ $all = concat $all .work.hosts }}{{ end -}}
 {{- if hasKey . "vps" }}{{ $all = concat $all .vps.hosts }}{{ end -}}
 {{- /* everything that did not name a key of its own shares this one */ -}}

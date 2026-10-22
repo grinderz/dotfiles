@@ -5,4 +5,5 @@
 # one of the sources changed.
 # aerc.conf: {{ include "private_dot_config/aerc/aerc.conf.tmpl" | sha256sum }}
 # binds.conf: {{ include "private_dot_config/aerc/binds.conf.tmpl" | sha256sum }}
+# styleset: {{ include "private_dot_config/aerc/stylesets/tokyonight_storm" | sha256sum }}
 pkill -HUP -x aerc || true

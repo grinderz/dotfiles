@@ -18,7 +18,8 @@ header.fg=#f7768e
 #header.bg=#24283b
 header.bold=true
 
-tab.fg=#3b4261
+# upstream has tab.fg=#3b4261 (border colour): unselected tabs vanish
+tab.fg=#a9b1d6
 tab.bg=#1f2335
 tab.selected.fg=#1d202f
 tab.selected.bg=#7aa2f7

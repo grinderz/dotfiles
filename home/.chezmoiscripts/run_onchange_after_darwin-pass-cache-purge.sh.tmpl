@@ -1,0 +1,15 @@
+#!/bin/sh
+# Loads the LaunchAgent that sweeps expired pass-cache copies out of the
+# login keychain, so it runs from this apply on instead of from the next
+# login. Reruns when the plist changes:
+# {{ include "Library/LaunchAgents/com.user.pass-cache-purge.plist.tmpl" | sha256sum }}
+set -eu
+
+plist="$HOME/Library/LaunchAgents/com.user.pass-cache-purge.plist"
+domain="gui/$(id -u)"
+
+# no GUI session (a plain ssh apply): the agent loads at the next login
+launchctl print "$domain" >/dev/null 2>&1 || exit 0
+
+launchctl bootout "$domain/com.user.pass-cache-purge" 2>/dev/null || :
+launchctl bootstrap "$domain" "$plist"

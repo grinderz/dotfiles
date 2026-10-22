@@ -9,6 +9,15 @@
     path = "config.personal.inc"
 
 {{ end -}}
+{{- /* the AUR clones: the same identity, the address of the AUR account;
+       the second include wins on the key it sets */ -}}
+{{ with (get .personal "aur_email") -}}
+[includeIf "hasconfig:remote.*.url:ssh://aur@aur.archlinux.org/**"]
+    path = "config.personal.inc"
+[includeIf "hasconfig:remote.*.url:ssh://aur@aur.archlinux.org/**"]
+    path = "config.aur.inc"
+
+{{ end -}}
 
 [core]
 	autocrlf = input
