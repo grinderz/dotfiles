@@ -457,6 +457,15 @@ timers keep asking for expires only after the machine has been off; pass
 remains the only source of truth — the cache never touches disk and dies
 with the session.
 
+On the Mac the same `pass-cache` keeps its copies in the login keychain
+(no kernel keyring there), which does touch disk and survives a reboot:
+the expiry is stored with each item, a stale hit counts as a miss, and
+`Library/LaunchAgents/com.user.pass-cache-purge.plist` runs
+`pass-cache purge` hourly to delete what nobody asked for within the day.
+`jira-status` in sketchybar and the `{{passp:...}}` placeholders of the
+homelab templates go through it, so neither asks for the card PIN more
+than once a day.
+
 After changing a password (company policy or otherwise), one command
 updates everything that read the old one:
 
@@ -480,6 +489,13 @@ pushed to Bitwarden too (needs an unlocked rbw). Only this machine is
 touched: a router or another host that reads the entry is a separate step.
 Evolution is out of reach: it keeps its own copy in gnome-keyring and
 asks for the new password on its next start, the script only reminds.
+
+A personal entry behind a `{{passp:...}}` placeholder is named too: the
+homelab files under `~/.config/homelab` keep the old secret until the next
+`chezmoi apply` and deploy. On the Mac the same script does what applies
+there: the keychain drop, the readers (jira-status) and the homelab note;
+the mail sections skip without their configs, and a Bitwarden entry is
+left for a machine with rbw.
 
 Skipping the drop leaves the timers retrying the stale password for up to
 a day — enough for an AD lockout. Between the portal change and the

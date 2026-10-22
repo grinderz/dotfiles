@@ -2,8 +2,9 @@
 # Everything that has to happen after a password changed in pass: flush
 # the pass-cache copy, restart goimapnotify (its IDLE session was opened
 # with the old one), one mbsync / vdirsyncer run as a check of the new
-# one, list the readers that pick it up on their own (msmtp, ewsctl),
-# and push it to Bitwarden when the entry is on the pass-rbw-sync list.
+# one, list the readers that pick it up on their own (msmtp, ewsctl,
+# jira-status), name the homelab files rendered from it, and push it to
+# Bitwarden when the entry is on the pass-rbw-sync list.
 # Only this machine is touched: a router or another host that reads the
 # entry is its own job. Who uses the entry is found by its name in the
 # rendered configs, so nothing here knows the accounts. Without the drop
@@ -17,7 +18,9 @@
 #   -c  store command; default is the one holding ENTRY.gpg: work, then
 #       personal, then $PASSWORD_STORE_DIR / ~/.password-store
 #
-# Linux-only: the mail stack it serves lives here.
+# Runs on the Mac too: there it comes down to the pass-cache drop (the
+# login keychain copy jira-status and the homelab templates read), the
+# readers and the homelab note; the mail sections find no config and skip.
 
 set -euo pipefail
 
@@ -170,12 +173,26 @@ if [ -f "$cfg" ] && mentions "$cfg"; then
     # shellcheck disable=SC2086
     echo "ewsctl: account(s) $(join $accounts) read it on the next call, nothing to do"
 fi
+cfg=$HOME/.local/bin/jira-status
+if [ -f "$cfg" ] && mentions "$cfg"; then
+    echo "jira-status, jira: read it on the next call, nothing to do"
+fi
+
+# --- homelab files rendered at apply time -----------------------------------
+# a {{passp:ENTRY}} placeholder in the private toml is filled in by chezmoi,
+# so the rendered .env and configs keep the old secret until the next apply
+toml=$HOME/.config/chezmoi/chezmoi.toml
+if [ "$cmd" = passp ] && [ -f "$toml" ] && grep -qF "{{passp:$entry}}" "$toml"; then
+    echo "homelab: ~/.config/homelab renders it, run chezmoi apply, then deploy the stack"
+fi
 
 # --- Bitwarden --------------------------------------------------------------
 list=$HOME/.config/pass-rbw-sync.list
 if [ -f "$list" ]; then
     line=$(awk -F'\t' -v e="$entry" '!/^#/ && $2 == e' "$list" | head -n1)
-    if [ -n "$line" ]; then
+    if [ -n "$line" ] && ! command -v rbw >/dev/null 2>&1; then
+        echo "bitwarden: on the pass-rbw-sync list, but no rbw here; push it from a machine with rbw"
+    elif [ -n "$line" ]; then
         echo "bitwarden: $(printf '%s' "$line" | cut -f5)/$(printf '%s' "$line" | cut -f3) (needs an unlocked rbw)"
         if [ "$dry" = 1 ]; then
             echo "would run: pass-rbw-sync <list with this line>"

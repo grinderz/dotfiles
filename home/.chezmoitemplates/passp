@@ -1,11 +1,13 @@
 {{- /* passp: replace every {{passp:NAME}} placeholder in the given string with
-       `passp show NAME` (first line) at apply time; MISSING when the entry
-       does not exist yet, so apply keeps working. Usage:
+       the first line of the personal store entry NAME at apply time, through
+       pass-cache so an apply does not ask for the card PIN again within a
+       day (plain passp before pass-cache is deployed); MISSING when the
+       entry does not exist yet, so apply keeps working. Usage:
        {{ includeTemplate "passp" $string }} */ -}}
 {{- $u := . -}}
 {{- range regexFindAll "\\{\\{passp:[^}]+\\}\\}" $u -1 -}}
 {{- $name := . | trimPrefix "{{passp:" | trimSuffix "}}" -}}
-{{- $secret := output "sh" "-c" (printf "{ passp show %s 2>/dev/null || echo MISSING; } | head -n1" $name) | trim -}}
+{{- $secret := output "sh" "-c" (printf "c=$HOME/.local/bin/pass-cache; [ -x \"$c\" ] || c=passp; { \"$c\" show %s 2>/dev/null || echo MISSING; } | head -n1" $name) | trim -}}
 {{- $u = replace . $secret $u -}}
 {{- end -}}
 {{- $u -}}

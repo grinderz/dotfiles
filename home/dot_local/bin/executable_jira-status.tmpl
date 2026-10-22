@@ -2,8 +2,8 @@
 # Waybar module: my open Jira issues via jira-cli. Server and auth type live
 # in the jira-cli config; the PAT comes from the work pass store (entry
 # named by jira_pass under [data.work] in the private toml) because
-# jira-cli does not persist it: through pass-cache on linux, so waybar
-# meets the pinentry once a day at most, plain passw on the mac. Without
+# jira-cli does not persist it: through pass-cache, so waybar and
+# sketchybar meet the pinentry once a day at most. Without
 # the CLI, its config or the entry the module prints empty text and stays
 # hidden, so the config is safe to apply on machines without a Jira setup.
 #
@@ -47,11 +47,7 @@ command -v jq >/dev/null 2>&1 || hide
 [ -r "$config" ] || hide
 [ -n "$pass_entry" ] || hide
 
-{{ if eq .chezmoi.os "darwin" -}}
-JIRA_API_TOKEN=$(passw show "$pass_entry" 2>/dev/null) || hide
-{{- else -}}
 JIRA_API_TOKEN=$(PASSWORD_STORE_DIR=$HOME/sync/work/pass pass-cache show "$pass_entry" 2>/dev/null) || hide
-{{- end }}
 export JIRA_API_TOKEN
 
 server=$(awk '/^server:/ { print $2; exit }' "$config")

@@ -1,13 +1,9 @@
 # jira-cli with the PAT from the work pass store, the same entry
 # jira-status reads (jira_pass under [data.work] in the private toml);
-# jira-cli does not persist the token itself. pass-cache on linux keeps
-# it in the kernel keyring for a day, the mac asks passw every time.
+# jira-cli does not persist the token itself. pass-cache keeps it for a
+# day (kernel keyring on linux, login keychain on the mac).
 function jira -d "jira-cli with the token from the work pass store"
-{{- if eq .chezmoi.os "darwin" }}
-    set -lx JIRA_API_TOKEN (passw show {{ .work.jira_pass | quote }})
-{{- else }}
     set -lx JIRA_API_TOKEN (PASSWORD_STORE_DIR=$HOME/sync/work/pass pass-cache show {{ .work.jira_pass | quote }})
-{{- end }}
     or return
     command jira $argv
 end

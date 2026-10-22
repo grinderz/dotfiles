@@ -1,17 +1,29 @@
 #!/bin/sh
-# In-RAM cache in front of pass so background timers (mbsync, vdirsyncer)
-# do not hit the gpg pinentry on every run: the kernel user keyring holds
-# the first line of an entry for a day after it was last asked for, pass
+# Cache in front of pass so background timers (mbsync, vdirsyncer) and bar
+# scripts (jira-status) do not hit the gpg pinentry on every run: the first
+# line of an entry is held for a day after it was last asked for, pass
 # stays the only source of truth. Works against whichever store
 # PASSWORD_STORE_DIR names (the default matches passp), entries are
-# namespaced per store so passp and passw never collide. Linux-only
-# (keyutils).
+# namespaced per store so passp and passw never collide.
+#
+# Linux keeps the copy in the kernel user keyring (keyutils): RAM only,
+# the kernel expires it and a reboot clears it. macOS has no such keyring,
+# so the copy goes to the login keychain, open for the whole GUI session.
+# A keychain item never expires and survives a reboot, so the expiry rides
+# in its comment: a hit past it counts as a miss, a hit within it slides it
+# out (rewriting the item at most hourly), and `purge` (hourly, from the
+# com.user.pass-cache-purge LaunchAgent) removes what nobody asks for any
+# more. The secret goes to `security -i` hex-encoded on stdin, so it never
+# shows on a command line and quotes or non-ASCII come back unchanged.
+# Over plain ssh the keychain is locked: every show then goes to pass.
 #
 #   pass-cache show <entry>    print it, from cache or from pass
 #   pass-cache drop [<entry>]  forget the cached copy in every store
 #                              (everything when omitted); run right after
 #                              rotating a password, or the timers keep
 #                              retrying the stale one into a lockout
+#   pass-cache purge           macOS: remove the copies past their expiry;
+#                              nothing to do on Linux, the kernel does it
 
 set -eu
 
@@ -20,37 +32,98 @@ store=${PASSWORD_STORE_DIR:-$HOME/sync/pass}
 # pass itself reads the variable, so the default must reach it too
 export PASSWORD_STORE_DIR="$store"
 
-case ${1:-} in
-show)
-    desc="pass-cache:$store:$2"
-    if id=$(keyctl search @u user "$desc" 2>/dev/null); then
+if [ "$(uname -s)" = Darwin ]; then
+    acct=pass-cache
+
+    get() {
+        attrs=$(security find-generic-password -a "$acct" -s "$1" 2>/dev/null) || return 1
+        expires=$(printf '%s\n' "$attrs" | sed -n 's/^ *"icmt"<blob>="expires=\([0-9]*\)"$/\1/p')
+        now=$(date +%s)
+        if [ "${expires:-0}" -le "$now" ]; then
+            forget "$1"
+            return 1
+        fi
+        hex=$(security find-generic-password -a "$acct" -s "$1" -w 2>/dev/null) || return 1
+        secret=$(printf %s "$hex" | xxd -r -p)
+        [ "$expires" -ge $((now + ttl - 3600)) ] || put "$1" "$secret"
+        printf '%s\n' "$secret"
+    }
+
+    # a locked keychain (ssh) refuses the write; the secret is still printed
+    put() {
+        hex=$(printf %s "$2" | xxd -p | tr -d '\n')
+        printf 'add-generic-password -U -a %s -s "%s" -j "expires=%s" -w %s\n' \
+            "$acct" "$1" "$(($(date +%s) + ttl))" "$hex" |
+            security -i >/dev/null 2>&1 || :
+    }
+
+    forget() {
+        security delete-generic-password -a "$acct" -s "$1" >/dev/null 2>&1 || :
+    }
+
+    # "<expiry> <service>" per cached item; one without an expiry reads as 0
+    list() {
+        security dump-keychain 2>/dev/null | awk '
+            function flush() { if (s != "") print (e == "" ? 0 : e), s; s = ""; e = "" }
+            /^keychain: / { flush() }
+            /^ *"icmt"<blob>="expires=/ { e = $0; sub(/.*expires=/, "", e); sub(/".*/, "", e) }
+            /^ *"svce"<blob>="pass-cache:/ { s = $0; sub(/^[^=]*="/, "", s); sub(/"$/, "", s) }
+            END { flush() }'
+    }
+else
+    get() {
+        id=$(keyctl search @u user "$1" 2>/dev/null) || return 1
         # sliding window: every hit pushes the expiry out, so an entry the
         # timers keep asking for stays cached instead of expiring mid-day
         # into a pinentry nobody is at the keyboard to answer
         keyctl timeout "$id" "$ttl"
         keyctl pipe "$id"
         echo
-        exit 0
-    fi
+    }
+
+    put() {
+        id=$(printf %s "$2" | keyctl padd user "$1" @u)
+        keyctl timeout "$id" "$ttl"
+    }
+fi
+
+case ${1:-} in
+show)
+    desc="pass-cache:$store:$2"
+    get "$desc" && exit 0
     # no pipe into head: a pipeline would hide a failing pass behind head's
     # exit status and cache an empty secret
     secret=$(pass show "$2") || exit 1
     secret=${secret%%
 *}
-    id=$(printf %s "$secret" | keyctl padd user "$desc" @u)
-    keyctl timeout "$id" "$ttl"
+    put "$desc" "$secret"
     printf '%s\n' "$secret"
     ;;
 drop)
-    for id in $(keyctl rlist @u 2>/dev/null); do
-        desc=$(keyctl rdescribe "$id" 2>/dev/null) || continue
-        case $desc in
-        "user;"*";pass-cache:"*"${2:+:$2}") keyctl unlink "$id" @u ;;
-        esac
+    if [ "$(uname -s)" = Darwin ]; then
+        list | while read -r _ desc; do
+            case $desc in
+            "pass-cache:"*"${2:+:$2}") forget "$desc" ;;
+            esac
+        done
+    else
+        for id in $(keyctl rlist @u 2>/dev/null); do
+            desc=$(keyctl rdescribe "$id" 2>/dev/null) || continue
+            case $desc in
+            "user;"*";pass-cache:"*"${2:+:$2}") keyctl unlink "$id" @u ;;
+            esac
+        done
+    fi
+    ;;
+purge)
+    [ "$(uname -s)" = Darwin ] || exit 0
+    now=$(date +%s)
+    list | while read -r expires desc; do
+        [ "$expires" -gt "$now" ] || forget "$desc"
     done
     ;;
 *)
-    echo "usage: pass-cache show <entry> | drop [<entry>]" >&2
+    echo "usage: pass-cache show <entry> | drop [<entry>] | purge" >&2
     exit 2
     ;;
 esac

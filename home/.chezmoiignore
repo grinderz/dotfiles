@@ -27,6 +27,7 @@
 .local/bin/display-kick
 Library
 .chezmoiscripts/darwin-trackpad-gestures.sh
+.chezmoiscripts/darwin-pass-cache-purge.sh
 .chezmoiscripts/reload-aerospace.sh
 .chezmoiscripts/darwin-audio-device.sh
 .local/share/audio-device
@@ -84,9 +85,6 @@ Library
 .local/bin/mail-addr
 .local/bin/mail-notify
 .local/bin/mail-status
-.local/bin/pass-cache
-.local/bin/pass-rotate
-.config/fish/completions/pass-rotate.fish
 .local/bin/scratch-term
 .local/bin/screen-record
 .local/bin/smart-screenshot
