@@ -1,0 +1,34 @@
+# satty 0.22. Defaults for the window and the tools; what a run must do on
+# Enter/Escape (copy, save where, exit) stays on the command line in
+# smart-screenshot, which overrides this file. Colours from [theme] in
+# .chezmoidata.toml. The shipped example with every key: the config.toml
+# in github.com/gabm/Satty.
+{{- $t := .theme }}
+
+[general]
+# the sway rule that floats the window matches this id
+app-id = "org.satty.satty"
+floating-hack = true
+no-window-decoration = true
+copy-command = "wl-copy"
+# an arrow is what most annotations are; the pointer is one key (p) away
+initial-tool = "arrow"
+corner-roundness = 4
+annotation-size-factor = 2
+early-exit = ["all"]
+
+[font]
+family = "Noto Sans"
+style = "Regular"
+
+[color-palette]
+# the toolbar swatches, RRGGBBAA; the first is the one selected at start
+palette = [
+    "#{{ $t.critical }}ff",
+    "#{{ $t.warning }}ff",
+    "#{{ $t.ok }}ff",
+    "#{{ $t.info }}ff",
+    "#{{ $t.border }}ff",
+    "#{{ $t.fg }}ff",
+    "#{{ $t.bg }}ff",
+]

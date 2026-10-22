@@ -1,0 +1,23 @@
+-- swayimg 5.6 (Lua config). Only what departs from the defaults; the
+-- colours come from [theme] in .chezmoidata.toml, the font from [fonts].
+-- The full list of settings: /usr/share/swayimg/example.lua.
+{{- $t := .theme }}
+
+local function argb(hex) return 0xff000000 + tonumber(hex, 16) end
+
+swayimg.decoration = false            -- sway draws the borders
+swayimg.imagelist.adjacent = true     -- one file opened: step through its directory
+
+swayimg.text.font = "{{ .fonts.mono }}"
+swayimg.text.size = 16
+swayimg.text.color = argb("{{ $t.fg }}")
+swayimg.text.shadow = 0x00000000      -- shadows off, the background is dark enough
+
+swayimg.viewer.set_window_background(argb("{{ $t.bg }}"))
+swayimg.viewer.set_image_chessboard(16, argb("{{ $t.bg }}"), argb("{{ $t.bg_soft }}"))
+swayimg.viewer.mark_color = argb("{{ $t.warning }}")
+
+swayimg.gallery.window_color = argb("{{ $t.bg }}")
+swayimg.gallery.unselected_color = argb("{{ $t.bg_soft }}")
+swayimg.gallery.selected_color = argb("{{ $t.focused }}")
+swayimg.gallery.border_color = argb("{{ $t.border }}")
