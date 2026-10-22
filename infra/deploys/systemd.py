@@ -270,10 +270,14 @@ iwd_conf = files.put(
     _sudo=True,
 )
 
-if iwd_conf.changed:
-    systemd.service(
-        name='restart iwd',
-        service='iwd',
-        restarted=True,
-        _sudo=True,
-    )
+# the config alone left iwd disabled: it only ever came up by D-Bus
+# activation when something (iwctl, the bar's impala) asked for it, so wifi
+# waited for a click after every boot
+systemd.service(
+    name='enable and start iwd',
+    service='iwd',
+    enabled=True,
+    running=True,
+    restarted=iwd_conf.changed,
+    _sudo=True,
+)

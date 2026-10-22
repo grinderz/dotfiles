@@ -149,6 +149,10 @@ client.urgent           #{{ .theme.critical }} #{{ .theme.critical }} #{{ .theme
 # Volume mixer opened from the waybar pulseaudio module
 for_window [app_id="mixer"] floating enable
 
+# Screenshot annotation (smart-screenshot annotate): over the screen, not
+# a tile; the id is set in satty/config.toml
+for_window [app_id="org.satty.satty"] floating enable
+
 # GPG/YubiKey pin prompts: any pinentry backend the wrapper picks,
 # plus the gcr system prompter used by pinentry-gnome3.
 # pinentry-gtk runs via XWayland, hence the class criteria next to app_id.

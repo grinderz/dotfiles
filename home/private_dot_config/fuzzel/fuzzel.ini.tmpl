@@ -23,6 +23,10 @@ include={{ .chezmoi.homeDir }}/.config/fuzzel/tokyonight_storm.ini
 # delayed-filter-limit=20000
 # show-actions=no
 # terminal=$TERMINAL -e  # Note: you cannot actually use environment variables here
+# Terminal=true entries (btop, khal, zellij ...): the default is $TERMINAL -e
+# and $TERMINAL is unset here, so without this they silently did nothing;
+# foot takes the command as its arguments, no -e
+terminal=foot
 # launch-prefix=<not set>
 # list-executables-in-path=no
 

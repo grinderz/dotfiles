@@ -369,7 +369,9 @@ Per deploy, once per host:
   `on-notify` plays the freedesktop theme through `pw-play`,
   `sound-theme-freedesktop` — `message.oga` by default, the instant-message
   one for mail, `bell.oga` for critical, nothing in dnd except critical),
-  `fuzzel`, `sway-contrib`
+  `fuzzel`, `swayimg` (images, Wayland-native, every format decoded by
+  its own libraries so no GdkPixbuf loaders; `swayimg/init.lua` takes
+  the colours from `[theme]`), `sway-contrib`
   (grimshot), `wlsunset`, `tesseract` + `tesseract-data-eng`/`-rus`
   (OCR bind), `gpu-screen-recorder` (both recorders: `screen-record` for
   planned recordings, `--audio` = what the apps play plus the mic in
@@ -396,7 +398,8 @@ Per deploy, once per host:
   history is Raycast's, `ctrl-cmd-c`, with Alacritty on the command's
   disabled-apps list by hand since pbcopy sets no concealed type),
   `satty` (screenshot annotation: `$mod+Ctrl+Shift+p` picks an area
-  and opens it in satty, Enter copies and saves; the mac's counterpart
+  and opens it in satty floating, arrow tool first, the palette from
+  `[theme]` in `satty/config.toml`; Enter copies and saves; the mac's counterpart
   is `screenshot-mac annotate`, the capture opened in Preview for its
   Markup toolbar), `otf-font-awesome` +
   `ttf-roboto` (waybar font stack),
