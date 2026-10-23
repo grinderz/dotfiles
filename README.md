@@ -321,8 +321,15 @@ Per deploy, once per host:
   * config sanity + planned actions: `btrbk -n run`
   * first snapshot: `systemctl start btrbk-snapshot.service`, then
     `btrbk list snapshots`
-  * transfer: plug the archive disk (udev pipeline runs `btrbk resume`) or run
+  * transfer: plug the archive disk (udev pipeline runs `btrbk resume usb`,
+    then an unfiltered `btrbk prune`: the only run that sees both targets and
+    so the only one that deletes old snapshots) or run
     `btrbk resume` by hand, then `btrbk list backups`
+  * the same hook scrubs the disk (`btrfs-scrub@.service` from btrfs-progs)
+    when the last finished scrub is older than `scrub_every_days`, then
+    powers it off: wait for `journalctl -u udev-rule-archive-usb-hdd.service`
+    to say `Deactivated successfully` before pulling it. Errors keep the
+    scrub unit failed, `failed-units-notify` shows it in mako.
   * timer armed: `systemctl list-timers btrbk-snapshot.timer`;
     log: `/var/log/btrbk.log`
 * **git** (chezmoi) — after: delete the old work include from

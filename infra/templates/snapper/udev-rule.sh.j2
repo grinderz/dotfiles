@@ -4,4 +4,16 @@ set -o errtrace -o pipefail -o noclobber -o errexit -o nounset
 {% for command in mount.backup_commands %}
 {{ command }}
 {% endfor %}
+{% if mount.get('scrub_every_days') %}
+# checksum scrub, at most once per {{ mount.scrub_every_days }} days. btrfs-progs
+# keeps a status file per filesystem uuid, its mtime is the last scrub; a
+# cancelled one (disk pulled mid-way) does not count. The scrub unit comes
+# from btrfs-progs; if it fails it stays failed, and failed-units-notify
+# raises it on the desktop. The disk is powered off either way.
+scrub_status=/var/lib/btrfs/scrub.status.{{ mount.uuid }}
+if [ -z "$(find "$scrub_status" -mtime -{{ mount.scrub_every_days }} 2>/dev/null)" ] \
+   || ! grep -q 'finished:1' "$scrub_status"; then
+    systemctl start --wait "$(systemd-escape -p --template=btrfs-scrub@.service {{ mount.path }})" || true
+fi
+{% endif %}
 sync && umount {{ mount.path }} && udisksctl power-off -b /dev/disk/by-id/{{ mount.disk_id }}
