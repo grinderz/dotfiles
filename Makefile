@@ -24,8 +24,10 @@ lint.shellcheck:
 		! -name 'executable_msmtpq' ! -name 'executable_msmtp-queue' \
 		-exec grep -lE '^#!/(usr/)?bin/(env )?(sh|bash)' {} + | xargs shellcheck
 
+RUFF_VERSION ?= 0.17.2
+
 lint.ruff:
-	uvx ruff check infra
+	uvx ruff@$(RUFF_VERSION) check infra
 
 lint: lint.shellcheck lint.ruff
 
