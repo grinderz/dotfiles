@@ -23,6 +23,7 @@ pkg_scripts
 proton-authenticator-bin
 pycharm
 shellcheck-bin
+signed
 sublime-merge
 sublime-text-4
 systemd-oomd-defaults

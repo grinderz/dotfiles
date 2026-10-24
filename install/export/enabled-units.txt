@@ -1,5 +1,6 @@
 bluetooth.service
 getty@.service
+iwd.service
 limine-snapper-sync.service
 nftables.service
 power-profiles-daemon.service

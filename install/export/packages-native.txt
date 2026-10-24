@@ -27,6 +27,7 @@ cliphist
 compsize
 dante
 ddcutil
+devtools
 direnv
 docker
 docker-buildx
@@ -38,6 +39,7 @@ edk2-ovmf
 efibootmgr
 evolution
 evolution-ews
+exfatprogs
 eza
 fastfetch
 ffmpeg
@@ -98,6 +100,7 @@ nodejs-lts-krypton
 notmuch
 noto-fonts
 noto-fonts-emoji
+nvchecker
 nvme-cli
 obsidian
 openconnect
@@ -126,7 +129,6 @@ pass
 pipewire
 pipewire-pulse
 pkgfile
-poppler
 poppler-data
 power-profiles-daemon
 pwgen
@@ -154,6 +156,7 @@ sway
 sway-contrib
 swaybg
 swayidle
+swayimg
 swaylock
 syncthing
 task
