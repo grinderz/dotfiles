@@ -59,11 +59,15 @@ fi
 # the suffixed names count too (id_ed25519_sk_rk_personal-sa); a trailing
 # .pub is the public half and stays readable, hence the character class
 # that stops before the dot
+# the pattern matches a literal $HOME in the command text, no expansion wanted
+# shellcheck disable=SC2016
 if grep -Eq '(^|[[:space:]="'"'"'])(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)?/\.?ssh/[^[:space:]]*id_(rsa|dsa|ecdsa|ed25519)[A-Za-z0-9_-]*([[:space:]"'"'"';|]|$)' <<<"$cmd"; then
     deny "that is a private ssh key; the .pub half is readable and usually the one you want"
 fi
 # ~/.netrc is left out on purpose: work tooling (artifactory, uv, local
 # Renovate runs) reads it, and those commands have to be runnable here
+# the pattern matches a literal $HOME in the command text, no expansion wanted
+# shellcheck disable=SC2016
 if grep -Eq '(~|\$HOME|\$\{HOME\}|/[^[:space:]]*)/\.(npmrc|pypirc)([[:space:]"'"'"';|]|$)|/\.aws/credentials|/\.gnupg/private-keys|/\.docker/config\.json' <<<"$cmd"; then
     deny "that file holds credentials in the clear"
 fi

@@ -3,7 +3,8 @@ SHELL := /usr/bin/env bash -o errtrace -o pipefail -o noclobber -o errexit -o no
 CHEZMOI_SRC := $(CURDIR)/home
 
 # every target here is a command, not a file
-.PHONY: setup.pyinfra setup.pyinfra.upgrade lint.shellcheck lint.ruff lint \
+.PHONY: setup.pyinfra setup.pyinfra.upgrade lint.shellcheck lint.openwrt lint.ruff lint.pre-commit lint test \
+	openwrt.adblock-feeds \
 	install.export install.validate install.export.mac install.validate.mac FORCE
 
 # --- setup ---
@@ -24,12 +25,40 @@ lint.shellcheck:
 		! -name 'executable_msmtpq' ! -name 'executable_msmtp-queue' \
 		-exec grep -lE '^#!/(usr/)?bin/(env )?(sh|bash)' {} + | xargs shellcheck
 
+# OpenWrt device files, the feed generator and its test are POSIX sh (the
+# hotplug hooks carry no shebang, hotplug-call sources them), hence the
+# forced dialect
+lint.openwrt:
+	shellcheck -s sh infra/scripts/*.sh infra/scripts/tests/*.sh infra/files/openwrt/*.sh infra/files/openwrt/etc/hotplug.d/*/*
+
 RUFF_VERSION ?= 0.17.2
 
 lint.ruff:
 	uvx ruff@$(RUFF_VERSION) check infra
 
-lint: lint.shellcheck lint.ruff
+PRE_COMMIT_VERSION ?= 4.7.0
+
+lint.pre-commit:
+	uvx pre-commit@$(PRE_COMMIT_VERSION) run --all-files $(args)
+
+lint: lint.shellcheck lint.openwrt lint.ruff lint.pre-commit
+
+# --- test ---
+# the adblock feed generator against a fake upstream list (no network), plus
+# the check that the shipped feed file still carries every overlay entry
+
+test:
+	infra/scripts/tests/make-adblock-feeds.sh
+
+# --- OpenWrt device files ---
+# rebuild the adblock custom feed file: upstream default list of the packages
+# branch + infra/scripts/adblock.extra.feeds (see the script header)
+# usage: make openwrt.adblock-feeds [ADBLOCK_BRANCH=master]
+
+ADBLOCK_BRANCH ?= openwrt-25.12
+
+openwrt.adblock-feeds:
+	infra/scripts/make-adblock-feeds.sh -b $(ADBLOCK_BRANCH) $(args)
 
 # --- reproducible install (install/) ---
 # refresh the reference exports from the live system; subvolumes.map and
@@ -114,6 +143,18 @@ PYINFRA_SSH_KEY := $(HOME)/.ssh/id_ed25519_sk_rk_personal-ansible
 
 infra.linux.%:
 	cd infra && ssh-agent bash -c 'ssh-add -q $(PYINFRA_SSH_KEY) && pyinfra --diff --limit $* linux.py deploys/$(deploy).py $(args)'
+
+# --- infra, OpenWrt routers ---
+# usage: make infra.openwrt.<ssh name> deploy=openwrt-adblock args="--dry"
+#
+# inventory from [[data.routers]] (infra/openwrt.py); file transfers go
+# over legacy scp (dropbear has no sftp-server, group_data/openwrt.py).
+# The routers authorize the personal sk key, not the ansible one, hence
+# the separate key variable; override on the command line if yours differs
+PYINFRA_OPENWRT_SSH_KEY ?= $(HOME)/.ssh/id_ed25519_sk_rk_personal-sa
+
+infra.openwrt.%:
+	cd infra && ssh-agent bash -c 'ssh-add -q $(PYINFRA_OPENWRT_SSH_KEY) && pyinfra --diff --limit $* openwrt.py deploys/$(deploy).py $(args)'
 
 # --- infra, local machine only (no ssh, no agent) ---
 # usage: make infra.local.linux.local deploy=pacman args="--dry"

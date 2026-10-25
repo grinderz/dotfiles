@@ -1,0 +1,50 @@
+# pre-commit hooks (no branch guard: this repo commits to main).
+# Run: make lint.pre-commit
+exclude: '^\.git/'
+fail_fast: true
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # chezmoi symlink_ sources hold a target path and modify_ sources a
+      # script, whatever the extension of the file they manage says
+      - id: check-yaml
+        exclude: '^home/.*/(symlink_|modify_)[^/]*$'
+      - id: check-json
+        # the adblock feed files are JSON under another extension
+        types: [text]
+        files: '\.(json|feeds)$'
+        exclude: '^home/.*/(symlink_|modify_)[^/]*$'
+      - id: check-added-large-files
+      - id: check-merge-conflict
+        args: ['--assume-in-merge']
+      # the chezmoi source tree (home/) carries modes in file names
+      # (executable_*), not in the bits, and the pyinfra templates get
+      # theirs from files.template, so the shebang/mode pairing is checked
+      # outside both; OpenWrt hotplug hooks under infra/files/openwrt/etc
+      # are sourced by hotplug-call, no shebang
+      - id: check-shebang-scripts-are-executable
+        exclude: '^(home/|infra/templates/|infra/files/openwrt/etc/)'
+      - id: check-executables-have-shebangs
+        exclude: '^(home/|infra/templates/|infra/files/openwrt/etc/)'
+      - id: check-symlinks
+      - id: mixed-line-ending
+        args: ['--fix=no']
+      # whitespace fixes stay out of the chezmoi tree and the system exports:
+      # vendored themes, exported lists and symlink targets are content, not
+      # code, and a trailing newline is not ours to add there
+      - id: end-of-file-fixer
+        exclude: '^(home/|install/export/)'
+      - id: fix-byte-order-marker
+      - id: trailing-whitespace
+        args: ['--markdown-linebreak-ext=md']
+        exclude: '^(home/|install/export/)'
+      - id: forbid-new-submodules
+
+  # secrets: the repo is public, the private data lives in the toml outside
+  # it; a pasted value must never reach the history
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

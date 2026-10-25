@@ -22,6 +22,8 @@ msg=""
 # stacking. A click opens dua on / in a terminal; notify-send waits for
 # the click, and the timer's oneshot unit would take that wait down with
 # it, so it runs as a transient unit of its own
+# the sh -c script expands $1 itself, hence the single quotes
+# shellcheck disable=SC2016
 systemd-run --user --quiet --collect --unit "disk-space-notify-action-$$" \
     sh -c 'if [ "$(notify-send -u critical -r 9991 -A default="What takes the space" \
             "Low disk space" "$1")" = default ]; then foot -e dua i /; fi' _ "$msg"

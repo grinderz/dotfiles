@@ -78,3 +78,13 @@ def chezmoi_infra_hosts(inventory):
         return []
     data = tomllib.loads(path.read_text()).get('data', {})
     return data.get('infra', {}).get(inventory, [])
+
+
+def chezmoi_routers():
+    """[[data.routers]] (OpenWrt devices) from the machine-local chezmoi.toml.
+
+    The same table renders the openwrt-scripts configs (backup, deploy.sh,
+    openvpn); infra/openwrt.py turns it into the pyinfra inventory.
+    """
+    routers = chezmoi_data('routers')
+    return routers if isinstance(routers, list) else []

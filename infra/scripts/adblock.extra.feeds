@@ -1,0 +1,26 @@
+{
+	"reg_ru": {
+		"url": "https://easylist-downloads.adblockplus.org/ruadlist.txt",
+		"rule": "feed || 2 [|][|]|[|^]([$]third-party)?$",
+		"size": "S",
+		"descr": "reg_russia"
+	},
+	"ru_bitblock_fanboys": {
+		"url": "https://easylist-downloads.adblockplus.org/bitblock.txt",
+		"rule": "feed || 2 [|][|]|[|^]([$]third-party)?$",
+		"size": "VAR",
+		"descr": "RU: BitBlock+Fanboy's General"
+	},
+	"ru_counters": {
+		"url": "https://easylist-downloads.adblockplus.org/cntblock.txt",
+		"rule": "feed || 2 [|][|]|[|^]([$]third-party)?$",
+		"size": "VAR",
+		"descr": "RU: Counters"
+	},
+	"shakal": {
+		"url": "https://schakal.ru/hosts/alive_hosts.txt",
+		"rule": "feed 0.0.0.0 2",
+		"size": "XXL",
+		"descr": "4PDA Community hosts blacklist"
+	}
+}

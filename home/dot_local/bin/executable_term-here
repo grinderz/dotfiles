@@ -15,7 +15,9 @@ if [ -n "$pid" ]; then
     # the newest child is the shell (or the zellij client)
     child=""
     for f in /proc/"$pid"/task/*/children; do
-        for c in $(cat "$f" 2>/dev/null); do
+        # one line of space-separated pids
+        read -r pids 2>/dev/null < "$f" || continue
+        for c in $pids; do
             [ "$c" -gt "${child:-0}" ] && child=$c
         done
     done

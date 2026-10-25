@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "Renovate on GitHub keeps the ruff version of the Makefile. Packages, flatpaks and the chezmoi tree move with the system, not here."
+    "Renovate on GitHub keeps the tooling pins: workflow actions, pre-commit hook revs, the ruff and pre-commit versions of the Makefile and the shellcheck release of the CI workflow. Packages, flatpaks and the chezmoi tree move with the system, not here."
   ],
   "extends": [
     "config:recommended"
@@ -17,11 +17,25 @@
     "main"
   ],
   "enabledManagers": [
+    "github-actions",
+    "pre-commit",
     "custom.regex"
   ],
+  "pre-commit": {
+    "enabled": true
+  },
   "branchPrefix": "renovate/",
   "labels": [
     "dependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "pre-commit hooks in their own PR",
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "groupName": "pre-commit hooks"
+    }
   ],
   "customManagers": [
     {
@@ -35,6 +49,31 @@
       ],
       "depNameTemplate": "ruff",
       "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "pre-commit, run through uvx at the version of the Makefile",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "PRE_COMMIT_VERSION \\?= (?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "pre-commit",
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "description": "shellcheck release installed by the CI lint job",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/"
+      ],
+      "matchStrings": [
+        "SHELLCHECK_VERSION: (?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "koalaman/shellcheck",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ]
 }

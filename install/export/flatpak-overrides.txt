@@ -9,4 +9,3 @@ com.canonical.indicator.application=none
 com.canonical.AppMenu.Registrar=none
 org.gnome.Mutter.IdleMonitor=none
 org.sigxcpu.Feedback=none
-

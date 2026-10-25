@@ -18,7 +18,7 @@ for f in "$bin"/*; do
                 /^#/ { sub(/^#[[:space:]]?/, ""); if ($0 != "") { print; exit } }
                 /^[^#]/ && NF { exit }' "$f")
     usage=$(awk 'tolower($0) ~ /^#[[:space:]]*usage:/ { sub(/^#[[:space:]]*[Uu]sage:[[:space:]]*/, ""); print; exit }' "$f")
-    case $name in *-mac|aerospace-*|notify-mac|autostart-mac) ctx=mac ;; *) ctx=bin ;; esac
+    case $name in *-mac|aerospace-*) ctx=mac ;; *) ctx=bin ;; esac
     printf '%-9s %-24s %-34s %s\n' "$ctx" "$name" "$usage" "$desc"
 done | sed 's/[[:space:]]*$//' | {
     if command -v fuzzel >/dev/null 2>&1 && [ -n "${WAYLAND_DISPLAY:-}" ]; then
