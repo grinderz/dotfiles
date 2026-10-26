@@ -1,9 +1,7 @@
 [user]
     email = {{ .personal.email }}
     name = {{ .personal.name }}
-{{- $pkey := .personal.personal_key -}}
-{{- with (get .personal "personal_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end }}
-    signingKey = {{ $pkey }}
+    signingKey = {{ includeTemplate "personal-key" . }}
 
 [commit]
     gpgSign = true

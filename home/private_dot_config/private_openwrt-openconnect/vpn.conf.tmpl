@@ -1,6 +1,6 @@
 # openwrt-openconnect (~/src/personal/openwrt-openconnect): rendered by
 # dotfiles from the [[data.work.openconnect_profiles]] entry named in
-# [data.openwrt_openconnect] and the [[data.routers]] entry flagged
+# [data.openwrt_openconnect] and the [[data.openwrt_hosts]] entry flagged
 # openconnect. Sourced as shell by vpn-auth.sh, vpn-auth-sso.sh and deploy.sh;
 # see vpn.conf.example in the repo for every key
 {{- $cfg := .openwrt_openconnect }}
@@ -13,7 +13,7 @@ VPN_SSO_GROUP="{{ $cfg.sso_group }}"
 VPN_PROTOCOL="anyconnect"
 PASSWORD_CMD="{{ $p.vpn_password_cmd }} | head -n 1"
 EXTRA_OPTS="--disable-ipv6 --useragent=AnyConnect"
-{{- range .routers }}{{ if get . "openconnect" }}
+{{- range .openwrt_hosts }}{{ if get . "openconnect" }}
 OC_HOST="{{ default .name (get . "ssh") }}"
 {{- end }}{{ end }}
 {{- with get $cfg "router_config" }}

@@ -1,8 +1,5 @@
-{{- /* the personal YubiKey of this machine: every machine has its own,
-       personal_key_by_host in the private chezmoi.toml (identical on all
-       of them) maps hostname -> key, the rest fall back to personal_key */ -}}
-{{- $pkey := .personal.personal_key -}}
-{{- with (get .personal "personal_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end -}}
+{{- /* the personal YubiKey of this machine (.chezmoitemplates/personal-key) */ -}}
+{{- $pkey := includeTemplate "personal-key" . -}}
 {{- /* one host entry from the lists in the private chezmoi.toml: only
        name is required, the rest defaults to Hostname = name, User =
        root, no Port line and IdentityFile = the key above */ -}}

@@ -132,9 +132,9 @@ Library
 .chezmoiscripts/jetbrains-vmoptions.sh
 {{ end }}
 
-# OpenWrt script configs render only with the router inventory / the vpn
+# OpenWrt script configs render only with the OpenWrt inventory / the vpn
 # profile pick in the private toml
-{{ if not (hasKey . "routers") }}
+{{ if not (hasKey . "openwrt_hosts") }}
 .config/openwrt-scripts
 {{ end }}
 {{ if not (and (hasKey . "openwrt_openconnect") (hasKey . "work")) }}

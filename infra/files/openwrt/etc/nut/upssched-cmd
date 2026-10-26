@@ -1,0 +1,14 @@
+#!/bin/sh
+ case $1 in
+       shutdown)
+          logger -t upssched-cmd "UPS on battery too long, shutdown."
+          /usr/sbin/upsmon -c fsd
+          ;;
+       shutdowncrit)
+          logger -t upssched-cmd "UPS on battery critical, forced shutdown."
+          /usr/sbin/upsmon -c fsd
+          ;;
+       *)
+          logger -t upssched-cmd "Unrecognized command: $1."
+          ;;
+ esac

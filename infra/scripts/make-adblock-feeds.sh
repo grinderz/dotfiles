@@ -28,7 +28,7 @@
 #              with a key that exists upstream replace the upstream entry.
 #
 # Needs curl and jq on the workstation. Nothing talks to a device: the
-# pyinfra deploy openwrt-adblock ships the result (make infra.openwrt.<router>
+# pyinfra deploy openwrt-adblock ships the result (make infra.openwrt.<host>
 # deploy=openwrt-adblock). Wrapped as `make openwrt.adblock-feeds`.
 
 set -eu

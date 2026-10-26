@@ -1,16 +1,18 @@
-"""Device files for an OpenWrt router: scripts, hotplug hooks, sysctl, nftables.
+"""Device files for an OpenWrt host: scripts, hotplug hooks, sysctl, nftables.
 
-The router's `deploy` string in [[data.routers]] keeps the format of the
+The host's `deploy` string in [[data.openwrt_hosts]] keeps the format of the
 retired deploy.sh of openwrt-scripts, one entry per pattern:
-`<file|glob>[:mode][@boot][@keep]`, globs relative to files/openwrt/
-(openwrt_files_dir in the group data). Top-level files land in /usr/bin,
-files in a subdirectory mirror the device root (etc/sysctl.d/x -> /etc/sysctl.d/x).
-Without :mode the local executable bit decides (755, else 644). @boot puts the
+`<file|glob>[:mode[:user[:group]]][@boot][@keep]`, globs relative to
+files/openwrt/ (openwrt_files_dir in the group data). Top-level files land in
+/usr/bin, files in a subdirectory mirror the device root
+(etc/sysctl.d/x -> /etc/sysctl.d/x). Without :mode the local executable bit
+decides (755, else 644); user and group, as in chown, are left alone when
+empty or absent (`etc/x:640::nutmon` sets the group only). @boot puts the
 remote path into /etc/rc.local before the final `exit 0`, @keep into
 /etc/sysupgrade.conf so sysupgrade keeps the file.
 
 Whole private files (never in a repo) come from a second tree,
-<openwrt_private_dir>/hosts/<router>/, mirrored onto the device root with
+<openwrt_private_dir>/<host>/, mirrored onto the device root with
 @keep implied: wireless configs, VPN profiles, certificates.
 
 A changed sysctl.d file is applied with /etc/init.d/sysctl restart. Scripts
@@ -29,7 +31,8 @@ SYSUPGRADE_CONF = '/etc/sysupgrade.conf'
 
 
 def parse_entry(entry):
-    """'<pattern>[:mode][@boot][@keep]' -> (pattern, mode or None, boot, keep)."""
+    """'<pattern>[:mode[:user[:group]]][@boot][@keep]' ->
+    (pattern, mode, user, group, boot, keep), absent fields None."""
     boot = keep = False
     while True:
         if entry.endswith('@boot'):
@@ -38,10 +41,13 @@ def parse_entry(entry):
             entry, keep = entry[: -len('@keep')], True
         else:
             break
-    pattern, sep, mode = entry.partition(':')
-    if sep and not (len(mode) in (3, 4) and all(c in '01234567' for c in mode)):
+    pattern, *fields = entry.split(':')
+    if len(fields) > 3:
+        raise ValueError(f'too many fields in pattern {entry!r}')
+    mode, user, group = (fields + [''] * 3)[:3]
+    if mode and not (len(mode) in (3, 4) and all(c in '01234567' for c in mode)):
         raise ValueError(f'invalid mode {mode!r} in pattern {entry!r}')
-    return pattern, (mode or None), boot, keep
+    return pattern, (mode or None), (user or None), (group or None), boot, keep
 
 
 def file_mode(path, mode):
@@ -87,35 +93,37 @@ def ensure_keep(dest):
 
 deploy_dir = pathlib.Path(host.data.openwrt_files_dir).expanduser()
 dest_dir = host.data.openwrt_dest_dir
-private_dir = (
-    pathlib.Path(host.data.openwrt_private_dir).expanduser() / 'hosts' / host.name
-)
+private_dir = pathlib.Path(host.data.openwrt_private_dir).expanduser() / host.name
 
-# (src path, dest, mode, boot, keep), the deploy map first, the private tree after
+# (src path, dest, mode, user, group, boot, keep), the deploy map first, the
+# private tree after
 planned = []
 for entry in host.data.deploy.split():
-    pattern, mode, boot, keep = parse_entry(entry)
+    pattern, mode, user, group, boot, keep = parse_entry(entry)
     matched = sorted(p for p in deploy_dir.glob(pattern) if p.is_file())
     if not matched:
         raise ValueError(f'{host.name}: no files match {pattern!r} in {deploy_dir}')
     for src in matched:
         rel = src.relative_to(deploy_dir).as_posix()
-        planned.append((src, dest_for(rel, dest_dir), file_mode(src, mode), boot, keep))
+        dest = dest_for(rel, dest_dir)
+        planned.append((src, dest, file_mode(src, mode), user, group, boot, keep))
 
 if private_dir.is_dir():
     for src in sorted(p for p in private_dir.rglob('*') if p.is_file()):
         rel = src.relative_to(private_dir).as_posix()
-        planned.append((src, f'/{rel}', file_mode(src, None), False, True))
+        planned.append((src, f'/{rel}', file_mode(src, None), None, None, False, True))
 
 if not planned:
-    host.noop('files: nothing mapped for this router')
+    host.noop('files: nothing mapped for this host')
 
 sysctl_changed = []
-for src, dest, mode, boot, keep in planned:
+for src, dest, mode, user, group, boot, keep in planned:
     put = files.put(
         name=f'file: {dest}',
         src=str(src),
         dest=dest,
+        user=user,
+        group=group,
         mode=mode,
     )
     if dest.startswith('/etc/sysctl.d/'):

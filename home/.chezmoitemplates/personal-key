@@ -1,0 +1,9 @@
+{{- /* personal-key: the personal YubiKey of this machine, every machine has
+       its own: personal_key_by_host in the private chezmoi.toml (identical
+       on all of them) maps hostname -> key, the rest fall back to
+       personal_key. Used by .ssh/config (IdentityFile), git (signingKey)
+       and the Makefile (PYINFRA_SSH_KEY). Usage:
+       {{ $pkey := includeTemplate "personal-key" . }} */ -}}
+{{- $pkey := .personal.personal_key -}}
+{{- with (get .personal "personal_key_by_host") }}{{ $pkey = dig $.chezmoi.hostname $pkey . }}{{ end -}}
+{{- $pkey -}}

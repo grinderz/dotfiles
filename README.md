@@ -23,43 +23,43 @@ make dotfiles.merge-all                             # same, for everything that 
 # system, single host/group + single deploy; --diff is always on
 make infra.local.linux.local deploy=pacman args="--dry"   # on the machine itself, no ssh
 make infra.linux.<host-or-group> deploy=systemd           # remote over ssh
-make infra.openwrt.<router> deploy=openwrt-adblock        # OpenWrt router, inventory from [[data.routers]]
+make infra.openwrt.<host> deploy=openwrt-adblock          # OpenWrt host, inventory from [[data.openwrt_hosts]]
 ```
 
 `--limit` value (the last target component) is a host name or an inventory
 group. Remote sudo: pyinfra prompts for the password interactively.
 
-### OpenWrt routers
+### OpenWrt hosts
 
-`infra/openwrt.py` builds the `openwrt` group from `[[data.routers]]`, the
-same table the openwrt-scripts configs render from (`--limit` takes the
-router's `ssh` name, `name` when there is none). The devices run dropbear
+`infra/openwrt.py` builds the `openwrt` group from `[[data.openwrt_hosts]]`,
+the same table the openwrt-scripts configs render from (`--limit` takes the
+host's `ssh` name, `name` when there is none). The devices run dropbear
 without sftp-server and busybox without `stat`/`sha1sum`, so
 `group_data/openwrt.py` switches paramiko to the legacy scp protocol
 (dropbear's own `scp -t`), the File fact falls back to `ls -ld` by itself,
 and a deploy that uploads files installs `coreutils-sha1sum` first,
-otherwise every run would re-upload. The routers authorize the personal sk
-key, not the ansible one: `PYINFRA_OPENWRT_SSH_KEY` in the Makefile, same
+otherwise every run would re-upload. Same key (`PYINFRA_SSH_KEY`) and
 throwaway-agent wrapper as `infra.linux.*`, touch the YubiKey when it blinks.
 
 `openwrt-files` ships the device files under `infra/files/openwrt/`
-(patches, hotplug hooks, modem scripts, sysctl, nftables): the router's
-`deploy` map in `[[data.routers]]` names them, one entry per pattern
-(`<file|glob>[:mode][@boot][@keep]`, the format of the retired deploy.sh of
-openwrt-scripts, globs relative to `files/openwrt/`), top-level files land
-in `/usr/bin`, subdirectories mirror the device root, `@boot`
+(patches, hotplug hooks, modem scripts, sysctl, nftables): the host's
+`deploy` map in `[[data.openwrt_hosts]]` names them, one entry per pattern
+(`<file|glob>[:mode[:user[:group]]][@boot][@keep]`, the format of the
+retired deploy.sh of openwrt-scripts plus owners as in chown, globs
+relative to `files/openwrt/`), top-level files land in `/usr/bin`,
+subdirectories mirror the device root, `@boot`
 registers the file in `/etc/rc.local` before the final `exit 0`, `@keep` in
 `/etc/sysupgrade.conf`. Whole private files, never in a repo (wireless
 configs, VPN profiles, certificates), come from
-`~/sync/dotfiles/routers/hosts/<router>/` and mirror the device root with
+`~/sync/dotfiles/openwrt-hosts/<host>/` and mirror the device root with
 `@keep` implied. A changed `/etc/sysctl.d/*` file is applied with
 `/etc/init.d/sysctl restart`, nothing else is restarted.
 
 `openwrt-adblock` ships `/etc/adblock/adblock.custom.feeds` and renders
-`/etc/adblock/adblock.allowlist` from the router's `adblock.allow` list, adds
+`/etc/adblock/adblock.allowlist` from the host's `adblock.allow` list, adds
 both to `/etc/sysupgrade.conf` and reloads adblock when a file changed (a
 changed feed file also drops `/tmp/adblock-backup`, adblock's ETag cache).
-Routers without an `adblock` table are skipped. adblock reads the custom
+Hosts without an `adblock` table are skipped. adblock reads the custom
 feed file *instead of* its default list, so the file carries the whole
 default list plus the extra feeds: `make openwrt.adblock-feeds` downloads
 the default `adblock.feeds` of a packages branch from git.openwrt.org
@@ -74,10 +74,10 @@ the shipped file no longer matches the overlay. The ABP lists in the overlay
 use a stricter separator than upstream's `feed || 3 [|^]`, which takes
 everything between `||` and the first `^` and turns a path rule such as
 `||google.com^*/fastbutton?$third-party` into a block of the whole
-google.com. Per-router data:
+google.com. Per-host data:
 
 ```toml
-[[data.routers]]
+[[data.openwrt_hosts]]
 name = "rtr2-example"
 ssh = "rtr2-example"                 # what ssh accepts (default: name)
 deploy = "etc/sysctl.d/*@keep patch-fw4-offload.sh@boot@keep"   # openwrt-files map
@@ -105,7 +105,9 @@ make infra.local.linux.somehost deploy=pacman args="--dry"
 Auth key is ed25519-sk (FIDO2). paramiko cannot read sk key files and
 gpg-agent refuses to host them, so each `infra.linux.*` run wraps pyinfra in a
 throwaway OpenSSH agent with the key loaded (`PYINFRA_SSH_KEY` in the
-Makefile). Requires pyinfra >= 3.10 (agent-held sk keys, PR 1858).
+Makefile: the machine's personal key, `personal_key` / `personal_key_by_host`
+below, through `.chezmoitemplates/personal-key`). Requires pyinfra >= 3.10
+(agent-held sk keys, PR 1858).
 
 Connections are multiplexed (`ControlMaster auto`, `ControlPersist 10m`):
 the FIDO signature costs seconds with several tokens plugged in, a reused
@@ -343,9 +345,9 @@ only `@local` and builds `--limit` groups from each entry's `group` key.
 home/                  # chezmoi source dir
 infra/
 ├── linux.py           # inventory per group; group name = file name
-├── openwrt.py         # routers from [[data.routers]], group `openwrt`
+├── openwrt.py         # hosts from [[data.openwrt_hosts]], group `openwrt`
 ├── group_data/        # defaults per group (was roles/*/defaults)
-├── deploys/           # one file per former role; openwrt-*.py for the routers
+├── deploys/           # one file per former role; openwrt-*.py for the OpenWrt hosts
 ├── files/openwrt/     # device files the openwrt-files deploy ships verbatim
 ├── scripts/           # make-adblock-feeds.sh + adblock.extra.feeds, tests/
 ├── templates/         # jinja2, reused from ansible almost verbatim

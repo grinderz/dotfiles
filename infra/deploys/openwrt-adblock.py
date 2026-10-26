@@ -1,8 +1,8 @@
-"""adblock on an OpenWrt router: feed list, allowlist, sysupgrade backup, reload.
+"""adblock on an OpenWrt host: feed list, allowlist, sysupgrade backup, reload.
 
 The custom feed file replaces adblock's default list entirely, so it is
 generated in openwrt-scripts (make adblock-feeds) and only shipped here.
-The allowlist is rendered from the router's adblock.allow list in the
+The allowlist is rendered from the host's adblock.allow list in the
 private toml. A changed file triggers a reload; a changed feed file also
 drops the cached lists in /tmp/adblock-backup first, because reload
 restores an unchanged feed (same ETag) from there instead of parsing it
@@ -16,7 +16,7 @@ from pyinfra.facts.server import Which
 from pyinfra.operations import files, server
 
 if host.data.adblock_allow is None:
-    host.noop('adblock: no adblock table for this router')
+    host.noop('adblock: no adblock table for this host')
 else:
     # files.put compares uploads by sha1 and busybox on OpenWrt has none of
     # sha1sum/shasum/sha1: without it every run re-uploads and reloads. The

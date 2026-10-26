@@ -29,7 +29,7 @@ lint.shellcheck:
 # hotplug hooks carry no shebang, hotplug-call sources them), hence the
 # forced dialect
 lint.openwrt:
-	shellcheck -s sh infra/scripts/*.sh infra/scripts/tests/*.sh infra/files/openwrt/*.sh infra/files/openwrt/etc/hotplug.d/*/*
+	shellcheck -s sh infra/scripts/*.sh infra/scripts/tests/*.sh infra/files/openwrt/*.sh infra/files/openwrt/etc/hotplug.d/*/* infra/files/openwrt/etc/nut/upssched-cmd
 
 RUFF_VERSION ?= 0.17.2
 
@@ -138,23 +138,24 @@ FORCE:
 #
 # paramiko cannot read ed25519-sk key files and gpg-agent refuses to host
 # them, so each run gets a throwaway OpenSSH agent with the sk key loaded
-# (pyinfra >= 3.10 / PR 1858 makes agent-held sk keys work)
-PYINFRA_SSH_KEY := $(HOME)/.ssh/id_ed25519_sk_rk_personal-ansible
+# (pyinfra >= 3.10 / PR 1858 makes agent-held sk keys work). The key is
+# this machine's personal one, personal_key / personal_key_by_host of the
+# private toml through .chezmoitemplates/personal-key, the same as the
+# IdentityFile in .ssh/config; override on the command line if needed
+PYINFRA_SSH_KEY ?= $(shell $(CHEZMOI) execute-template '{{ template "personal-key" . }}')
 
 infra.linux.%:
 	cd infra && ssh-agent bash -c 'ssh-add -q $(PYINFRA_SSH_KEY) && pyinfra --diff --limit $* linux.py deploys/$(deploy).py $(args)'
 
-# --- infra, OpenWrt routers ---
+# --- infra, OpenWrt hosts ---
 # usage: make infra.openwrt.<ssh name> deploy=openwrt-adblock args="--dry"
 #
-# inventory from [[data.routers]] (infra/openwrt.py); file transfers go
-# over legacy scp (dropbear has no sftp-server, group_data/openwrt.py).
-# The routers authorize the personal sk key, not the ansible one, hence
-# the separate key variable; override on the command line if yours differs
-PYINFRA_OPENWRT_SSH_KEY ?= $(HOME)/.ssh/id_ed25519_sk_rk_personal-sa
+# inventory from [[data.openwrt_hosts]] (infra/openwrt.py); file transfers go
+# over legacy scp (dropbear has no sftp-server, group_data/openwrt.py),
+# the key is PYINFRA_SSH_KEY as for infra.linux.*
 
 infra.openwrt.%:
-	cd infra && ssh-agent bash -c 'ssh-add -q $(PYINFRA_OPENWRT_SSH_KEY) && pyinfra --diff --limit $* openwrt.py deploys/$(deploy).py $(args)'
+	cd infra && ssh-agent bash -c 'ssh-add -q $(PYINFRA_SSH_KEY) && pyinfra --diff --limit $* openwrt.py deploys/$(deploy).py $(args)'
 
 # --- infra, local machine only (no ssh, no agent) ---
 # usage: make infra.local.linux.local deploy=pacman args="--dry"
