@@ -15,6 +15,10 @@ Whole private files (never in a repo) come from a second tree,
 <openwrt_private_dir>/<host>/, mirrored onto the device root with
 @keep implied: wireless configs, VPN profiles, certificates.
 
+A host with neither a `deploy` map nor a private tree is an error, not a
+no-op: an entry that lost its map in a move must not pass as deployed while
+a sysupgrade quietly drops the files it used to carry.
+
 A changed sysctl.d file is applied with /etc/init.d/sysctl restart. Scripts
 and hotplug hooks run on their own events, nothing else is restarted.
 """
@@ -114,7 +118,10 @@ if private_dir.is_dir():
         planned.append((src, f'/{rel}', file_mode(src, None), None, None, False, True))
 
 if not planned:
-    host.noop('files: nothing mapped for this host')
+    raise ValueError(
+        f'{host.name}: nothing to deploy, no `deploy` in [[data.openwrt_hosts]] '
+        f'and no {private_dir}'
+    )
 
 sysctl_changed = []
 for src, dest, mode, user, group, boot, keep in planned:
