@@ -2,10 +2,12 @@
 Description=IMAP IDLE push that triggers mbsync
 Wants=davmail.service
 After=davmail.service network-online.target
-# goimapnotify reconnects on its own; the process only exits on a broken
-# config, so a tight restart loop means something to fix, not to retry
-StartLimitIntervalSec=1h
-StartLimitBurst=5
+# goimapnotify reconnects on its own only once connected: a dial that fails
+# five times in a row (about 15 s, a wifi roam or a proxy restart) is fatal
+# and the process exits 1, so restarts must outlast a network flap. A broken
+# config fails every 30 s and shows up in the journal instead.
+StartLimitIntervalSec=10min
+StartLimitBurst=10
 
 [Service]
 # -wait batches a burst of pushes into one sync
