@@ -4,6 +4,10 @@
 .claude/shell-snapshots	claude/shell-snapshots
 .claude/statsig	claude/statsig
 .claude/todos	claude/todos
+.codex/cache	codex/cache
+.codex/packages	codex/packages
+.codex/plugins/cache	codex/plugins/cache
+.codex/.tmp	codex/.tmp
 .config/BraveSoftware	config/BraveSoftware
 .config/evolution	config/evolution
 .config/mozilla	config/mozilla
