@@ -21,7 +21,7 @@ setup.pyinfra.upgrade:
 # msmtpq scripts vendored from msmtp
 
 lint.shellcheck:
-	find home/dot_local/bin install -type f ! -name '*.tmpl' \
+	find home/dot_local/bin install scripts -type f ! -name '*.tmpl' \
 		! -name 'executable_msmtpq' ! -name 'executable_msmtp-queue' \
 		-exec grep -lE '^#!/(usr/)?bin/(env )?(sh|bash)' {} + | xargs shellcheck
 
@@ -34,7 +34,7 @@ lint.openwrt:
 RUFF_VERSION ?= 0.17.2
 
 lint.ruff:
-	uvx ruff@$(RUFF_VERSION) check infra
+	scripts/lint-python.sh $(RUFF_VERSION)
 
 PRE_COMMIT_VERSION ?= 4.7.0
 
@@ -45,10 +45,11 @@ lint: lint.shellcheck lint.openwrt lint.ruff lint.pre-commit
 
 # --- test ---
 # the adblock feed generator against a fake upstream list (no network), plus
-# the check that the shipped feed file still carries every overlay entry
+# the overlay check and session-pruning regressions on temporary files
 
 test:
 	infra/scripts/tests/make-adblock-feeds.sh
+	python3 -m unittest discover -s tests -p 'test_*.py'
 
 # --- OpenWrt device files ---
 # rebuild the adblock custom feed file: upstream default list of the packages

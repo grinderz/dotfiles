@@ -1,0 +1,12 @@
+{{- /* Codex has one global transcript tree, unlike Claude's per-project trees. */ -}}
+{{- if ne (len .codex.sync) 1 -}}
+{{- fail "codex.sync must contain exactly one entry: Codex has one global transcript store" -}}
+{{- end -}}
+{{- $entry := index .codex.sync 0 -}}
+{{- if hasKey $entry "root" -}}
+{{- fail "codex.sync does not support root filters: all Codex transcripts share one store" -}}
+{{- end -}}
+{{- if not (get $entry "dir") -}}
+{{- fail "codex.sync entry requires dir (relative to HOME)" -}}
+{{- end -}}
+{{- $entry.dir -}}

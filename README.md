@@ -209,14 +209,45 @@ apply. pyinfra stays out of this: it runs as root over ssh and owns
 system state, `/etc` and system services.
 
 `agent-bash-guard` is a `PreToolUse` hook (registered in the merged
-`~/.claude/settings.json`): it denies a Bash call that pipes a download
+`~/.claude/settings.json` and `~/.codex/hooks.json`): it denies a Bash call that pipes a download
 into a shell, sets `LD_PRELOAD`/`BASH_ENV` and friends inline, reads a
-private ssh key or a credentials file (`.netrc`, `.aws/credentials`,
+private ssh key or a credentials file (`.npmrc`, `.aws/credentials`,
 `.docker/config.json`), writes inside `.git` by hand, deletes `~` or `/`
 recursively, or formats a device. Everything else passes to the normal
 permission flow — `sed -i`, `tee`, `find -exec` and `~/.ssh/config` stay
 allowed on purpose, since a guard that fires on daily work only teaches
 everyone to work around it.
+
+Codex receives the corresponding Claude defaults through a merged
+`~/.codex/config.toml`: high reasoning effort, `on-request` approval with
+the `workspace-write` sandbox, dark syntax highlighting, no AI attribution
+in commits/PRs, and acknowledgement of the full-access warning. The model,
+provider, trusted projects, plugin state and other local keys are preserved;
+existing developer instructions are kept and the attribution rule is
+appended once. TOML is reserialized, so local comments are not preserved.
+`~/.codex/AGENTS.md` links to the same shared global instructions as
+Claude's `CLAUDE.md`.
+
+Codex desktop notifications use `Stop` and `PermissionRequest` hooks.
+They report completion or approval needed, without sending conversation
+contents or shell commands to the desktop notification. Linux uses
+`notify-send`; macOS uses `terminal-notifier` with the same Hero/Glass
+sounds as Claude. The native TUI also alerts on approval requests.
+The Bash hook uses `jq` and GNU coreutils (`timeout` or macOS `gtimeout`)
+to keep delivery within five seconds; delivery errors do not block Codex.
+
+After applying, open `/hooks` in Codex and review/trust the new hook
+definitions: Codex skips untrusted hooks; this repo does not bypass that
+review. The Bash payload is compatible with Claude's guard, including
+commands executed through `exec_command`. See the official
+[Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
+
+The after-apply script installs `caveman@caveman` through Codex's native
+plugin manager from the pinned revision in the script, without running
+the Caveman proxy/installer. Its plugin hooks also need `/hooks` review.
+Node is required. The Claude `gopls-lsp` plugin and workflow-warning toggle
+have no direct counterpart in the Codex configuration checked here and
+remain Claude-only; no placeholder settings are added for them.
 
 Taskwarrior splits work, personal and family life by the project a task
 belongs to (`work.*`, `personal.*`, `family.*`), with a context per
@@ -263,19 +294,90 @@ went into the btrbk snapshots of `@home` here and into Time Machine on
 the mac. It also kept a session the other machine had pruned for up to a
 year. The backups are the history.
 
-`claude-prune-sessions` drops the ones nobody came back to. Age counts
-from the last *use*: resuming appends to the transcript, so its newest
-record marks the last visit (`/home` is `noatime`, the file system does
-not track reads). It reports and deletes nothing unless told to:
+`claude-prune-sessions` and `codex-prune-sessions` open an fzf picker of
+all matching sessions, largest first, with project, last modification,
+size, ID and conversation title. There is no age filter or minimum-age
+exclusion; new and archived Codex sessions are included too.
 
 ```sh
-claude-prune-sessions                  # what is older than 90 days
-claude-prune-sessions --days 30        # stricter window
-claude-prune-sessions --days 30 --apply
+claude-prune-sessions
+codex-prune-sessions
+codex-prune-sessions --project dotfiles
+claude-prune-sessions --dry-run        # select and report without deleting
+codex-prune-sessions --json            # list only; no picker or deletion
 ```
 
-A session used within the last hour is never a candidate, so a running
-session cannot prune itself.
+Nothing starts selected. Tab marks/unmarks, Ctrl-A marks all matches,
+Ctrl-D clears all marks, and Enter reviews the selection. Enter or a
+double-click without marks exits without deleting even the highlighted
+row. Escape cancels. After review, deletion requires `y` at a `[y/N]`
+prompt; an empty answer cancels. `--days` and `--apply` have been removed.
+
+Both commands recheck the selected files before deleting and skip any
+that changed while the picker was open. Claude deletes the selected
+transcripts and their session-specific subagent directories, preserving
+project memory. Codex uses `codex delete UUID --force` to remove local
+history/index state through its native command; a failure never falls
+back to deleting the file directly. As with manual deletion, Syncthing
+propagates the removed transcripts, while other machines' local Codex
+indexes can retain stale entries. Do not select a session still in use
+on either machine.
+
+### Codex sessions in the same `ai` folder
+
+Both agents use a `sync` array and `dir` in the private chezmoi TOML:
+
+```toml
+[[data.claude.sync]]
+root = "src"
+dir = "sync/ai/claude"
+memory_dir = "sync/dotfiles/claude"
+
+[[data.codex.sync]]
+dir = "sync/ai/codex"
+```
+
+Claude's entries select project roots; Codex has one global transcript
+tree, so it accepts exactly one entry with `dir` and no `root` filter.
+`~/.codex/sessions` and
+`~/.codex/archived_sessions` link to the matching directories there.
+Authorization, configuration, SQLite databases (including WAL/SHM), prompt
+history and the session name index remain local. The existing `ai` folder's
+device list and disabled versioning apply to Codex too.
+
+Before applying the links, a script moves existing transcript directories
+with a rename, preserving open file handles. It refuses to proceed if
+both the local and shared directories already exist, if a link points
+elsewhere, or if a live move would cross filesystems. Reconcile existing
+directories first; do not let chezmoi replace real transcript directories.
+The helper is also available as `codex-sync-state ~/sync/ai/codex`.
+
+Session metadata retains absolute paths from its original machine. The
+`~/.local/bin/codex` wrapper adds `--all` and the native
+`tui.resume_cwd="current"` default to interactive `resume`, so start in the
+local checkout and use:
+
+```sh
+codex resume
+# or resume a specific session (UUID is portable; locally assigned names may not be)
+codex resume SESSION_ID
+```
+
+The picker includes sessions from all projects; resuming uses the current
+local checkout. Explicit `--cd` and `-c tui.resume_cwd='"session"'` still
+take precedence. Remote connections and other subcommands pass through
+unchanged, including `exec resume`; `/resume` inside an already running
+Codex is also native behavior. The real binary can be called directly to
+bypass the wrapper. Wait for Syncthing to finish before switching
+machines, and never continue the same session on both at once: those are
+two writers to the same JSONL. Independent sessions have separate files.
+Archiving/deletion moves or removes shared transcripts too; local indexes
+on the other machine can temporarily retain stale entries.
+
+Transfer and recall were checked with Codex CLI 0.166.0 on Linux and macOS,
+including a return to a profile with older local databases. That test used
+a short text conversation; attachments and compacted histories have not
+been checked. Use `codex-prune-sessions` to select Codex transcripts to remove.
 
 ## Private data
 
@@ -358,15 +460,28 @@ infra/
 ## Lint, test, CI
 
 `make lint` runs shellcheck over the scripts in `home/dot_local/bin` and
-`install/` (by shebang), over the OpenWrt device files and the feed
-generator (`-s sh`, the hotplug hooks carry no shebang), ruff over `infra/`
+`install/` and `scripts/` (by shebang), over the OpenWrt device files and the feed
+generator (`-s sh`, the hotplug hooks carry no shebang), Ruff over all
+Python in the repository (including tests and extensionless scripts,
+detected by shebang)
 and the pre-commit hooks (generic checks plus gitleaks: the repo is public,
 a pasted secret must never reach the history) via `uvx pre-commit`.
-`make test` runs the feed generator against a fake upstream list, no
-network, and checks that the shipped feed file still carries every overlay
-entry. CI (`.github/workflows/ci.yml`) runs both on every push and pull
+`make test` runs the feed generator against a fake upstream list, checks
+that the shipped feed file still carries every overlay entry, and runs
+the Python `unittest` suite in `tests/` against temporary session files.
+These tests need no network, real sessions, or additional Python packages.
+CI (`.github/workflows/ci.yml`) runs both on every push and pull
 request; Renovate keeps the action, hook, ruff, pre-commit and shellcheck
 pins current.
+
+`make lint.ruff` uses the pinned Ruff version from the Makefile and
+automatically includes tracked and untracked, non-ignored Python scripts.
+Its Bash runner lives in `scripts/lint-python.sh`; `install/` holds installation
+and recovery tooling.
+Python logic used by chezmoi templates lives in regular `.py` helpers;
+the templates themselves are shell wrappers. A new Python-shebang `.tmpl`
+fails the check rather than silently escaping lint. Vendored `ps-mem.py`
+keeps explicit style/compatibility exceptions; its error checks remain on.
 
 ## One-time operations
 

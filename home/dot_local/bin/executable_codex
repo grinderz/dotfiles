@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Defaults for resuming Syncthing-shared Codex sessions on this machine."""
+
+import os
+import shutil
+import sys
+from pathlib import Path
+
+# Skip values of global options when finding the subcommand. In particular,
+# `codex -m resume` is a model selection, not the resume command.
+VALUE_OPTIONS = {
+    '-c', '--config', '--enable', '--disable', '--remote',
+    '--remote-auth-token-env', '-i', '--image', '-m', '--model',
+    '--local-provider', '-p', '--profile', '-s', '--sandbox',
+    '-C', '--cd', '--add-dir', '-a', '--ask-for-approval',
+}
+
+
+def resume_defaults(args):
+    command = None
+    options = set()
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == '--':
+            break
+        if arg.startswith('-'):
+            option = arg.split('=', 1)[0]
+            options.add(option)
+            if arg in VALUE_OPTIONS:
+                i += 1
+        elif command is None:
+            if arg != 'resume':
+                return args
+            command = i
+        i += 1
+    if command is None or options.intersection({'--remote', '--help', '-h'}):
+        return args
+    # The native setting honors an explicit --cd. A later user -c override
+    # also wins over this default. Never change remote-server working dirs.
+    result = args[:command + 1]
+    if '--all' not in options:
+        result += ['--all']
+    return ['-c', 'tui.resume_cwd="current"', *result, *args[command + 1:]]
+
+
+def real_codex():
+    wrapper = Path(__file__).resolve()
+    for directory in os.get_exec_path():
+        candidate = shutil.which('codex', path=directory or '.')
+        if candidate and Path(candidate).resolve() != wrapper:
+            return candidate
+    sys.exit('codex wrapper: no other codex binary in PATH')
+
+
+if __name__ == '__main__':
+    binary = real_codex()
+    os.execv(binary, [binary, *resume_defaults(sys.argv[1:])])

@@ -2,6 +2,14 @@
 {{ if not (dig "claude" "sync" false .) }}
 .local/bin/claude
 {{ end }}
+{{ if not (dig "codex" "sync" false .) }}
+.codex/sessions
+.codex/archived_sessions
+.local/bin/codex
+.local/bin/codex-sync-state
+.local/bin/codex-prune-sessions
+.chezmoiscripts/codex-sync.sh
+{{ end }}
 {{ if ne .chezmoi.os "darwin" }}
 .config/fish/functions/showfiles.fish
 .config/fish/functions/hidefiles.fish

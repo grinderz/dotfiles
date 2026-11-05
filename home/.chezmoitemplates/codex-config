@@ -1,0 +1,16 @@
+{{- $current := fromToml .chezmoi.stdin -}}
+{{- $managed := dict
+    "approval_policy" "on-request"
+    "sandbox_mode" "workspace-write"
+    "model_reasoning_effort" "high"
+    "notice" (dict "hide_full_access_warning" true)
+    "tui" (dict "theme" "base16-ocean-dark" "resume_cwd" "current" "notifications" (list "approval-requested"))
+-}}
+{{- /* Append once: keep additional developer instructions written locally. */ -}}
+{{- $attribution := "Do not add AI attribution or Co-authored-by trailers to commits or pull requests unless the user explicitly requests them." -}}
+{{- $instructions := get $current "developer_instructions" | default "" -}}
+{{- if not (contains $attribution $instructions) -}}
+{{- $instructions = printf "%s\n%s" $instructions $attribution | trim -}}
+{{- end -}}
+{{- $_ := set $managed "developer_instructions" $instructions -}}
+{{- mergeOverwrite $current $managed | toToml -}}

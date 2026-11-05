@@ -1,0 +1,7 @@
+#!/bin/sh
+# Move existing transcripts before chezmoi replaces directories with links.
+# Runs on every apply so a conflicting real directory always stops the apply.
+set -eu
+python3 - --codex-home "$HOME/.codex" "$HOME/{{ template "codex-sync-dir" . }}" <<'PY'
+{{ include "dot_local/bin/executable_codex-sync-state" }}
+PY

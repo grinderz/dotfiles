@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Desktop notifications for Codex hooks; best-effort delivery with a time limit.
+set -euo pipefail
+# Homebrew coreutils is unlinked; include its commands for GUI/SSH launches too.
+PATH="$PATH:/opt/homebrew/opt/coreutils/libexec/gnubin:/usr/local/opt/coreutils/libexec/gnubin"
+
+payload=$(cat)
+event=$(jq -r '.hook_event_name // ""' <<< "$payload" 2>/dev/null) || event=''
+case $event in
+    Stop) message='Done'; sound=Hero ;;
+    PermissionRequest) message='Approval needed'; sound=Glass ;;
+    *) printf '{}\n'; exit 0 ;;
+esac
+
+cwd=$(jq -r '.cwd // ""' <<< "$payload" 2>/dev/null) || cwd=''
+cwd=${cwd:-$PWD}
+while [[ $cwd == */ && $cwd != / ]]; do cwd=${cwd%/}; done
+project=${cwd##*/}
+message="$message in ${project:-/}"
+
+if [[ $(uname -s) == Darwin ]]; then
+    command=(terminal-notifier -title Codex -message "$message" -sound "$sound" -group codex)
+else
+    command=(notify-send --app-name=Codex -- Codex "$message")
+fi
+
+# GNU coreutils is installed on both platforms (gtimeout on macOS).
+if command -v timeout >/dev/null 2>&1; then
+    command=(timeout 5 "${command[@]}")
+elif command -v gtimeout >/dev/null 2>&1; then
+    command=(gtimeout 5 "${command[@]}")
+else
+    printf '{}\n'; exit 0
+fi
+"${command[@]}" </dev/null >/dev/null 2>&1 || :
+# Stop expects JSON; PermissionRequest treats {} as no permission decision.
+printf '{}\n'
