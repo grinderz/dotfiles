@@ -9,3 +9,12 @@ quote-style = "single"
 # infra/util.py is our own module; without this ruff files it as
 # third-party and wants it merged into the pyinfra import block
 known-first-party = ["util"]
+
+[lint.per-file-ignores]
+# chezmoi encodes the executable bit in the source filename.
+"home/**" = ["EXE001"]
+# Vendored ps_mem 3.14: preserve upstream style and compatibility branches.
+# Continue checking syntax, undefined names, unused imports and other errors.
+"home/dot_local/bin/executable_ps-mem.py" = [
+    "I", "UP", "SIM", "PLC0206", "PLR1730", "PLW0120", "E722",
+]

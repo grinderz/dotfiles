@@ -1,0 +1,5 @@
+#!/bin/sh
+# Merge managed defaults with local model, provider, trust and plugin state.
+# The merge template needs the input file from chezmoi, not the source config.
+set -eu
+exec chezmoi execute-template --with-stdin --file {{ joinPath .chezmoi.sourceDir ".chezmoitemplates/codex-config" | squote }}

@@ -4,9 +4,8 @@
 # ferdinandyb's opencode bash-guard.
 #
 # Claude Code calls it through `hooks.PreToolUse` in ~/.claude/settings.json.
-# Codex CLI has the same event (`pre_tool_use`) and generates its hook
-# schemas from Claude's, so the script fits it unchanged -- only the
-# declaration in ~/.codex/config.toml is still missing.
+# Codex CLI calls it through PreToolUse in ~/.codex/hooks.json. Its shell
+# and exec_command hooks use the same canonical Bash name and command field.
 #
 # The hook JSON arrives on stdin; a deny is a permissionDecision object on
 # stdout with exit 0. Anything not matched prints nothing and exits 0, so
@@ -42,7 +41,8 @@ cmd=$(jq -r '.tool_input.command // ""' <<<"$payload")
 
 # remote code straight into a shell: the one pattern where reviewing the
 # command tells you nothing about what will run
-if grep -Eq '(curl|wget|fetch)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k|da|)sh' <<<"$cmd"; then
+# BSD grep rejects empty alternatives; use an optional shell-name prefix.
+if grep -Eq '(curl|wget|fetch)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k|da)?sh' <<<"$cmd"; then
     deny "piping a download into a shell hides what actually runs; clone or download first, read it, then run it"
 fi
 

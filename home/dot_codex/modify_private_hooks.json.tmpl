@@ -1,0 +1,43 @@
+#!/bin/sh
+# Preserve local hook groups and append each managed group at most once.
+set -eu
+jq -n '[inputs] | (.[0] // {}) |
+    reduce ($managed.hooks | keys[]) as $event (.;
+        reduce $managed.hooks[$event][] as $group (.;
+            .hooks[$event] = (reduce $group as $candidate ((.hooks[$event] // []);
+                if index($candidate) == null then . + [$candidate] else . end))))' \
+    --argjson managed "$(cat <<'JSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [{
+          "type": "command",
+          "command": "\"{{ .chezmoi.homeDir }}/.local/bin/agent-bash-guard\"",
+          "timeout": 10
+        }]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "\"{{ .chezmoi.homeDir }}/.local/bin/codex-notify\"",
+          "timeout": 10
+        }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "\"{{ .chezmoi.homeDir }}/.local/bin/codex-notify\"",
+          "timeout": 10
+        }]
+      }
+    ]
+  }
+}
+JSON
+)"

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Codex uses the same picker as Claude, including archived transcripts.
+exec python3 "$HOME/.local/libexec/session-prune.py" --agent Codex \
+    --dir "$HOME/{{ template "codex-sync-dir" . }}/sessions" \
+    --dir "$HOME/{{ template "codex-sync-dir" . }}/archived_sessions" \
+    "$@"

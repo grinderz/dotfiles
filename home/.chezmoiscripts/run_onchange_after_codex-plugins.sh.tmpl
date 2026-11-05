@@ -1,0 +1,11 @@
+#!/bin/sh
+# Native plugin installation only: no Caveman proxy, npm installer or auth changes.
+# Plugin hooks still require review in Codex /hooks before they can execute.
+set -eu
+command -v codex >/dev/null 2>&1 || exit 0
+# A rendered wrapper may exist on a backup host without the real binary.
+codex --version >/dev/null 2>&1 || exit 0
+command -v node >/dev/null 2>&1 || { echo "codex plugins: Caveman requires node" >&2; exit 1; }
+codex plugin marketplace add JuliusBrussee/caveman \
+    --ref 2e068f735253cce28256744804785f01887d9646 --json
+codex plugin add caveman@caveman --json
