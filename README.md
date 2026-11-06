@@ -345,12 +345,23 @@ Authorization, configuration, SQLite databases (including WAL/SHM), prompt
 history and the session name index remain local. The existing `ai` folder's
 device list and disabled versioning apply to Codex too.
 
-Before applying the links, a script moves existing transcript directories
-with a rename, preserving open file handles. It refuses to proceed if
-both the local and shared directories already exist, if a link points
-elsewhere, or if a live move would cross filesystems. Reconcile existing
-directories first; do not let chezmoi replace real transcript directories.
-The helper is also available as `codex-sync-state ~/sync/ai/codex`.
+New sessions are written directly into the shared directories through
+these links. No migration script runs during `chezmoi apply`.
+
+Before the first apply on a machine, initialize the directories and move
+any existing transcripts once, using the `dir` configured above:
+
+```sh
+python3 home/dot_local/bin/executable_codex-sync-state ~/sync/ai/codex
+# After installation, the same helper is available as codex-sync-state.
+```
+
+Run this from the repository root. The helper uses a rename to preserve
+open file handles and refuses conflicting directories, links pointing
+elsewhere, or moves across filesystems. Reconcile conflicting histories
+first. The link templates refuse to replace real local directories or
+link to missing shared directories, so a later apply cannot silently
+discard transcripts. Machines with working links need no setup again.
 
 Session metadata retains absolute paths from its original machine. The
 `~/.local/bin/codex` wrapper adds `--all` and the native

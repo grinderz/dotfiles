@@ -1,1 +1,1 @@
-{{ .chezmoi.homeDir }}/{{ template "codex-sync-dir" . }}/archived_sessions
+{{ template "codex-session-link" (dict "root" . "name" "archived_sessions") }}

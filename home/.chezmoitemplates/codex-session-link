@@ -1,0 +1,16 @@
+{{- $home := .root.chezmoi.homeDir -}}
+{{- $store := joinPath $home (includeTemplate "codex-sync-dir" .root) -}}
+{{- /* Check both paths before chezmoi can replace either directory. */ -}}
+{{- range $name := list "sessions" "archived_sessions" -}}
+{{- $source := joinPath $home ".codex" $name -}}
+{{- $target := joinPath $store $name -}}
+{{- $existing := lstat $source -}}
+{{- if and $existing (ne $existing.type "symlink") -}}
+{{- fail (printf "%s contains local state; run codex-sync-state %s before applying session links" $source $store) -}}
+{{- end -}}
+{{- $directory := stat $target -}}
+{{- if not (and $directory $directory.isDir) -}}
+{{- fail (printf "%s must exist; run codex-sync-state %s once before applying session links" $target $store) -}}
+{{- end -}}
+{{- end -}}
+{{- joinPath $store .name -}}

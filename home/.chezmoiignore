@@ -8,7 +8,6 @@
 .local/bin/codex
 .local/bin/codex-sync-state
 .local/bin/codex-prune-sessions
-.chezmoiscripts/codex-sync.sh
 {{ end }}
 {{ if ne .chezmoi.os "darwin" }}
 .config/fish/functions/showfiles.fish
