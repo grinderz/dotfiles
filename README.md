@@ -364,18 +364,34 @@ link to missing shared directories, so a later apply cannot silently
 discard transcripts. Machines with working links need no setup again.
 
 Session metadata retains absolute paths from its original machine. The
-`~/.local/bin/codex` wrapper adds `--all` and the native
+`~/.local/bin/codex` wrapper adds the native
 `tui.resume_cwd="current"` default to interactive `resume`, so start in the
 local checkout and use:
 
 ```sh
 codex resume
+# Use the native picker for sessions from every project:
+codex resume --all
+# Resume the most recently modified session of this project, from either machine:
+codex resume --last
 # or resume a specific session (UUID is portable; locally assigned names may not be)
 codex resume SESSION_ID
 ```
 
-The picker includes sessions from all projects; resuming uses the current
-local checkout. Explicit `--cd` and `-c tui.resume_cwd='"session"'` still
+Without a session ID or `--all`, the wrapper reads active transcript headers
+and shows an fzf picker for the current directory. It compares the full
+path relative to the user home: `/home/alice/src/personal/dotfiles` and
+`/Users/bob/src/personal/dotfiles` both match `~/src/personal/dotfiles`.
+Different paths such as `~/work/dotfiles` stay separate; paths outside
+user homes match by their absolute path. `--cd` selects a different local
+directory, and `--last` chooses its most recently modified transcript.
+Archived sessions are excluded; automated sessions require
+`--include-non-interactive`. Enter resumes the selected UUID; Escape
+cancels without starting a session. The picker requires fzf and shows
+the first user message as the title. Transcripts and databases are never
+rewritten by the wrapper. Explicit IDs and `--all` use native Codex selection.
+Resuming uses the current local checkout.
+Explicit `--cd` and `-c tui.resume_cwd='"session"'` still
 take precedence. Remote connections and other subcommands pass through
 unchanged, including `exec resume`; `/resume` inside an already running
 Codex is also native behavior. The real binary can be called directly to

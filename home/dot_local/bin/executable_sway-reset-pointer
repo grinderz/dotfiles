@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""Release stale pointer buttons without restarting sway or closing windows."""
+
+import os
+import socket
+import struct
+import subprocess
+import sys
+
+
+def uints(*values):
+    return struct.pack("=" + "I" * len(values), *values)
+
+
+def string(value):
+    raw = value.encode() + b"\0"
+    return uints(len(raw)) + raw + b"\0" * (-len(raw) % 4)
+
+
+def send(connection, object_id, opcode, body=b""):
+    connection.sendall(uints(object_id, ((8 + len(body)) << 16) | opcode) + body)
+
+
+def receive(connection, size):
+    chunks = bytearray()
+    while len(chunks) < size:
+        chunk = connection.recv(size - len(chunks))
+        if not chunk:
+            raise RuntimeError("Wayland connection closed")
+        chunks.extend(chunk)
+    return chunks
+
+
+def roundtrip(connection, callback_id):
+    send(connection, 1, 0, uints(callback_id))  # wl_display.sync
+    while True:
+        object_id, header = struct.unpack("=II", receive(connection, 8))
+        size, opcode = header >> 16, header & 0xFFFF
+        if size < 8 or size % 4:
+            raise RuntimeError("Invalid Wayland event size")
+        body = receive(connection, size - 8)
+        if object_id == 1 and opcode == 0:  # wl_display.error
+            raise RuntimeError(bytes(body[12:]).split(b"\0", 1)[0].decode(errors="replace"))
+        if object_id == callback_id and opcode == 0:
+            return
+        yield object_id, opcode, body
+
+
+def reset():
+    display = os.environ.get("WAYLAND_DISPLAY")
+    if not display:
+        raise RuntimeError("Run this command inside the sway session")
+    if not os.path.isabs(display):
+        runtime = os.environ.get("XDG_RUNTIME_DIR")
+        if not runtime:
+            raise RuntimeError("XDG_RUNTIME_DIR is not set")
+        display = os.path.join(runtime, display)
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(5)
+        connection.connect(display)
+        send(connection, 1, 1, uints(2))  # wl_display.get_registry
+        manager = None
+        for object_id, opcode, body in roundtrip(connection, 3):
+            if object_id == 2 and opcode == 0:  # wl_registry.global
+                name, length = struct.unpack_from("=II", body)
+                interface = bytes(body[8:8 + length - 1]).decode()
+                if interface == "zwlr_virtual_pointer_manager_v1":
+                    manager = name
+        if manager is None:
+            raise RuntimeError("Compositor does not support virtual pointers")
+
+        # Protocol: wlr-protocols/unstable/wlr-virtual-pointer-unstable-v1.xml.
+        # Bind v1, then create a temporary pointer on the default seat.
+        send(connection, 2, 0, uints(manager) + string("zwlr_virtual_pointer_manager_v1") + uints(1, 4))
+        send(connection, 4, 0, uints(0, 5))
+        for button in range(272, 280):  # BTN_LEFT through BTN_TASK; release only
+            send(connection, 5, 2, uints(0, button, 0))
+            send(connection, 5, 4)  # frame
+        send(connection, 5, 0, uints(0, 256, 0))  # motion: one logical pixel
+        send(connection, 5, 4)
+        for _ in roundtrip(connection, 6):
+            pass
+        send(connection, 5, 8)  # destroy pointer
+        send(connection, 4, 1)  # destroy manager
+        for _ in roundtrip(connection, 7):
+            pass
+
+    subprocess.run(
+        ["swaymsg", "-q", "seat seat0 pointer_constraint escape"],
+        check=True, timeout=5,
+    )
+    print("Pointer buttons released; pointer constraint cleared.")
+
+
+if __name__ == "__main__":
+    try:
+        reset()
+    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        sys.exit(f"sway-reset-pointer: {error}")

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Defaults for resuming Syncthing-shared Codex sessions on this machine."""
 
+import json
 import os
 import shutil
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
+from uuid import UUID
 
 # Skip values of global options when finding the subcommand. In particular,
 # `codex -m resume` is a model selection, not the resume command.
@@ -16,32 +20,157 @@ VALUE_OPTIONS = {
 }
 
 
+def project_key(path, home=None):
+    """Compare paths under local or Linux/macOS user homes without the home prefix."""
+    path = Path(os.path.normpath(path))
+    home = (Path.home() if home is None else home).resolve()
+    if path.exists():
+        path = path.resolve()
+    if path.is_relative_to(home):
+        return ('home', *path.relative_to(home).parts)
+    if len(path.parts) >= 3 and path.parts[1] in ('home', 'Users'):
+        return ('home', *path.parts[3:])
+    return ('absolute', *path.parts)
+
+
+def clean(text):
+    return ' '.join(''.join(char if char.isprintable() else ' ' for char in str(text)).split())
+
+
+def session_metadata(path):
+    meta, title = {}, ''
+    # Read only a bounded header, including when a transcript is still being written.
+    with path.open('rb') as stream:
+        head = stream.read(512 * 1024)
+    for line in head.splitlines():
+        try:
+            record = json.loads(line)
+        except (ValueError, UnicodeDecodeError):
+            continue
+        if not isinstance(record, dict) or not isinstance(record.get('payload'), dict):
+            continue
+        payload = record['payload']
+        if record.get('type') == 'session_meta':
+            meta = payload
+        elif record.get('type') == 'event_msg':
+            if payload.get('type') == 'user_message':
+                title = payload.get('message', '')
+            elif payload.get('type') == 'item_completed':
+                item = payload.get('item', {})
+                if isinstance(item, dict) and item.get('type') in ('UserMessage', 'userMessage'):
+                    title = ' '.join(block.get('text', '') for block in item.get('content', [])
+                                     if isinstance(block, dict) and isinstance(block.get('text'), str))
+        if meta and title:
+            break
+    return meta, clean(title)
+
+
+def matching_sessions(cwd, *, home=None, codex_home=None, include_non_interactive=False):
+    home = Path.home() if home is None else home
+    if codex_home is None:
+        codex_home = Path(os.environ.get('CODEX_HOME') or home / '.codex').expanduser()
+    key = project_key(cwd, home)
+    items = {}
+    for path in (codex_home / 'sessions').rglob('rollout-*.jsonl'):
+        try:
+            meta, title = session_metadata(path)
+            sid = str(UUID(meta.get('id', '')))
+            if not path.name.endswith(f'-{sid}.jsonl') or not isinstance(meta.get('cwd'), str):
+                continue  # Ignore Syncthing conflict copies and malformed metadata.
+            if project_key(meta['cwd'], home) != key:
+                continue
+            source = meta.get('source')
+            if not include_non_interactive and (isinstance(source, dict) or source in ('exec', 'subagent')):
+                continue
+            modified = path.stat().st_mtime_ns
+            item = (modified, sid, title)
+            if sid not in items or modified > items[sid][0]:
+                items[sid] = item
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue  # An incomplete or removed transcript must not hide other sessions.
+    return sorted(items.values(), reverse=True)
+
+
+def select_session(items, cwd):
+    if not shutil.which('fzf'):
+        sys.exit('codex resume: fzf is required; use --all for the native picker')
+    if not sys.stdin.isatty():
+        sys.exit('codex resume: selection requires a terminal; use --last or a session UUID')
+    rows = []
+    for index, (modified, sid, title) in enumerate(items):
+        date = datetime.fromtimestamp(modified / 1e9).strftime('%Y-%m-%d %H:%M')
+        rows.append(f'{index}\t{date}  {sid[:8]}  {title[:180] or "(no message)"}')
+    env = {key: value for key, value in os.environ.items()
+           if key not in ('FZF_DEFAULT_OPTS', 'FZF_DEFAULT_OPTS_FILE', 'FZF_DEFAULT_COMMAND')}
+    result = subprocess.run([
+        'fzf', '--sync', '--no-sort', '--layout=reverse', '--delimiter=\t', '--with-nth=2..',
+        '--prompt=resume> ', '--header', f'Codex: {clean(cwd)}\nEnter resume | Esc cancel',
+    ], input='\n'.join(rows) + '\n', text=True, stdout=subprocess.PIPE, env=env, check=False)
+    if result.returncode in (1, 130):
+        sys.exit(0)
+    if result.returncode:
+        sys.exit(f'codex resume: fzf exited with status {result.returncode}')
+    try:
+        index = int(result.stdout.split('\t', 1)[0])
+        if not 0 <= index < len(items):
+            raise ValueError
+    except ValueError:
+        raise SystemExit('codex resume: invalid selection returned by fzf') from None
+    return items[index][1]
+
+
 def resume_defaults(args):
     command = None
     options = set()
+    positional = False
+    cwd = Path.cwd()
+    last = None
     i = 0
     while i < len(args):
         arg = args[i]
         if arg == '--':
+            positional = positional or i + 1 < len(args)
             break
         if arg.startswith('-'):
-            option = arg.split('=', 1)[0]
+            option, separator, value = arg.partition('=')
+            if len(option) > 2 and option[:2] in VALUE_OPTIONS:
+                option, value, separator = option[:2], option[2:] + ('=' + value if separator else ''), True
             options.add(option)
-            if arg in VALUE_OPTIONS:
-                i += 1
+            if option == '--last':
+                last = i
+            if option in VALUE_OPTIONS:
+                if not separator:
+                    i += 1
+                    if i >= len(args):
+                        return args  # Let the native parser report missing option values.
+                    value = args[i]
+                if option in ('-C', '--cd'):
+                    cwd = Path(value).expanduser().absolute()
         elif command is None:
             if arg != 'resume':
                 return args
             command = i
+        else:
+            positional = True
         i += 1
-    if command is None or options.intersection({'--remote', '--help', '-h'}):
+    if command is None or options.intersection({'--remote', '--help', '-h', '--version', '-V'}):
         return args
     # The native setting honors an explicit --cd. A later user -c override
     # also wins over this default. Never change remote-server working dirs.
-    result = args[:command + 1]
-    if '--all' not in options:
-        result += ['--all']
-    return ['-c', 'tui.resume_cwd="current"', *result, *args[command + 1:]]
+    default = ['-c', 'tui.resume_cwd="current"']
+    if positional or '--all' in options:
+        return [*default, *args]
+    cwd = cwd.resolve()
+    items = matching_sessions(cwd, include_non_interactive='--include-non-interactive' in options)
+    if not items:
+        sys.exit(f'codex resume: no matching sessions for {cwd}; use --all to see other projects')
+    sid = items[0][1] if last is not None else select_session(items, cwd)
+    # Insert the UUID before any -- separator, and replace --last rather than
+    # relying on the native cwd filter, which only recognizes this machine's path.
+    result = [arg for index, arg in enumerate(args) if index != last]
+    command -= int(last is not None and last < command)
+    result.insert(command + 1, sid)
+    return [*default, *result]
 
 
 def real_codex():
