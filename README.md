@@ -228,6 +228,15 @@ appended once. TOML is reserialized, so local comments are not preserved.
 `~/.codex/AGENTS.md` links to the same shared global instructions as
 Claude's `CLAUDE.md`.
 
+The managed config disables shared app-server daemon autostart with
+`features.daemon_auto_start = false`. After applying, close existing Codex
+clients and run `codex app-server daemon stop` once to stop an already
+running daemon. Subsequent CLI sessions run without starting the shared
+background server. To bypass a daemon that is still running, use
+`codex --no-daemon` (or `codex --no-daemon resume SESSION_ID`). A session
+still loaded by another server must be released before it can be resumed
+in a separate process.
+
 Codex desktop notifications use `Stop` and `PermissionRequest` hooks.
 They report completion or approval needed, without sending conversation
 contents or shell commands to the desktop notification. Linux uses

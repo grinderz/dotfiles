@@ -3,6 +3,7 @@
     "approval_policy" "on-request"
     "sandbox_mode" "workspace-write"
     "model_reasoning_effort" "high"
+    "features" (dict "daemon_auto_start" false)
     "notice" (dict "hide_full_access_warning" true)
     "tui" (dict "theme" "base16-ocean-dark" "resume_cwd" "current" "notifications" (list "approval-requested"))
 -}}

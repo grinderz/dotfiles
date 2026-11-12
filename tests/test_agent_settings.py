@@ -111,6 +111,9 @@ class ConfigMergeTest(unittest.TestCase):
     def test_merge_preserves_local_config_and_is_idempotent(self):
         fixture = '''model = "local-model"
 developer_instructions = "Keep my local instruction."
+[features]
+daemon_auto_start = true
+shell_snapshot = false
 [projects."/tmp/project"]
 trust_level = "trusted"
 [tui]
@@ -124,6 +127,8 @@ enabled = true
         self.assertEqual(data['projects'], tomllib.loads(fixture)['projects'])
         self.assertEqual(data['plugins'], tomllib.loads(fixture)['plugins'])
         self.assertTrue(data['tui']['screen_reader_detection_done'])
+        self.assertFalse(data['features']['daemon_auto_start'])
+        self.assertFalse(data['features']['shell_snapshot'])
         self.assertIn('Keep my local instruction.', data['developer_instructions'])
         self.assertEqual(data['approval_policy'], 'on-request')
         self.assertEqual(tomllib.loads(self.merge(result)), data)
