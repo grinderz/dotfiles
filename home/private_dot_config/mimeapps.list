@@ -30,6 +30,11 @@ application/x-bzip2=yazi.desktop
 application/vnd.rar=yazi.desktop
 application/x-rar=yazi.desktop
 x-scheme-handler/webcal=brave-browser.desktop
+text/html=helium.desktop
+x-scheme-handler/http=helium.desktop
+x-scheme-handler/https=helium.desktop
+x-scheme-handler/about=helium.desktop
+x-scheme-handler/unknown=helium.desktop
 
 [Added Associations]
 x-scheme-handler/mailto=aerc.desktop;
