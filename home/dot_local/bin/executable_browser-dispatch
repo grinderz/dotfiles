@@ -1,0 +1,19 @@
+#!/bin/sh
+# Default HTTP(S) handler on Linux/Sway. Flatpak's OpenURI portal does
+# not pass the source app to the browser, so use the focused window as
+# a best effort: AyuGram -> Brave, everything else -> Helium. Switching
+# focus before this runs can change the result.
+set -eu
+
+[ "$#" -gt 0 ] || exit 0
+
+focused_app=
+if [ -n "${SWAYSOCK:-}" ]; then
+    focused_app=$(swaymsg -t get_tree 2>/dev/null |
+        jq -r '.. | objects | select(.focused? == true) | .app_id // empty' 2>/dev/null) || focused_app=
+fi
+
+if [ "$focused_app" = com.ayugram.desktop ]; then
+    exec brave -- "$@"
+fi
+exec helium-browser -- "$@"

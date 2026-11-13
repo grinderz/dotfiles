@@ -110,6 +110,7 @@ Library
 .local/bin/notify-toggle
 .local/bin/flatpak-bundle-diff
 .local/bin/flatpak-bundle-update
+.local/bin/browser-dispatch
 .config/flatpak-bundles
 # mail stack (aerc/mbsync/notmuch) and its helpers are linux-only here
 .config/goimapnotify

@@ -979,6 +979,19 @@ creates), so the trust is in the release page alone. A new machine
 installs the first bundle by hand (`sudo flatpak install FILE.flatpak`,
 the file via `flatpak-bundle-update URL`), the conf covers the updates.
 
+### Browser for links from AyuGram (Linux/Sway)
+
+HTTP and HTTPS in `mimeapps.list` go through `browser-dispatch`: Brave
+when the focused Sway window has app ID `com.ayugram.desktop`, Helium
+otherwise (also when Sway cannot be queried). AyuGram is a Flatpak;
+the OpenURI portal launches the browser without passing along the
+source app, and its HTTP(S) handling prefers the system default over
+the per-app choice in `desktop-used-apps`. The dispatcher therefore
+uses focus as a heuristic: switching windows before it runs can send
+an AyuGram link to Helium, and a background app opening a link while
+AyuGram is focused will use Brave. No AyuGram restart is needed after
+`chezmoi apply`.
+
 ### Claude Code state shared between machines
 
 Claude Code keeps sessions (`--resume`), auto memory and todos per project

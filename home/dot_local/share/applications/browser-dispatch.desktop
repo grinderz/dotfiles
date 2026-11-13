@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Browser dispatcher
+Comment=Open links in Brave when AyuGram is focused, otherwise Helium
+Exec=browser-dispatch %u
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/http;x-scheme-handler/https;
+Categories=Network;WebBrowser;
