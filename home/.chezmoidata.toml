@@ -49,3 +49,13 @@ ok = "9ece6a"
 [paths]
 mail = ".local/share/mail"
 msmtp_queue = ".local/state/msmtpq/queue"
+
+# Shared file and subprocess restrictions for Claude Code and Codex.
+[agents]
+deny_paths = [
+    "~/.local/share/com.follow.clash",
+    "~/Library/Application Support/com.follow.clash",
+    "~/Library/Preferences/com.follow.clash.plist",
+    "~/Library/Application Support/FlClashX",
+    "~/Library/Preferences/com.pluralplay.FlClashX.plist",
+]

@@ -151,6 +151,71 @@ enabled = true
         self.assertEqual(merged['hooks']['Stop'][0], fixture['hooks']['Stop'][0])
         self.assertEqual(len(merged['hooks']['Stop']), 2)
 
+    def test_codex_denies_flclash_and_migrates_workspace_options(self):
+        fixture = '''sandbox_mode = "workspace-write"
+[sandbox_workspace_write]
+writable_roots = ["/tmp/extra-project"]
+network_access = true
+exclude_tmpdir_env_var = true
+exclude_slash_tmp = true
+[permissions.custom]
+extends = ":read-only"
+'''
+        rendered = self.merge(fixture)
+        data = tomllib.loads(rendered)
+        self.assertNotIn('sandbox_mode', data)
+        self.assertNotIn('sandbox_workspace_write', data)
+        profile = data['permissions'][data['default_permissions']]
+        self.assertEqual(profile['extends'], ':workspace')
+        self.assertEqual(profile['workspace_roots'], {'/tmp/extra-project': True})
+        self.assertTrue(profile['network']['enabled'])
+        self.assertEqual(profile['filesystem'][':tmpdir'], 'read')
+        self.assertEqual(profile['filesystem'][':slash_tmp'], 'read')
+        paths = tomllib.loads((ROOT / 'home/.chezmoidata.toml').read_text())['agents']['deny_paths']
+        for path in paths:
+            self.assertEqual(profile['filesystem'][path], 'deny')
+        self.assertEqual(data['permissions']['custom'], {'extends': ':read-only'})
+        self.assertEqual(tomllib.loads(self.merge(rendered)), data)
+
+    @unittest.skipUnless(shutil.which('jq'), 'Claude settings merge requires jq')
+    def test_claude_denies_flclash_without_losing_local_restrictions(self):
+        script = subprocess.check_output([
+            'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
+            '--source', str(ROOT / 'home'), 'execute-template', '--file',
+            str(ROOT / 'home/dot_claude/modify_settings.json.tmpl'),
+        ], text=True)
+        fixture = {
+            'model': 'local-model',
+            'permissions': {'allow': ['Bash(make test)'], 'deny': ['Read(~/secret/**)']},
+            'sandbox': {
+                'enabled': False, 'excludedCommands': ['python3'],
+                'filesystem': {'disabled': True, 'denyRead': ['~/private'], 'denyWrite': ['~/archive']},
+            },
+        }
+        first = subprocess.check_output(['sh', '-c', script], input=json.dumps(fixture), text=True)
+        second = subprocess.check_output(['sh', '-c', script], input=first, text=True)
+        data = json.loads(first)
+        self.assertEqual(data, json.loads(second))
+        self.assertEqual(data['model'], 'local-model')
+        self.assertEqual(data['permissions']['allow'], fixture['permissions']['allow'])
+        self.assertIn('Read(~/secret/**)', data['permissions']['deny'])
+        sandbox = data['sandbox']
+        self.assertTrue(sandbox['enabled'])
+        self.assertTrue(sandbox['failIfUnavailable'])
+        self.assertFalse(sandbox['autoAllowBashIfSandboxed'])
+        self.assertFalse(sandbox['allowUnsandboxedCommands'])
+        self.assertEqual(sandbox['excludedCommands'], [])
+        self.assertFalse(sandbox['filesystem']['disabled'])
+        self.assertIn('~/private', sandbox['filesystem']['denyRead'])
+        self.assertIn('~/archive', sandbox['filesystem']['denyWrite'])
+        paths = tomllib.loads((ROOT / 'home/.chezmoidata.toml').read_text())['agents']['deny_paths']
+        for path in paths:
+            pattern = path if path.endswith('.plist') else path + '/**'
+            for tool in ('Read', 'Edit'):
+                self.assertIn(f'{tool}({pattern})', data['permissions']['deny'])
+            self.assertIn(path, sandbox['filesystem']['denyRead'])
+            self.assertIn(path, sandbox['filesystem']['denyWrite'])
+
 
 if __name__ == '__main__':
     unittest.main()

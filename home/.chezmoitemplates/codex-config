@@ -1,8 +1,32 @@
 {{- $current := fromToml .chezmoi.stdin -}}
+{{- $denied := dict -}}
+{{- range .agents.deny_paths -}}
+{{- $_ := set $denied . "deny" -}}
+{{- end -}}
+{{- $profile := dict "extends" ":workspace" "filesystem" $denied -}}
+{{- /* Move the old workspace options: sandbox_mode overrides profiles. */ -}}
+{{- $legacy := get $current "sandbox_workspace_write" | default dict -}}
+{{- $roots := dict -}}
+{{- range get $legacy "writable_roots" | default list -}}
+{{- $_ := set $roots . true -}}
+{{- end -}}
+{{- if $roots -}}{{- $_ := set $profile "workspace_roots" $roots -}}{{- end -}}
+{{- if hasKey $legacy "network_access" -}}
+{{- $_ := set $profile "network" (dict "enabled" $legacy.network_access) -}}
+{{- end -}}
+{{- range $path, $option := dict ":tmpdir" "exclude_tmpdir_env_var" ":slash_tmp" "exclude_slash_tmp" -}}
+{{- if get $legacy $option -}}{{- $_ := set $denied $path "read" -}}{{- end -}}
+{{- end -}}
+{{- $_ := unset $current "sandbox_mode" -}}
+{{- $_ := unset $current "sandbox_workspace_write" -}}
 {{- $managed := dict
     "approval_policy" "on-request"
-    "sandbox_mode" "workspace-write"
+    "default_permissions" "dotfiles"
+    "permissions" (dict "dotfiles" $profile)
     "model_reasoning_effort" "high"
+    "analytics" (dict "enabled" false)
+    "feedback" (dict "enabled" false)
+    "otel" (dict "exporter" "none" "trace_exporter" "none" "metrics_exporter" "none" "log_user_prompt" false)
     "features" (dict "daemon_auto_start" false)
     "notice" (dict "hide_full_access_warning" true)
     "tui" (dict "theme" "base16-ocean-dark" "resume_cwd" "current" "notifications" (list "approval-requested"))

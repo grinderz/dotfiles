@@ -3,15 +3,48 @@
 # /config, allowlist additions, plugin toggles), so a plain template would
 # wipe them on every apply. chezmoi hands the current file on stdin; the
 # managed keys below are merged over it and everything else is kept. Keys
-# are replaced whole, hence no "allow" list here: it belongs to the machine.
-jq -n '[inputs] | (.[0] // {}) * $managed' --argjson managed "$(cat <<'JSON'
+# are replaced whole except deny lists, which keep local restrictions too.
+{{- $rules := list }}
+{{- range .agents.deny_paths }}
+{{- $pattern := . }}
+{{- if not (hasSuffix ".plist" .) }}
+{{- $pattern = printf "%s/**" . }}
+{{- end }}
+{{- $rules = append $rules (printf "Read(%s)" $pattern) }}
+{{- $rules = append $rules (printf "Edit(%s)" $pattern) }}
+{{- end }}
+jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
+    .permissions.deny = (($current.permissions.deny // []) + $managed.permissions.deny | unique) |
+    .sandbox.filesystem.denyRead = (($current.sandbox.filesystem.denyRead // []) + $managed.sandbox.filesystem.denyRead | unique) |
+    .sandbox.filesystem.denyWrite = (($current.sandbox.filesystem.denyWrite // []) + $managed.sandbox.filesystem.denyWrite | unique)' \
+    --argjson managed "$(cat <<'JSON'
 {
+  "env": {
+    "DISABLE_TELEMETRY": "1",
+    "DISABLE_ERROR_REPORTING": "1",
+    "DISABLE_FEEDBACK_COMMAND": "1",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "0"
+  },
   "attribution": {
     "commit": "",
     "pr": ""
   },
   "permissions": {
-    "defaultMode": "default"
+    "defaultMode": "default",
+    "deny": {{ $rules | toJson }}
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true,
+    "excludedCommands": [],
+    "filesystem": {
+      "disabled": false,
+      "denyRead": {{ .agents.deny_paths | toJson }},
+      "denyWrite": {{ .agents.deny_paths | toJson }}
+    }
   },
   "hooks": {
     "PreToolUse": [
