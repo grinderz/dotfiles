@@ -3,20 +3,34 @@
 # /config, allowlist additions, plugin toggles), so a plain template would
 # wipe them on every apply. chezmoi hands the current file on stdin; the
 # managed keys below are merged over it and everything else is kept. Keys
-# are replaced whole except deny lists, which keep local restrictions too.
+# are replaced whole except deny lists, which keep local restrictions too
+# while removing managed paths for the other OS.
 {{- $rules := list }}
-{{- range .agents.deny_paths }}
+{{- $otherRules := list }}
+{{- $otherPaths := list }}
+{{- $paths := get .agents.deny_paths .chezmoi.os | default list }}
+{{- range $os, $osPaths := .agents.deny_paths }}
+{{- range $osPaths }}
 {{- $pattern := . }}
 {{- if not (hasSuffix ".plist" .) }}
 {{- $pattern = printf "%s/**" . }}
 {{- end }}
+{{- if eq $os $.chezmoi.os }}
 {{- $rules = append $rules (printf "Read(%s)" $pattern) }}
 {{- $rules = append $rules (printf "Edit(%s)" $pattern) }}
+{{- else }}
+{{- $otherPaths = append $otherPaths . }}
+{{- $otherRules = append $otherRules (printf "Read(%s)" $pattern) }}
+{{- $otherRules = append $otherRules (printf "Edit(%s)" $pattern) }}
+{{- end }}
+{{- end }}
 {{- end }}
 jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
-    .permissions.deny = (($current.permissions.deny // []) + $managed.permissions.deny | unique) |
-    .sandbox.filesystem.denyRead = (($current.sandbox.filesystem.denyRead // []) + $managed.sandbox.filesystem.denyRead | unique) |
-    .sandbox.filesystem.denyWrite = (($current.sandbox.filesystem.denyWrite // []) + $managed.sandbox.filesystem.denyWrite | unique)' \
+    .permissions.deny = ((($current.permissions.deny // []) + $managed.permissions.deny | unique) - $otherRules) |
+    .sandbox.filesystem.denyRead = ((($current.sandbox.filesystem.denyRead // []) + $managed.sandbox.filesystem.denyRead | unique) - $otherPaths) |
+    .sandbox.filesystem.denyWrite = ((($current.sandbox.filesystem.denyWrite // []) + $managed.sandbox.filesystem.denyWrite | unique) - $otherPaths)' \
+    --argjson otherRules {{ $otherRules | toJson | squote }} \
+    --argjson otherPaths {{ $otherPaths | toJson | squote }} \
     --argjson managed "$(cat <<'JSON'
 {
   "env": {
@@ -43,8 +57,8 @@ jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
     "excludedCommands": [],
     "filesystem": {
       "disabled": false,
-      "denyRead": {{ .agents.deny_paths | toJson }},
-      "denyWrite": {{ .agents.deny_paths | toJson }}
+      "denyRead": {{ $paths | toJson }},
+      "denyWrite": {{ $paths | toJson }}
     }
   },
   "hooks": {

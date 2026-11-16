@@ -333,6 +333,16 @@ label:focus {
     padding: 0 6px;
 }
 
+/* Waybar 0.16 wraps custom labels in a box; keep the group's padding
+ * without adding the label's default 10px on each side. */
+#outside > widget > box > label.module,
+#work > widget > box > label.module,
+#devices > widget > box > label.module,
+#system > widget > box > label.module,
+#toggles > widget > box > label.module {
+    padding: 0;
+}
+
 /* drawers (devices, toggles): children slide out of the handle on hover */
 .drawer-child {
     background-color: rgba(0, 0, 0, 0.2);

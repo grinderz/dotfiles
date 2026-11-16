@@ -1,7 +1,16 @@
 {{- $current := fromToml .chezmoi.stdin -}}
 {{- $denied := dict -}}
-{{- range .agents.deny_paths -}}
+{{- range get .agents.deny_paths .chezmoi.os | default list -}}
 {{- $_ := set $denied . "deny" -}}
+{{- end -}}
+{{- /* Drop old managed paths for the other OS, preserving local rules. */ -}}
+{{- $filesystem := dig "permissions" "dotfiles" "filesystem" (dict) $current -}}
+{{- range $os, $paths := .agents.deny_paths -}}
+{{- if ne $os $.chezmoi.os -}}
+{{- range $paths -}}
+{{- $_ := unset $filesystem . -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $profile := dict "extends" ":workspace" "filesystem" $denied -}}
 {{- /* Move the old workspace options: sandbox_mode overrides profiles. */ -}}

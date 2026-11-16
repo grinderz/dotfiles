@@ -4,6 +4,10 @@
        land in the repo */ -}}
 {{- $gitlabExclude := "" -}}
 {{- if hasKey . "work" }}{{ if hasKey .work "gitlab_exclude" }}{{ $gitlabExclude = .work.gitlab_exclude }}{{ end }}{{ end }}
+{{- $thinkbookFanctl := false -}}
+{{- if and (eq .chezmoi.os "linux") (stat "/sys/class/dmi/id/sys_vendor") (stat "/sys/class/dmi/id/product_name") -}}
+{{- $thinkbookFanctl = and (eq (include "/sys/class/dmi/id/sys_vendor" | trim) "LENOVO") (eq (include "/sys/class/dmi/id/product_name" | trim) "21LG") -}}
+{{- end }}
 {
     // "layer": "top", // Waybar at top layer
     "position": "bottom",
@@ -312,7 +316,8 @@
         "exec": "$HOME/.local/bin/system-stats",
         "return-type": "json",
         "format": "{}",
-        "interval": 60
+        "interval": 60{{ if $thinkbookFanctl }},
+        "on-click": "$HOME/.local/bin/system-stats fans"{{ end }}
     },
     // on/off switches folded behind one icon next to the power button:
     // hover the gear and the drawer slides the switches out, each with

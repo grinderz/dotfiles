@@ -13,6 +13,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NOTIFY = ROOT / 'home/dot_local/bin/executable_codex-notify'
 GUARD = ROOT / 'home/dot_local/bin/executable_agent-bash-guard'
+DENY_PATHS = {
+    'linux': ['~/.local/share/com.follow.clash'],
+    'darwin': [
+        '~/Library/Application Support/com.follow.clash',
+        '~/Library/Preferences/com.follow.clash.plist',
+        '~/Library/Application Support/FlClashX',
+        '~/Library/Preferences/com.pluralplay.FlClashX.plist',
+    ],
+}
 TIMEOUT = shutil.which('timeout') or shutil.which('gtimeout') or next((
     str(path) for path in (Path('/opt/homebrew/opt/coreutils/libexec/gnubin/timeout'),
                           Path('/usr/local/opt/coreutils/libexec/gnubin/timeout'))
@@ -98,15 +107,64 @@ class BashGuardTest(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which('chezmoi'), 'merge tests require chezmoi')
 class ConfigMergeTest(unittest.TestCase):
-    def merge(self, text):
+    def merge(self, text, system='linux'):
         with tempfile.TemporaryDirectory() as directory:
             return subprocess.check_output([
                 'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
                 '--source', str(ROOT / 'home'),
                 '--persistent-state', str(Path(directory) / 'state.db'),
+                '--override-data', json.dumps({'chezmoi': {'os': system}}),
                 'execute-template', '--with-stdin', '--file',
                 str(ROOT / 'home/.chezmoitemplates/codex-config'),
             ], text=True, input=text)
+
+    def claude_script(self, system='linux'):
+        return subprocess.check_output([
+            'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
+            '--source', str(ROOT / 'home'),
+            '--override-data', json.dumps({'chezmoi': {'os': system}}),
+            'execute-template', '--file',
+            str(ROOT / 'home/dot_claude/modify_settings.json.tmpl'),
+        ], text=True)
+
+    def test_codex_migrates_foreign_managed_paths_for_each_os(self):
+        old_paths = [path for paths in DENY_PATHS.values() for path in paths]
+        fixture = '[permissions.dotfiles.filesystem]\n' + '\n'.join(
+            f'"{path}" = "deny"' for path in [*old_paths, '~/private'])
+        for system, expected in DENY_PATHS.items():
+            with self.subTest(system=system):
+                rendered = self.merge(fixture, system)
+                data = tomllib.loads(rendered)
+                filesystem = data['permissions']['dotfiles']['filesystem']
+                self.assertEqual(filesystem, dict.fromkeys([*expected, '~/private'], 'deny'))
+                self.assertEqual(tomllib.loads(self.merge(rendered, system)), data)
+
+    @unittest.skipUnless(shutil.which('jq'), 'Claude settings merge requires jq')
+    def test_claude_migrates_foreign_managed_paths_for_each_os(self):
+        old_paths = [path for paths in DENY_PATHS.values() for path in paths]
+
+        def rules(paths):
+            return [f'{tool}({path if path.endswith(".plist") else path + "/**"})'
+                    for path in paths for tool in ('Read', 'Edit')]
+
+        fixture = {
+            'permissions': {'deny': [*rules(old_paths), 'Read(~/secret/**)']},
+            'sandbox': {'filesystem': {
+                'denyRead': [*old_paths, '~/private'],
+                'denyWrite': [*old_paths, '~/archive'],
+            }},
+        }
+        for system, expected in DENY_PATHS.items():
+            with self.subTest(system=system):
+                script = self.claude_script(system)
+                first = subprocess.check_output(['sh', '-c', script], input=json.dumps(fixture), text=True)
+                second = subprocess.check_output(['sh', '-c', script], input=first, text=True)
+                data = json.loads(first)
+                self.assertEqual(data, json.loads(second))
+                self.assertEqual(set(data['permissions']['deny']), {*rules(expected), 'Read(~/secret/**)'})
+                filesystem = data['sandbox']['filesystem']
+                self.assertEqual(set(filesystem['denyRead']), {*expected, '~/private'})
+                self.assertEqual(set(filesystem['denyWrite']), {*expected, '~/archive'})
 
     def test_merge_preserves_local_config_and_is_idempotent(self):
         fixture = '''model = "local-model"
@@ -171,7 +229,7 @@ extends = ":read-only"
         self.assertTrue(profile['network']['enabled'])
         self.assertEqual(profile['filesystem'][':tmpdir'], 'read')
         self.assertEqual(profile['filesystem'][':slash_tmp'], 'read')
-        paths = tomllib.loads((ROOT / 'home/.chezmoidata.toml').read_text())['agents']['deny_paths']
+        paths = DENY_PATHS['linux']
         for path in paths:
             self.assertEqual(profile['filesystem'][path], 'deny')
         self.assertEqual(data['permissions']['custom'], {'extends': ':read-only'})
@@ -179,11 +237,7 @@ extends = ":read-only"
 
     @unittest.skipUnless(shutil.which('jq'), 'Claude settings merge requires jq')
     def test_claude_denies_flclash_without_losing_local_restrictions(self):
-        script = subprocess.check_output([
-            'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
-            '--source', str(ROOT / 'home'), 'execute-template', '--file',
-            str(ROOT / 'home/dot_claude/modify_settings.json.tmpl'),
-        ], text=True)
+        script = self.claude_script()
         fixture = {
             'model': 'local-model',
             'permissions': {'allow': ['Bash(make test)'], 'deny': ['Read(~/secret/**)']},
@@ -208,7 +262,7 @@ extends = ":read-only"
         self.assertFalse(sandbox['filesystem']['disabled'])
         self.assertIn('~/private', sandbox['filesystem']['denyRead'])
         self.assertIn('~/archive', sandbox['filesystem']['denyWrite'])
-        paths = tomllib.loads((ROOT / 'home/.chezmoidata.toml').read_text())['agents']['deny_paths']
+        paths = DENY_PATHS['linux']
         for path in paths:
             pattern = path if path.endswith('.plist') else path + '/**'
             for tool in ('Read', 'Edit'):

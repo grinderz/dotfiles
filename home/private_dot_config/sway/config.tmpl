@@ -149,6 +149,9 @@ client.urgent           #{{ .theme.critical }} #{{ .theme.critical }} #{{ .theme
 # Volume mixer opened from the waybar pulseaudio module
 for_window [app_id="mixer"] floating enable
 
+# One-shot fan readings opened by clicking the temperature in Waybar.
+for_window [app_id="fan-status"] floating enable, move position center
+
 # Screenshot annotation (smart-screenshot annotate): over the screen, not
 # a tile; the id is set in satty/config.toml
 for_window [app_id="org.satty.satty"] floating enable

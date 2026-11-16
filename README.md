@@ -561,6 +561,12 @@ Per deploy, once per host:
   `~/.config/git/`, renamed to `config.work.inc`
 * **bin** (chezmoi) — after, macOS: delete `/usr/local/bin/okd-token.sh` from
   the old ansible role, superseded by `~/.local/bin/okd-token.sh`
+* **thinkbook-fanctl** (Waybar integration) — run `make install` in the
+  separate project's checkout. On Lenovo 21LG, clicking the temperature
+  opens a floating Foot window with one read-only status query showing the
+  control mode and actual/target RPM for both fans. Sudo authentication
+  happens in that window; Enter or Escape closes it. Regular temperature
+  updates do not query the fans; no background poller is started.
 * **openconnect** — after, macOS: delete old `/usr/local/bin/vpn-*.sh`,
   superseded by `~/.local/bin/vpn-*.sh`
 * **backup-boot** — before (hosts with `bootmirror_mountpoint`): prepare the

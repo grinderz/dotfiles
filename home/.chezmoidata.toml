@@ -51,9 +51,11 @@ mail = ".local/share/mail"
 msmtp_queue = ".local/state/msmtpq/queue"
 
 # Shared file and subprocess restrictions for Claude Code and Codex.
-[agents]
-deny_paths = [
+[agents.deny_paths]
+linux = [
     "~/.local/share/com.follow.clash",
+]
+darwin = [
     "~/Library/Application Support/com.follow.clash",
     "~/Library/Preferences/com.follow.clash.plist",
     "~/Library/Application Support/FlClashX",

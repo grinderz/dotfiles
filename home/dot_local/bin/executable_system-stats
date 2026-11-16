@@ -3,6 +3,29 @@
 # cpu/load/mem/swap detail in the tooltip. Replaces the separate memory
 # and temperature modules.
 
+if [ "${1:-}" = fans ]; then
+    # A foreground window permits sudo authentication and one telemetry query.
+    # The regular status path below never invokes the fan utility.
+    # shellcheck disable=SC2016
+    exec foot --app-id=fan-status --title='ThinkBook fans' \
+        --window-size-chars=68x12 --override=key-bindings.quit=Escape sh -c '
+        printf "ThinkBook fans\n\n"
+        if fanctl=$(command -v thinkbook-fanctl); then
+            if data=$(sudo -- "$fanctl" status --json); then
+                printf "%s\n" "$data" | jq -r '\''
+                    "Control: \(.control_mode)",
+                    (.fans[] | "Fan \(.id): \(.rpm) RPM (target \(.target_rpm) RPM)")
+                '\''
+            fi
+        else
+            printf "thinkbook-fanctl is not installed.\n"
+            printf "Install it from the project: make install\n"
+        fi
+        printf "\nEnter or Escape to close.\n"
+        read -r _
+    '
+fi
+
 # k10temp Tctl; hwmon indexes shuffle between boots, find by name
 temp=0
 for h in /sys/class/hwmon/*; do
