@@ -209,6 +209,38 @@ enabled = true
         self.assertEqual(merged['hooks']['Stop'][0], fixture['hooks']['Stop'][0])
         self.assertEqual(len(merged['hooks']['Stop']), 2)
 
+    def test_codex_enables_network_by_default(self):
+        for system, denied in DENY_PATHS.items():
+            with self.subTest(system=system):
+                rendered = self.merge('', system)
+                data = tomllib.loads(rendered)
+                profile = data['permissions'][data['default_permissions']]
+                self.assertTrue(profile['network']['enabled'])
+                for path in denied:
+                    self.assertEqual(profile['filesystem'][path], 'deny')
+                self.assertEqual(tomllib.loads(self.merge(rendered, system)), data)
+
+    def test_codex_preserves_explicit_profile_network_settings(self):
+        fixture = '''[permissions.dotfiles.network]
+enabled = false
+[permissions.dotfiles.network.domains]
+"git.example.com" = "allow"
+'''
+        rendered = self.merge(fixture)
+        data = tomllib.loads(rendered)
+        profile = data['permissions'][data['default_permissions']]
+        self.assertFalse(profile['network']['enabled'])
+        self.assertEqual(profile['network']['domains'], {'git.example.com': 'allow'})
+        self.assertEqual(tomllib.loads(self.merge(rendered)), data)
+
+    def test_codex_preserves_explicit_legacy_network_disable(self):
+        fixture = '[sandbox_workspace_write]\nnetwork_access = false\n'
+        rendered = self.merge(fixture)
+        data = tomllib.loads(rendered)
+        self.assertFalse(data['permissions']['dotfiles']['network']['enabled'])
+        self.assertNotIn('sandbox_workspace_write', data)
+        self.assertEqual(tomllib.loads(self.merge(rendered)), data)
+
     def test_codex_denies_flclash_and_migrates_workspace_options(self):
         fixture = '''sandbox_mode = "workspace-write"
 [sandbox_workspace_write]
