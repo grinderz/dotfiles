@@ -43,9 +43,13 @@
 -}}
 {{- /* Append once: keep additional developer instructions written locally. */ -}}
 {{- $attribution := "Do not add AI attribution or Co-authored-by trailers to commits or pull requests unless the user explicitly requests them." -}}
+{{- $clarification := "Before starting any new task, ask at least one concise clarifying question about the goal, scope, or constraints. Wait for my answer before running tools, editing files, or taking other actions." -}}
 {{- $instructions := get $current "developer_instructions" | default "" -}}
 {{- if not (contains $attribution $instructions) -}}
 {{- $instructions = printf "%s\n%s" $instructions $attribution | trim -}}
+{{- end -}}
+{{- if not (contains $clarification $instructions) -}}
+{{- $instructions = printf "%s\n%s" $instructions $clarification | trim -}}
 {{- end -}}
 {{- $_ := set $managed "developer_instructions" $instructions -}}
 {{- mergeOverwrite $current $managed | toToml -}}
