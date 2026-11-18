@@ -1,0 +1,4 @@
+function __aur_repos
+    set -l parent '{{ includeTemplate "aur-repo-parent" . | replace "\\" "\\\\" | replace "'" "\\'" }}'
+    printf '%s\n' "$parent/aur" "$parent/aur-pub"
+end

@@ -23,10 +23,10 @@ class CodexResumeTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.home = self.root / 'home'
         self.codex_home = self.home / '.codex'
-        self.project = self.home / 'src/personal/dotfiles'
+        self.project = self.home / 'projects/demo'
         self.project.mkdir(parents=True)
 
-    def transcript(self, sid=FIRST, cwd='/Users/test/src/personal/dotfiles', source='cli',
+    def transcript(self, sid=FIRST, cwd='/Users/test/projects/demo', source='cli',
                    title='Fix startup', archived=False, modified=100):
         root = self.codex_home / ('archived_sessions' if archived else 'sessions') / '2026/11/09'
         root.mkdir(parents=True, exist_ok=True)
@@ -45,19 +45,19 @@ class CodexResumeTest(unittest.TestCase):
 
     def test_match_full_home_relative_path_across_machines(self):
         key = self.module['project_key']
-        self.assertEqual(key('/home/alice/src/personal/dotfiles'),
-                         key('/Users/bob/src/personal/dotfiles'))
-        self.assertNotEqual(key('/Users/bob/work/dotfiles'), key('/Users/bob/personal/dotfiles'))
-        self.assertNotEqual(key('/opt/src/personal/dotfiles'), key('/Users/bob/src/personal/dotfiles'))
+        self.assertEqual(key('/home/alice/projects/demo'),
+                         key('/Users/bob/projects/demo'))
+        self.assertNotEqual(key('/Users/bob/work/demo'), key('/Users/bob/projects/demo'))
+        self.assertNotEqual(key('/opt/projects/demo'), key('/Users/bob/projects/demo'))
         path = self.transcript()
         before = path.read_bytes()
-        self.transcript(SECOND, '/home/test/work/dotfiles')
+        self.transcript(SECOND, '/home/test/work/demo')
         self.assertEqual([item[1] for item in self.matching()], [FIRST])
         self.assertEqual(path.read_bytes(), before)
 
     def test_sort_by_last_write_and_skip_archives_conflicts_and_partial_files(self):
         path = self.transcript(modified=100)
-        self.transcript(SECOND, '/home/other/src/personal/dotfiles', modified=200)
+        self.transcript(SECOND, '/home/other/projects/demo', modified=200)
         self.transcript(archived=True, modified=300)
         path.with_name(path.stem + '.sync-conflict-copy.jsonl').write_bytes(path.read_bytes())
         path.with_name('rollout-incomplete.jsonl').write_text('{"type":')

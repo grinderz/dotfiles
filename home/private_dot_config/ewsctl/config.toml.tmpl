@@ -1,4 +1,4 @@
-# ewsctl (~/src/personal/ewsctl): one account per kind = "davmail" entry
+# ewsctl: one account per kind = "davmail" entry
 # in [[data.mail.accounts]] — same Exchange creds the mail stack uses.
 {{ $host := (urlParse .mail.davmail_url).host }}
 {{- range .mail.accounts }}{{ if eq .kind "davmail" }}

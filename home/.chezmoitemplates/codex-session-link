@@ -8,9 +8,14 @@
 {{- if and $existing (ne $existing.type "symlink") -}}
 {{- fail (printf "%s contains local state; run codex-sync-state %s before applying session links" $source $store) -}}
 {{- end -}}
-{{- $directory := stat $target -}}
+{{- $directory := lstat $target -}}
 {{- if not (and $directory $directory.isDir) -}}
 {{- fail (printf "%s must exist; run codex-sync-state %s once before applying session links" $target $store) -}}
+{{- end -}}
+{{- if $existing -}}
+{{- if or (not (stat $source)) (ne (output "realpath" $source) (output "realpath" $target)) -}}
+{{- fail (printf "%s points elsewhere; reconcile it with %s before applying session links" $source $target) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- joinPath $store .name -}}

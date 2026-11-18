@@ -7,8 +7,8 @@ from pathlib import Path
 
 
 def migrate(home, store):
-    home = home.expanduser().absolute()
-    store = store.expanduser().absolute()
+    home = home.expanduser().resolve()
+    store = store.expanduser().resolve()
     if store == home or home in store.parents:
         raise ValueError('the shared folder must be outside CODEX_HOME')
     home.mkdir(parents=True, exist_ok=True)
@@ -28,14 +28,15 @@ def migrate(home, store):
                 raise ValueError(f'both {source} and {target} exist; reconcile them before retrying')
             if source.stat().st_dev != store.stat().st_dev:
                 raise ValueError(f'{source} and {store} must be on the same filesystem for a live move')
-        if target.exists() and (not target.is_dir() or target.is_symlink()):
+        if target.is_symlink() or (target.exists() and not target.is_dir()):
             raise ValueError(f'{target} must be a real directory')
 
     for source, target in pairs:
         if source.is_symlink():
             target.mkdir(parents=True, exist_ok=True)
             continue
-        if source.exists():
+        moved = source.exists()
+        if moved:
             # Rename preserves the inode: an already open transcript keeps
             # receiving writes in the shared folder, including this session.
             source.rename(target)
@@ -45,7 +46,7 @@ def migrate(home, store):
             source.symlink_to(target, target_is_directory=True)
         except OSError:
             # A failed link must not leave the old local path missing.
-            if not source.exists() and not source.is_symlink():
+            if moved and not source.exists() and not source.is_symlink():
                 target.rename(source)
             raise
         print(f'{source} -> {target}')

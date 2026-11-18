@@ -116,7 +116,7 @@ class ConfigMergeTest(unittest.TestCase):
                 '--override-data', json.dumps({'chezmoi': {'os': system}}),
                 'execute-template', '--with-stdin', '--file',
                 str(ROOT / 'home/.chezmoitemplates/codex-config'),
-            ], text=True, input=text)
+            ], text=True, input=text, stderr=subprocess.PIPE)
 
     def claude_script(self, system='linux'):
         return subprocess.check_output([
@@ -208,6 +208,11 @@ enabled = true
         self.assertEqual(merged['description'], 'My hooks')
         self.assertEqual(merged['hooks']['Stop'][0], fixture['hooks']['Stop'][0])
         self.assertEqual(len(merged['hooks']['Stop']), 2)
+
+    def test_codex_migration_stops_for_read_only_sandbox(self):
+        with self.assertRaises(subprocess.CalledProcessError) as caught:
+            self.merge('sandbox_mode = "read-only"')
+        self.assertIn('sandbox_mode is read-only', caught.exception.stderr)
 
     def test_codex_enables_network_by_default(self):
         for system, denied in DENY_PATHS.items():

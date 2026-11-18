@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
-    "Renovate on GitHub keeps the tooling pins: workflow actions, pre-commit hook revs, the ruff and pre-commit versions of the Makefile and the shellcheck release of the CI workflow. Packages, flatpaks and the chezmoi tree move with the system, not here."
+    "Renovate on GitHub updates workflow actions, pre-commit hooks, Ruff, pre-commit, ShellCheck and the chezmoi binary used in CI."
   ],
   "extends": [
     "config:recommended"
@@ -37,6 +37,15 @@
       "groupName": "pre-commit hooks"
     }
   ],
+  "customDatasources": {
+    "chezmoi-release": {
+      "defaultRegistryUrlTemplate": "https://api.github.com/repos/twpayne/chezmoi/releases?per_page=10",
+      "transformTemplates": [
+        "[$[draft = false and prerelease = false].($v := $substringAfter(tag_name, 'v'); {'version': $v, 'releaseTimestamp': published_at, 'hash': assets[name = ('chezmoi_' & $v & '_linux_amd64.tar.gz')].digest})]",
+        "{'sourceUrl': 'https://github.com/twpayne/chezmoi', 'releases': [$[$type(hash) = 'string'][$contains(hash, /^sha256:[0-9a-f]{64}$/)].{'version': version, 'releaseTimestamp': releaseTimestamp, 'digest': $substringAfter(hash, 'sha256:')}]}"
+      ]
+    }
+  },
   "customManagers": [
     {
       "customType": "regex",
@@ -74,6 +83,17 @@
       "depNameTemplate": "koalaman/shellcheck",
       "datasourceTemplate": "github-releases",
       "extractVersionTemplate": "^v(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Update the CI chezmoi version and its Linux amd64 archive checksum together",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "CHEZMOI_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)\\r?\\n[ \\t]+CHEZMOI_SHA256: (?<currentDigest>[0-9a-f]{64})"
+      ],
+      "depNameTemplate": "twpayne/chezmoi",
+      "datasourceTemplate": "custom.chezmoi-release",
+      "versioningTemplate": "semver"
     }
   ]
 }

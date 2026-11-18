@@ -28,8 +28,15 @@ class SystemStatsTest(unittest.TestCase):
                 path = root / command
                 path.write_text('#!/bin/sh\n' + content)
                 path.chmod(0o755)
+            home = root / 'test home'
+            prefix = home / '.local/bin'
+            prefix.mkdir(parents=True)
+            # A different executable at the front of PATH must never be selected.
+            shadow = root / 'thinkbook-fanctl'
+            shadow.write_text('#!/bin/sh\nexit 99\n')
+            shadow.chmod(0o755)
             if installed:
-                path = root / 'thinkbook-fanctl'
+                path = prefix / 'thinkbook-fanctl'
                 path.write_text('#!/bin/sh\nprintf "%s %s\\n" "$1" "$2" >> "$CAPTURE/queries"\n'
                                 'printf \'%s\\n\' \'{"control_mode":"auto","fans":[{"id":1,"rpm":2200,"target_rpm":2200},'
                                 '{"id":2,"rpm":1900,"target_rpm":1900}]}\'\n')
@@ -37,7 +44,7 @@ class SystemStatsTest(unittest.TestCase):
             result = subprocess.run(
                 ['sh', str(SCRIPT), *(['fans'] if popup else [])],
                 input='\n', text=True, capture_output=True, timeout=5, check=False,
-                env=dict(os.environ, PATH=str(root) + ':/usr/bin:/bin', CAPTURE=str(capture),
+                env=dict(os.environ, HOME=str(home), PATH=str(root) + ':/usr/bin:/bin', CAPTURE=str(capture),
                          SUDO_FAIL='1' if sudo_fails else '0'),
             )
             captures = {path.name: path.read_text() for path in capture.iterdir()

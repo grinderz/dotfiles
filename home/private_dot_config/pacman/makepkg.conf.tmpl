@@ -2,8 +2,7 @@
 #
 # Left alone, makepkg puts its work next to the PKGBUILD: downloaded sources
 # and VCS clones (SRCDEST), the src/ and pkg/ trees (BUILDDIR) and the built
-# package (PKGDEST). For the own PKGBUILDs in ~/src/personal/aur and the
-# AUR clones in ~/src/personal/aur-pub that is a checkout the backup takes,
+# package (PKGDEST). The aur and aur-pub checkouts are backed up,
 # so there all three go to the cache, which no snapshot holds (~/.cache is
 # a link into ~/.unbacked). It applies however the build is started:
 # `aur -S <package>`, `yay -B <dir>` or makepkg by hand.
@@ -14,8 +13,9 @@
 # sent here their sources and packages would pile up with every update.
 #
 # makepkg sets startdir (pwd -P) before it reads this file.
+{{- $parent := includeTemplate "aur-repo-parent" . | shellQuote }}
 case "${startdir:-$PWD}/" in
-    "$HOME"/src/personal/aur/*|"$HOME"/src/personal/aur-pub/*)
+    {{ $parent }}/aur/*|{{ $parent }}/aur-pub/*)
         SRCDEST="${XDG_CACHE_HOME:-$HOME/.cache}/makepkg/sources"
         PKGDEST="${XDG_CACHE_HOME:-$HOME/.cache}/makepkg/packages"
         BUILDDIR="${XDG_CACHE_HOME:-$HOME/.cache}/makepkg/build"

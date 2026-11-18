@@ -226,7 +226,8 @@ provider, trusted projects, plugin state and other local keys are preserved;
 existing developer instructions are kept and the attribution rule is
 appended once. TOML is reserialized, so local comments are not preserved.
 `~/.codex/AGENTS.md` links to the same shared global instructions as
-Claude's `CLAUDE.md`.
+Claude's `CLAUDE.md`. If a machine has an explicit legacy
+`sandbox_mode = "read-only"`, the merge stops before granting workspace writes.
 
 The managed config disables shared app-server daemon autostart with
 `features.daemon_auto_start = false`. After applying, close existing Codex
@@ -314,7 +315,14 @@ codex-prune-sessions
 codex-prune-sessions --project dotfiles
 claude-prune-sessions --dry-run        # select and report without deleting
 codex-prune-sessions --json            # list only; no picker or deletion
+codex-prune-sessions --json --check-all  # inspect every record, including long transcripts
 ```
+
+Both tools report unreadable or malformed transcripts on stderr with the path
+and, for a bad record, its line number. The picker and JSON list omit those
+files. By default they inspect complete records within the first 512 KiB.
+`--check-all` reads each transcript to the end. To see only diagnostics, run
+`codex-prune-sessions --json --check-all >/dev/null` (or the Claude equivalent).
 
 Nothing starts selected. Tab marks/unmarks, Ctrl-A marks all matches,
 Ctrl-D clears all marks, and Enter reviews the selection. Enter or a
@@ -326,8 +334,9 @@ Both commands recheck the selected files before deleting and skip any
 that changed while the picker was open. Claude deletes the selected
 transcripts and their session-specific subagent directories, preserving
 project memory. Codex uses `codex delete UUID --force` to remove local
-history/index state through its native command; a failure never falls
-back to deleting the file directly. As with manual deletion, Syncthing
+history/index state through its native command. Before deletion it checks
+that `CODEX_HOME` points to the listed store and that a single file matches
+the UUID across active and archived sessions, including conflict copies. As with manual deletion, Syncthing
 propagates the removed transcripts, while other machines' local Codex
 indexes can retain stale entries. Do not select a session still in use
 on either machine.
@@ -389,9 +398,9 @@ codex resume SESSION_ID
 
 Without a session ID or `--all`, the wrapper reads active transcript headers
 and shows an fzf picker for the current directory. It compares the full
-path relative to the user home: `/home/alice/src/personal/dotfiles` and
-`/Users/bob/src/personal/dotfiles` both match `~/src/personal/dotfiles`.
-Different paths such as `~/work/dotfiles` stay separate; paths outside
+path relative to the user home: `/home/alice/projects/demo` and
+`/Users/bob/projects/demo` both match `~/projects/demo`.
+Different paths such as `~/work/demo` stay separate; paths outside
 user homes match by their absolute path. `--cd` selects a different local
 directory, and `--last` chooses its most recently modified transcript.
 Archived sessions are excluded; automated sessions require
@@ -434,6 +443,8 @@ jira_pass = "..."                  # work pass entry with the Jira PAT (jira-sta
 name = "..."
 email = "..."
 personal_key = "~/.ssh/..."
+# Fish and makepkg look for aur and aur-pub beside the dotfiles checkout.
+# aur_repo_parent = "/path/to/checkouts"  # override when they live elsewhere
 
 # every ssh host is a table, rendered by private_dot_ssh/private_config.tmpl:
 # data.personal.hosts (home LAN), .git_hosts (forges), .oth_hosts,
@@ -507,8 +518,9 @@ that the shipped feed file still carries every overlay entry, and runs
 the Python `unittest` suite in `tests/` against temporary session files.
 These tests need no network, real sessions, or additional Python packages.
 CI (`.github/workflows/ci.yml`) runs both on every push and pull
-request; Renovate keeps the action, hook, ruff, pre-commit and shellcheck
-pins current.
+request. Renovate updates the action, hook, Ruff, pre-commit and ShellCheck
+pins. For chezmoi it updates the CI version and the Linux amd64 archive's
+SHA-256 together.
 
 `make lint.ruff` uses the pinned Ruff version from the Makefile and
 automatically includes tracked and untracked, non-ignored Python scripts.
@@ -561,12 +573,12 @@ Per deploy, once per host:
   `~/.config/git/`, renamed to `config.work.inc`
 * **bin** (chezmoi) — after, macOS: delete `/usr/local/bin/okd-token.sh` from
   the old ansible role, superseded by `~/.local/bin/okd-token.sh`
-* **thinkbook-fanctl** (Waybar integration) — run `make install` in the
-  separate project's checkout. On Lenovo 21LG, clicking the temperature
-  opens a floating Foot window with one read-only status query showing the
-  control mode and actual/target RPM for both fans. Sudo authentication
-  happens in that window; Enter or Escape closes it. Regular temperature
-  updates do not query the fans; no background poller is started.
+* **thinkbook-fanctl** (Waybar integration, Lenovo 21LG) — install or update
+  with `make install` from the `thinkbook-fanctl` checkout. Clicking the
+  temperature opens a Foot window and runs
+  `sudo -- "$HOME/.local/bin/thinkbook-fanctl" status --json` once. The window
+  shows the control mode and actual/target RPM for both fans. Enter or Escape
+  closes it.
 * **openconnect** — after, macOS: delete old `/usr/local/bin/vpn-*.sh`,
   superseded by `~/.local/bin/vpn-*.sh`
 * **backup-boot** — before (hosts with `bootmirror_mountpoint`): prepare the
@@ -1135,8 +1147,8 @@ machine, from a fork that carries local fixes on top of upstream (the
 config it reads comes from chezmoi):
 
 ```sh
-git clone git@github.com:<user>/aerospace-swipe ~/src/personal/aerospace-swipe   # the fork
-cd ~/src/personal/aerospace-swipe
+git clone git@github.com:<user>/aerospace-swipe   # the fork
+cd aerospace-swipe
 git remote add upstream https://github.com/acsandmann/aerospace-swipe
 make install                      # builds, ad-hoc signs, loads the launch agent
 ```

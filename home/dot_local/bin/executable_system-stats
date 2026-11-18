@@ -10,7 +10,8 @@ if [ "${1:-}" = fans ]; then
     exec foot --app-id=fan-status --title='ThinkBook fans' \
         --window-size-chars=68x12 --override=key-bindings.quit=Escape sh -c '
         printf "ThinkBook fans\n\n"
-        if fanctl=$(command -v thinkbook-fanctl); then
+        fanctl="$HOME/.local/bin/thinkbook-fanctl"
+        if [ -x "$fanctl" ]; then
             if data=$(sudo -- "$fanctl" status --json); then
                 printf "%s\n" "$data" | jq -r '\''
                     "Control: \(.control_mode)",
@@ -19,7 +20,7 @@ if [ "${1:-}" = fans ]; then
             fi
         else
             printf "thinkbook-fanctl is not installed.\n"
-            printf "Install it from the project: make install\n"
+            printf "Run make install from the thinkbook-fanctl checkout.\n"
         fi
         printf "\nEnter or Escape to close.\n"
         read -r _

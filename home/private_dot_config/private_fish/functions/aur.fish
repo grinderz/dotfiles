@@ -1,6 +1,6 @@
-function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/aur or an AUR clone in ~/src/personal/aur-pub, or clean up after them"
+function aur -d "build and install a PKGBUILD from aur or aur-pub, or clean up after them"
     # the own repository, and one clone per package published on the AUR
-    set -l repos ~/src/personal/aur ~/src/personal/aur-pub
+    set -l repos (__aur_repos); or return 1
     # the operations are yay's, for the hand that already knows them; a bare
     # package name is -S
     switch "$argv[1]"
@@ -14,7 +14,7 @@ function aur -d "build and install one of the own PKGBUILDs in ~/src/personal/au
             set -e argv[1]
     end
     if test (count $argv) -ne 1; or string match -q -- '-*' $argv[1]
-        echo "usage: aur -S PACKAGE     # build and install a directory under ~/src/personal/aur or aur-pub" >&2
+        echo "usage: aur -S PACKAGE     # build and install a directory in aur or aur-pub" >&2
         echo "       aur PACKAGE        # the same" >&2
         echo "       aur -Sc            # clean what the builds left, as yay -Sc does for the AUR" >&2
         return 2

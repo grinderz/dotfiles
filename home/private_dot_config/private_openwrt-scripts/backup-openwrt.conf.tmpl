@@ -1,4 +1,4 @@
-# backup-openwrt.sh (~/src/personal/openwrt-scripts): rendered by dotfiles
+# backup-openwrt.sh in the openwrt-scripts repo: rendered by dotfiles
 # from [[data.openwrt_hosts]] (backup = true) and [data.openwrt_scripts].
 # Shell KEY=VALUE, see backup-openwrt.conf.example in the repo for the keys
 HOSTS="{{ range $i, $r := .openwrt_hosts }}{{ if get $r "backup" }}{{ if $i }} {{ end }}{{ default $r.name (get $r "ssh") }}{{ end }}{{ end }}"

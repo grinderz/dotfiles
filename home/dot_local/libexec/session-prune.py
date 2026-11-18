@@ -58,70 +58,106 @@ def snapshot(path, extra=None):
     return tuple(result)
 
 
-def metadata(path):
+def object_field(record, field):
+    value = record.get(field)
+    if not isinstance(value, dict):
+        raise TypeError(f'{field} must be an object')
+    return value
+
+
+def message_text(content):
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        raise TypeError('message content must be text or a list')
+    return ' '.join(block['text'] for block in content
+                    if isinstance(block, dict) and isinstance(block.get('text'), str))
+
+
+def metadata(path, check_all=False):
     project, sid, title = '', '', ''
-    # Bound the work per session; never load a many-megabyte transcript whole.
     with path.open('rb') as stream:
-        head = stream.read(512 * 1024)
-    for line in head.splitlines():
-        try:
-            record = json.loads(line)
-        except (ValueError, UnicodeDecodeError):
-            continue
-        if not isinstance(record, dict):
-            continue
-        kind = record.get('type')
-        if kind == 'session_meta':
-            payload = record.get('payload', {})
-            project = payload.get('cwd', '')
-            sid = payload.get('id', '')
-        if kind == 'event_msg' and not title:
-            payload = record.get('payload', {})
-            if payload.get('type') == 'user_message':
-                title = payload.get('message', '')
-            elif payload.get('type') == 'item_completed':
-                item = payload.get('item', {})
-                if item.get('type') in ('UserMessage', 'userMessage'):
-                    title = ' '.join(block.get('text', '') for block in item.get('content', [])
-                                     if isinstance(block, dict))
-        if kind == 'user' and not title:
-            content = record.get('message', {}).get('content', '')
-            if isinstance(content, list):
-                content = ' '.join(item.get('text', '') for item in content if isinstance(item, dict))
-            title = content if isinstance(content, str) else ''
-        if kind in ('summary', 'custom-title'):
-            title = record.get('customTitle') or record.get('summary') or title
+        if check_all:
+            lines = stream
+        else:
+            # A single event (e.g. an attachment) can span many MiB.
+            head = stream.read(512 * 1024)
+            if stream.read(1) and not head.endswith(b'\n'):
+                head = head.rpartition(b'\n')[0]
+            lines = head.splitlines()
+        for number, line in enumerate(lines, 1):
+            try:
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise TypeError('record must be an object')
+                kind = record.get('type')
+                if not isinstance(kind, str) or not kind:
+                    raise ValueError('record is missing a type')
+                if kind == 'session_meta':
+                    payload = object_field(record, 'payload')
+                    project = payload.get('cwd')
+                    if not isinstance(project, str) or not project:
+                        raise ValueError('session_meta is missing cwd')
+                    try:
+                        sid = str(UUID(payload.get('id', '')))
+                    except (ValueError, TypeError, AttributeError):
+                        raise ValueError('session_meta has an invalid UUID') from None
+                elif kind == 'event_msg':
+                    payload = object_field(record, 'payload')
+                    if payload.get('type') == 'user_message':
+                        text = message_text(payload.get('message'))
+                        title = title or text
+                    elif payload.get('type') == 'item_completed':
+                        item = object_field(payload, 'item')
+                        if item.get('type') in ('UserMessage', 'userMessage'):
+                            text = message_text(item.get('content'))
+                            title = title or text
+                elif kind == 'user':
+                    text = message_text(object_field(record, 'message').get('content'))
+                    title = title or text
+                elif kind in ('summary', 'custom-title'):
+                    title = record.get('customTitle') or record.get('summary') or title
+            except (TypeError, ValueError, RecursionError) as error:
+                raise ValueError(f'line {number}: {error}') from None
+        if not stream.tell():
+            raise ValueError('empty transcript')
+    if AGENT == 'Codex' and not sid:
+        detail = 'missing session_meta' if check_all else 'no session_meta in header; retry with --check-all'
+        raise ValueError(detail)
     return clean(project), sid, clean(title)
 
 
-def sessions(dirs, project=None):
+def sessions(dirs, project=None, check_all=False):
     seen = set()
     for root in dirs:
         if not root.is_dir():
             continue
         paths = root.glob('*/*.jsonl') if AGENT == 'Claude' else root.rglob('rollout-*.jsonl')
         for path in paths:
-            if path.resolve() in seen:
+            if AGENT == 'Codex' and '.sync-conflict-' in path.name:
                 continue
-            seen.add(path.resolve())
             try:
-                cwd, sid, title = metadata(path)
+                if path.is_symlink():
+                    raise ValueError('transcript is a symlink')
+                resolved = path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                cwd, sid, title = metadata(path, check_all)
                 if AGENT == 'Claude':
                     cwd, sid = path.parent.name, path.stem
                     extra = path.with_suffix('')
                     status = 'session'
                 else:
-                    sid = str(UUID(sid))
-                    # Syncthing conflict copies are not distinct Codex sessions.
                     if not path.name.endswith(f'-{sid}.jsonl'):
-                        continue
+                        raise ValueError('filename does not match session UUID')
                     extra = None
                     status = 'archived' if root.name == 'archived_sessions' else 'active'
                 if project and project.casefold() not in cwd.casefold():
                     continue
                 yield Session(cwd, sid, title, status, path, extra, snapshot(path, extra))
             except (OSError, ValueError, TypeError) as error:
-                print(f'skipping {path}: {error}', file=sys.stderr)
+                print(f'skipping {clean(path)}: {clean(error)}', file=sys.stderr)
 
 
 def select_sessions(items):
@@ -158,12 +194,26 @@ def select_sessions(items):
     return [items[index] for index in indices]
 
 
-def delete_session(item):
+def check_codex_store(item, dirs):
+    home = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex').expanduser()
+    roots = [home / name for name in ('sessions', 'archived_sessions')]
+    if {root.resolve() for root in roots} != {path.resolve() for path in dirs}:
+        raise ValueError(f'{home} does not point to the selected transcript store')
+    # The native delete command acts on a UUID across both trees. Count files
+    # even if metadata parsing or the project filter hid them from the picker.
+    matches = [path.resolve() for root in roots
+               for path in root.rglob(f'rollout-*{item.sid}*.jsonl')]
+    if matches != [item.path.resolve()]:
+        raise ValueError(f'{item.sid} does not identify a single transcript in {home}')
+
+
+def delete_session(item, dirs):
     if snapshot(item.path, item.extra) != item.snapshot:
         raise ValueError(f'{item.sid} changed while selecting; select it again')
     if AGENT == 'Codex':
         # Let Codex maintain its SQLite history/indexes and enforce its own
         # checks for loaded sessions. Never silently fall back to unlink().
+        check_codex_store(item, dirs)
         subprocess.run(['codex', 'delete', item.sid, '--force'], check=True)
         if item.path.exists():
             raise ValueError(f'Codex did not remove the selected transcript: {item.path}')
@@ -181,9 +231,11 @@ def main():
     parser.add_argument('--project', help='only projects whose name/path contains this')
     parser.add_argument('--json', action='store_true', help='list all matching sessions as JSON; never delete')
     parser.add_argument('--dry-run', action='store_true', help='select and report without deleting')
+    parser.add_argument('--check-all', action='store_true',
+                        help='check every JSONL record for damage instead of just the header')
     args = parser.parse_args()
     AGENT, SESSION_DIRS = args.agent, args.dir
-    items = sorted(sessions(SESSION_DIRS, args.project), key=lambda item: (-item.size, str(item.path)))
+    items = sorted(sessions(SESSION_DIRS, args.project, args.check_all), key=lambda item: (-item.size, str(item.path)))
     if args.json:
         print(json.dumps([{'project': item.project, 'session': item.sid, 'title': item.title,
                            'status': item.status, 'bytes': item.size,
@@ -215,7 +267,7 @@ def main():
     deleted, failed = 0, 0
     for item in selected:
         try:
-            delete_session(item)
+            delete_session(item, SESSION_DIRS)
             deleted += 1
         except (OSError, ValueError, subprocess.CalledProcessError) as error:
             failed += 1

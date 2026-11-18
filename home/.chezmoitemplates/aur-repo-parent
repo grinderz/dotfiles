@@ -1,0 +1,1 @@
+{{- dig "personal" "aur_repo_parent" (dir .chezmoi.workingTree) . -}}

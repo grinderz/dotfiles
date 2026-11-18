@@ -1,4 +1,7 @@
 {{- $current := fromToml .chezmoi.stdin -}}
+{{- if eq (get $current "sandbox_mode") "read-only" -}}
+{{- fail "sandbox_mode is read-only; keep the current config, or explicitly opt into workspace-write before applying the dotfiles permission profile" -}}
+{{- end -}}
 {{- $denied := dict -}}
 {{- range get .agents.deny_paths .chezmoi.os | default list -}}
 {{- $_ := set $denied . "deny" -}}

@@ -36,12 +36,24 @@ jobs:
       - name: lint
         run: make lint
 
-  # the adblock feed generator against a fake upstream list: no network,
-  # no device
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - name: install chezmoi for template tests
+        working-directory: ${{ runner.temp }}
+        env:
+          CHEZMOI_VERSION: 2.74.1
+          CHEZMOI_SHA256: ae01c66b1a6dbf563667c63fbbd9986b3cfa3c98dd266ddee732f63e8af2e9d1
+        run: |
+          archive="chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz"
+          curl -fsSLO "https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/$archive"
+          echo "$CHEZMOI_SHA256  $archive" | sha256sum --check
+          mkdir -p chezmoi-bin
+          tar -xzf "$archive" -C chezmoi-bin chezmoi
+          ./chezmoi-bin/chezmoi --version
+          echo "$RUNNER_TEMP/chezmoi-bin" >> "$GITHUB_PATH"
 
       - name: test
         run: make test
