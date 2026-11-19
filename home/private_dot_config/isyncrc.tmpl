@@ -62,6 +62,7 @@ AuthMechs XOAUTH2
 Host imap.yandex.ru
 Port 993
 TLSType IMAPS
+AuthMechs LOGIN
 {{ else if eq .kind "mailru" -}}
 Host imap.mail.ru
 Port 993
