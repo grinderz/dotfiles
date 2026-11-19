@@ -49,6 +49,9 @@ address-book-cmd = [[ .chezmoi.homeDir ]]/.local/bin/mail-addr "%s"
 # (this w3m has no -sixel)
 html-inline-images = true
 
+[openers]
+x-scheme-handler/http* = brave
+
 [filters]
 text/plain = colorize
 text/calendar = calendar
