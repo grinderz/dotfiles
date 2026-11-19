@@ -26,6 +26,9 @@ __pycache__/
 # by Claude Code itself; it keeps that exact form so nothing adds it again.
 **/.claude/settings.local.json
 CLAUDE.local.md
+# Appended by Claude Code on 2026-11-19 (its sandbox write log); kept in the
+# same exact form for the same reason.
+**/.claude/.cc-writes/
 
 # macOS Finder
 .DS_Store
