@@ -51,6 +51,12 @@ mail = ".local/share/mail"
 msmtp_queue = ".local/state/msmtpq/queue"
 
 # Shared file and subprocess restrictions for Claude Code and Codex.
+# Both merges keep deny entries they do not manage, so to lift one, move
+# its path from deny_paths to retired_deny_paths; apply then removes it
+# from the agent settings on every machine.
+[agents]
+retired_deny_paths = []
+
 [agents.deny_paths]
 linux = [
     "~/.local/share/com.follow.clash",

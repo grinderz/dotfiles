@@ -4,12 +4,21 @@
 # wipe them on every apply. chezmoi hands the current file on stdin; the
 # managed keys below are merged over it and everything else is kept. Keys
 # are replaced whole except deny lists, which keep local restrictions too
-# while removing managed paths for the other OS.
+# while removing managed paths for the other OS and those listed in
+# agents.retired_deny_paths: a path only dropped from deny_paths would stay,
+# since nothing tells it apart from a local restriction.
+#
+# The caveman marketplace is not pinned; third-party marketplaces do not
+# auto-update, so it moves on `/plugin marketplace update caveman`.
 {{- $rules := list }}
 {{- $otherRules := list }}
 {{- $otherPaths := list }}
 {{- $paths := get .agents.deny_paths .chezmoi.os | default list }}
-{{- range $os, $osPaths := .agents.deny_paths }}
+{{- $retired := dig "retired_deny_paths" (list) .agents }}
+{{- range $retired }}{{ if has . $paths }}
+{{- fail (printf "%s is both in agents.deny_paths.%s and agents.retired_deny_paths" . $.chezmoi.os) }}
+{{- end }}{{ end }}
+{{- range $os, $osPaths := merge (dict "retired" $retired) .agents.deny_paths }}
 {{- range $osPaths }}
 {{- $pattern := . }}
 {{- if not (hasSuffix ".plist" .) }}

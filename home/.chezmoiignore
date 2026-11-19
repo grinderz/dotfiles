@@ -105,6 +105,7 @@ Library
 .config/starline-status
 .config/zathura
 .local/bin/sway-bindings
+.local/bin/sway-reset-pointer
 .local/bin/aerc-bindings
 .local/bin/suspend-toggle
 .local/bin/usb-storage

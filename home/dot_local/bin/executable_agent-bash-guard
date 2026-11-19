@@ -42,7 +42,10 @@ cmd=$(jq -r '.tool_input.command // ""' <<<"$payload")
 # remote code straight into a shell: the one pattern where reviewing the
 # command tells you nothing about what will run
 # BSD grep rejects empty alternatives; use an optional shell-name prefix.
-if grep -Eq '(curl|wget|fetch)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k|da)?sh' <<<"$cmd"; then
+# Any later pipe stage counts (`| jq . | sh`), sudo may carry flags and the
+# shell may be a path; the shell name must end there, so `| sha256sum` and
+# `| shfmt` stay allowed.
+if grep -Eq '(curl|wget|fetch)[[:space:]].*\|[[:space:]]*(sudo([[:space:]]+-[^[:space:]]+)*[[:space:]]+)?([^[:space:]|]*/)?(ba|z|k|da)?sh([[:space:];&|)]|$)' <<<"$cmd"; then
     deny "piping a download into a shell hides what actually runs; clone or download first, read it, then run it"
 fi
 

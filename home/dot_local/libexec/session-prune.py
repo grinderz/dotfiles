@@ -12,6 +12,10 @@ from uuid import UUID
 
 AGENT: str
 SESSION_DIRS: list[Path]
+# Without --check-all only this much of each transcript is parsed, and at
+# most SCAN_LIMIT bytes are read while skipping oversized records.
+HEADER = 512 * 1024
+SCAN_LIMIT = 16 * HEADER
 
 
 @dataclass
@@ -74,18 +78,32 @@ def message_text(content):
                     if isinstance(block, dict) and isinstance(block.get('text'), str))
 
 
+def header_lines(stream):
+    """Numbered records from the start of a transcript, up to HEADER bytes.
+
+    A single record can span many MiB (an inline image, an attachment). One
+    larger than HEADER is skipped unparsed instead of ending the header, so
+    the records after it, such as Claude's ai-title, are still seen.
+    """
+    used = number = 0
+    while used < HEADER and stream.tell() < SCAN_LIMIT:
+        line = stream.readline(HEADER + 1)
+        if not line:
+            return
+        number += 1
+        if len(line) > HEADER:
+            while line and not line.endswith(b'\n') and stream.tell() < SCAN_LIMIT:
+                line = stream.readline(1024 * 1024)
+            continue
+        used += len(line)
+        yield number, line
+
+
 def metadata(path, check_all=False):
-    project, sid, title = '', '', ''
+    project, sid, first, summary, ai_title, custom_title = '', '', '', '', '', ''
     with path.open('rb') as stream:
-        if check_all:
-            lines = stream
-        else:
-            # A single event (e.g. an attachment) can span many MiB.
-            head = stream.read(512 * 1024)
-            if stream.read(1) and not head.endswith(b'\n'):
-                head = head.rpartition(b'\n')[0]
-            lines = head.splitlines()
-        for number, line in enumerate(lines, 1):
+        lines = enumerate(stream, 1) if check_all else header_lines(stream)
+        for number, line in lines:
             try:
                 record = json.loads(line)
                 if not isinstance(record, dict):
@@ -106,17 +124,23 @@ def metadata(path, check_all=False):
                     payload = object_field(record, 'payload')
                     if payload.get('type') == 'user_message':
                         text = message_text(payload.get('message'))
-                        title = title or text
+                        first = first or text
                     elif payload.get('type') == 'item_completed':
                         item = object_field(payload, 'item')
                         if item.get('type') in ('UserMessage', 'userMessage'):
                             text = message_text(item.get('content'))
-                            title = title or text
+                            first = first or text
                 elif kind == 'user':
                     text = message_text(object_field(record, 'message').get('content'))
-                    title = title or text
-                elif kind in ('summary', 'custom-title'):
-                    title = record.get('customTitle') or record.get('summary') or title
+                    first = first or text
+                # Claude's own titles, the newest of each kind: a /rename
+                # (custom-title) wins over the generated ai-title.
+                elif kind == 'custom-title':
+                    custom_title = record.get('customTitle') or custom_title
+                elif kind == 'ai-title':
+                    ai_title = record.get('aiTitle') or ai_title
+                elif kind == 'summary':
+                    summary = record.get('summary') or summary
             except (TypeError, ValueError, RecursionError) as error:
                 raise ValueError(f'line {number}: {error}') from None
         if not stream.tell():
@@ -124,7 +148,7 @@ def metadata(path, check_all=False):
     if AGENT == 'Codex' and not sid:
         detail = 'missing session_meta' if check_all else 'no session_meta in header; retry with --check-all'
         raise ValueError(detail)
-    return clean(project), sid, clean(title)
+    return clean(project), sid, clean(custom_title or ai_title or summary or first)
 
 
 def sessions(dirs, project=None, check_all=False):

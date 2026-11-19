@@ -1,7 +1,10 @@
 #!/bin/sh
 # Interactive session selection; the shared Python helper owns the UI.
+# claude.sync entries may share a directory; pass each one once.
+{{- $dirs := list }}
+{{- range .claude.sync }}{{ $dirs = append $dirs .dir }}{{ end }}
 exec python3 "$HOME/.local/libexec/session-prune.py" --agent Claude \
-{{- range .claude.sync }}
-    --dir "$HOME/{{ .dir }}" \
+{{- range uniq $dirs }}
+    --dir "$HOME/{{ . }}" \
 {{- end }}
     "$@"

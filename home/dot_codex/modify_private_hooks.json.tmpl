@@ -1,11 +1,21 @@
 #!/bin/sh
-# Preserve local hook groups and append each managed group at most once.
+# Preserve local hooks; managed ones are replaced, not appended. A hook is
+# managed when its command runs one of the scripts below from ~/.local/bin,
+# whatever its home prefix, timeout or quoting. So a changed definition
+# replaces the old one instead of running beside it, and a script dropped
+# from an event goes away there too. Groups and events left empty by the
+# cleanup are removed.
 set -eu
 jq -n '[inputs] | (.[0] // {}) |
+    def managed: (.command? // null) | strings |
+        test("/\\.local/bin/(" + ($scripts | join("|")) + ")\"?$");
+    .hooks = ((.hooks // {}) | map_values(
+        map(if (.hooks | type) == "array" then .hooks |= map(select(managed | not)) else . end) |
+        map(select((.hooks | type) != "array" or (.hooks | length) > 0)))) |
     reduce ($managed.hooks | keys[]) as $event (.;
-        reduce $managed.hooks[$event][] as $group (.;
-            .hooks[$event] = (reduce $group as $candidate ((.hooks[$event] // []);
-                if index($candidate) == null then . + [$candidate] else . end))))' \
+        .hooks[$event] = ((.hooks[$event] // []) + $managed.hooks[$event])) |
+    .hooks |= with_entries(select(.value | length > 0))' \
+    --argjson scripts '["agent-bash-guard", "codex-notify"]' \
     --argjson managed "$(cat <<'JSON'
 {
   "hooks": {

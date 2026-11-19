@@ -115,16 +115,38 @@ class SessionPruneTest(unittest.TestCase):
         good = self.claude('good')
         bad = self.claude('bad')
         bad.write_text('{"type":"user","message":null}\n')
-        late = self.claude('large', text='a' * (512 * 1024))
+        # The damage sits past 512 KiB of ordinary records: only --check-all
+        # reaches it.
+        late = self.claude('large', text='a' * 1024)
         with late.open('a') as stream:
-            stream.write('{broken\n')
+            stream.write(late.read_text() * 600 + '{broken\n')
         args = [sys.executable, str(SOURCE), '--agent', 'Claude', '--dir', str(self.root), '--json']
         quick = subprocess.run(args, text=True, capture_output=True, check=True)
         self.assertEqual({row['path'] for row in json.loads(quick.stdout)}, {str(good), str(late)})
         full = subprocess.run([*args, '--check-all'], text=True, capture_output=True, check=True)
         self.assertEqual([row['path'] for row in json.loads(full.stdout)], [str(good)])
         self.assertIn(f'{bad}: line 1: message must be an object', full.stderr)
-        self.assertIn(f'{late}: line 2:', full.stderr)
+        self.assertIn(f'{late}: line 602:', full.stderr)
+
+    def test_claude_titles_and_records_after_an_oversized_one(self):
+        path = self.claude('image', text=[{'type': 'text', 'text': 'Look'},
+                                          {'type': 'image', 'data': 'x' * (600 * 1024)}])
+        records = [{'type': 'ai-title', 'aiTitle': 'Old generated'},
+                   {'type': 'ai-title', 'aiTitle': 'Memory on workers'}]
+        with path.open('a') as stream:
+            stream.writelines(json.dumps(record) + '\n' for record in records)
+        mod = self.module('Claude')
+        self.assertEqual(mod['metadata'](path)[2], 'Memory on workers')
+        with path.open('a') as stream:
+            stream.write(json.dumps({'type': 'custom-title', 'customTitle': 'Renamed'}) + '\n')
+        self.assertEqual(mod['metadata'](path)[2], 'Renamed')
+        # Records after the skipped one are still checked, numbered in place.
+        with path.open('a') as stream:
+            stream.write('{broken\n')
+        with self.assertRaisesRegex(ValueError, 'line 5:'):
+            mod['metadata'](path)
+        plain = self.claude('plain', text='First prompt')
+        self.assertEqual(mod['metadata'](plain)[2], 'First prompt')
 
     def test_null_codex_payload_does_not_abort_listing(self):
         path = self.root / 'rollout-bad.jsonl'

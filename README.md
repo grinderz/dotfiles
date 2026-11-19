@@ -218,13 +218,23 @@ permission flow — `sed -i`, `tee`, `find -exec` and `~/.ssh/config` stay
 allowed on purpose, since a guard that fires on daily work only teaches
 everyone to work around it.
 
+Both agents keep their files away from `agents.deny_paths` in
+`.chezmoidata.toml` (the FlClash data, per OS): Claude through `Read`/`Edit`
+deny rules and its sandbox `denyRead`/`denyWrite`, Codex through the
+`dotfiles` permission profile. The merges keep deny entries added locally,
+so a path dropped from `deny_paths` alone would stay; move it to
+`agents.retired_deny_paths` instead and apply removes it everywhere.
+Telemetry, error reporting and feedback prompts are off in both.
+
 Codex receives the corresponding Claude defaults through a merged
 `~/.codex/config.toml`: high reasoning effort, `on-request` approval with
-the `workspace-write` sandbox, dark syntax highlighting, no AI attribution
-in commits/PRs, and acknowledgement of the full-access warning. The model,
-provider, trusted projects, plugin state and other local keys are preserved;
-existing developer instructions are kept and the attribution rule is
-appended once. TOML is reserialized, so local comments are not preserved.
+the `dotfiles` permission profile (workspace writes, network on), dark
+syntax highlighting, and acknowledgement of the full-access warning. The
+model, provider, trusted projects, plugin state and other local keys are
+preserved; existing developer instructions are kept and two rules are
+appended once each: no AI attribution in commits/PRs, and a clarifying
+question before any new task. TOML is reserialized, so local comments are
+not preserved.
 `~/.codex/AGENTS.md` links to the same shared global instructions as
 Claude's `CLAUDE.md`. If a machine has an explicit legacy
 `sandbox_mode = "read-only"`, the merge stops before granting workspace writes.
@@ -253,8 +263,14 @@ commands executed through `exec_command`. See the official
 [Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
 
 The after-apply script installs `caveman@caveman` through Codex's native
-plugin manager from the pinned revision in the script, without running
-the Caveman proxy/installer. Its plugin hooks also need `/hooks` review.
+plugin manager, without running the Caveman proxy/installer. The caveman
+marketplace is not pinned in either agent: it is the default branch at
+install time, and neither updates it on its own. Move it with
+`/plugin marketplace update caveman` in Claude and
+`codex plugin marketplace upgrade caveman` in Codex. Codex cannot change a
+marketplace's source in place, so when the one already added differs (an
+older pinned ref) the script removes and re-adds it; the plugin stays
+enabled and is reinstalled. Its plugin hooks also need `/hooks` review.
 Node is required. The Claude `gopls-lsp` plugin and workflow-warning toggle
 have no direct counterpart in the Codex configuration checked here and
 remain Claude-only; no placeholder settings are added for them.
@@ -306,8 +322,10 @@ year. The backups are the history.
 
 `claude-prune-sessions` and `codex-prune-sessions` open an fzf picker of
 all matching sessions, largest first, with project, last modification,
-size, ID and conversation title. There is no age filter or minimum-age
-exclusion; new and archived Codex sessions are included too.
+size, ID and conversation title (for Claude its `/rename` title, else the
+generated one its own `/resume` shows, else the first prompt; for Codex
+the first prompt). There is no age filter or minimum-age exclusion; new
+and archived Codex sessions are included too.
 
 ```sh
 claude-prune-sessions
@@ -320,7 +338,9 @@ codex-prune-sessions --json --check-all  # inspect every record, including long 
 
 Both tools report unreadable or malformed transcripts on stderr with the path
 and, for a bad record, its line number. The picker and JSON list omit those
-files. By default they inspect complete records within the first 512 KiB.
+files. By default they inspect complete records within the first 512 KiB;
+a single record larger than that (an inline image) is skipped unchecked,
+so the records after it still count.
 `--check-all` reads each transcript to the end. To see only diagnostics, run
 `codex-prune-sessions --json --check-all >/dev/null` (or the Claude equivalent).
 

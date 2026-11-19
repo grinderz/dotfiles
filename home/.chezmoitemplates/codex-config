@@ -6,9 +6,17 @@
 {{- range get .agents.deny_paths .chezmoi.os | default list -}}
 {{- $_ := set $denied . "deny" -}}
 {{- end -}}
-{{- /* Drop old managed paths for the other OS, preserving local rules. */ -}}
+{{- /* Drop old managed paths for the other OS and retired ones, preserving
+       local rules. dig returns the map inside $current, so unset edits
+       $current in place; the final merge then starts from the pruned map. */ -}}
 {{- $filesystem := dig "permissions" "dotfiles" "filesystem" (dict) $current -}}
-{{- range $os, $paths := .agents.deny_paths -}}
+{{- $retired := dig "retired_deny_paths" (list) .agents -}}
+{{- range $retired -}}
+{{- if hasKey $denied . -}}
+{{- fail (printf "%s is both in agents.deny_paths.%s and agents.retired_deny_paths" . $.chezmoi.os) -}}
+{{- end -}}
+{{- end -}}
+{{- range $os, $paths := merge (dict "retired" $retired) .agents.deny_paths -}}
 {{- if ne $os $.chezmoi.os -}}
 {{- range $paths -}}
 {{- $_ := unset $filesystem . -}}
