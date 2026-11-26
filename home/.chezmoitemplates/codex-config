@@ -44,7 +44,7 @@
     "approval_policy" "on-request"
     "default_permissions" "dotfiles"
     "permissions" (dict "dotfiles" $profile)
-    "model_reasoning_effort" "high"
+    "model_reasoning_effort" "xhigh"
     "analytics" (dict "enabled" false)
     "feedback" (dict "enabled" false)
     "otel" (dict "exporter" "none" "trace_exporter" "none" "metrics_exporter" "none" "log_user_prompt" false)
