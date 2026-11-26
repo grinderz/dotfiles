@@ -14,12 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 NOTIFY = ROOT / 'home/dot_local/bin/executable_codex-notify'
 GUARD = ROOT / 'home/dot_local/bin/executable_agent-bash-guard'
 DENY_PATHS = {
-    'linux': ['~/.local/share/com.follow.clash'],
+    'linux': ['~/.local/share/com.follow.clash', '~/shared-private'],
     'darwin': [
         '~/Library/Application Support/com.follow.clash',
         '~/Library/Preferences/com.follow.clash.plist',
         '~/Library/Application Support/FlClashX',
         '~/Library/Preferences/com.pluralplay.FlClashX.plist',
+        '~/shared-private',
     ],
 }
 TIMEOUT = shutil.which('timeout') or shutil.which('gtimeout') or next((
@@ -128,7 +129,7 @@ class ConfigMergeTest(unittest.TestCase):
                 '--source', str(ROOT / 'home'),
                 '--persistent-state', str(Path(directory) / 'state.db'),
                 '--override-data', json.dumps({'chezmoi': {'os': system},
-                                               'agents': {'retired_deny_paths': list(retired)}}),
+                                               'agents': {'deny_paths': DENY_PATHS, 'retired_deny_paths': list(retired)}}),
                 'execute-template', '--with-stdin', '--file',
                 str(ROOT / 'home/.chezmoitemplates/codex-config'),
             ], text=True, input=text, stderr=subprocess.PIPE)
@@ -138,7 +139,7 @@ class ConfigMergeTest(unittest.TestCase):
             'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
             '--source', str(ROOT / 'home'),
             '--override-data', json.dumps({'chezmoi': {'os': system},
-                                           'agents': {'retired_deny_paths': list(retired)}}),
+                                           'agents': {'deny_paths': DENY_PATHS, 'retired_deny_paths': list(retired)}}),
             'execute-template', '--file',
             str(ROOT / 'home/dot_claude/modify_settings.json.tmpl'),
         ], text=True, stderr=subprocess.PIPE)
@@ -175,7 +176,7 @@ class ConfigMergeTest(unittest.TestCase):
         self.assertIn('retired_deny_paths', caught.exception.stderr)
 
     def test_codex_migrates_foreign_managed_paths_for_each_os(self):
-        old_paths = [path for paths in DENY_PATHS.values() for path in paths]
+        old_paths = set().union(*DENY_PATHS.values())
         fixture = '[permissions.dotfiles.filesystem]\n' + '\n'.join(
             f'"{path}" = "deny"' for path in [*old_paths, '~/private'])
         for system, expected in DENY_PATHS.items():

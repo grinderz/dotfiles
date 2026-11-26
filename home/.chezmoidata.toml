@@ -60,10 +60,12 @@ retired_deny_paths = []
 [agents.deny_paths]
 linux = [
     "~/.local/share/com.follow.clash",
+    "~/src/personal/rule-providers",
 ]
 darwin = [
     "~/Library/Application Support/com.follow.clash",
     "~/Library/Preferences/com.follow.clash.plist",
     "~/Library/Application Support/FlClashX",
     "~/Library/Preferences/com.pluralplay.FlClashX.plist",
+    "~/src/personal/rule-providers",
 ]

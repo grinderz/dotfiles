@@ -27,7 +27,7 @@
 {{- if eq $os $.chezmoi.os }}
 {{- $rules = append $rules (printf "Read(%s)" $pattern) }}
 {{- $rules = append $rules (printf "Edit(%s)" $pattern) }}
-{{- else }}
+{{- else if not (has . $paths) }}
 {{- $otherPaths = append $otherPaths . }}
 {{- $otherRules = append $otherRules (printf "Read(%s)" $pattern) }}
 {{- $otherRules = append $otherRules (printf "Edit(%s)" $pattern) }}
