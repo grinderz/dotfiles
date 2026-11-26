@@ -248,6 +248,15 @@ background server. To bypass a daemon that is still running, use
 still loaded by another server must be released before it can be resumed
 in a separate process.
 
+`features.memories = true` turns on Codex's own memory: it summarises
+past sessions and consolidates them into `~/.codex/memories_v2` in the
+background. That directory stays local and is not synced, for two
+reasons. Codex's memory tools reject symlinked paths. Each machine also
+keeps its consolidation state in its own SQLite database, so two machines
+writing one synced directory would conflict. Because the sessions
+themselves are synced, each desktop builds its own memory from the same
+sessions, and the summarising runs, and costs tokens, on each of them.
+
 Codex desktop notifications use `Stop` and `PermissionRequest` hooks.
 They report completion or approval needed, without sending conversation
 contents or shell commands to the desktop notification. Linux uses

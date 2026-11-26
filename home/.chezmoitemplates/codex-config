@@ -48,7 +48,7 @@
     "analytics" (dict "enabled" false)
     "feedback" (dict "enabled" false)
     "otel" (dict "exporter" "none" "trace_exporter" "none" "metrics_exporter" "none" "log_user_prompt" false)
-    "features" (dict "daemon_auto_start" false)
+    "features" (dict "daemon_auto_start" false "memories" true)
     "notice" (dict "hide_full_access_warning" true)
     "tui" (dict "theme" "base16-ocean-dark" "resume_cwd" "current" "notifications" (list "approval-requested"))
 -}}
