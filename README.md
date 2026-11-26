@@ -596,9 +596,10 @@ Per deploy, once per host:
 * **thinkbook-fanctl** (Waybar integration, Lenovo 21LG) — install or update
   with `make install` from the `thinkbook-fanctl` checkout. Clicking the
   temperature opens a Foot window and runs
-  `sudo -- "$HOME/.local/bin/thinkbook-fanctl" status --json` once. The window
-  shows the control mode and actual/target RPM for both fans. Enter or Escape
-  closes it.
+  `sudo -- "$HOME/.local/bin/thinkbook-fanctl" status --json --brief` once
+  (needs a `thinkbook-fanctl` with `--brief`: `make install` it before the
+  apply). The window shows the control mode and actual/target RPM for both
+  fans. Enter or Escape closes it.
 * **openconnect** — after, macOS: delete old `/usr/local/bin/vpn-*.sh`,
   superseded by `~/.local/bin/vpn-*.sh`
 * **backup-boot** — before (hosts with `bootmirror_mountpoint`): prepare the
@@ -1083,6 +1084,17 @@ rmdir "$old"                                  # the wrapper makes the links
 Working on both machines at the same time is
 fine for sessions (one file each) but can leave a syncthing conflict copy
 of `memory/MEMORY.md`.
+
+`/memory-dream` (`~/.claude/skills/memory-dream`) consolidates the auto
+memory by hand, the way the built-in auto-dream would. The built-in one
+depends on a server-side feature flag, and Claude Code fetches no flags
+while `DISABLE_TELEMETRY` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`
+is set (to any value, `0` included). The
+skill reads what the user typed in the sessions since the last run
+(through `jq`, without the tool output), finds
+memories that have drifted from the code, and shows a numbered plan of
+changes. It edits the memory only after the plan is approved. A run is
+marked in `memory/.dream-last`, so that marker travels with the memory.
 
 ### JetBrains vmoptions
 

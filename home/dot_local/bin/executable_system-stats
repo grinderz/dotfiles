@@ -12,7 +12,7 @@ if [ "${1:-}" = fans ]; then
         printf "ThinkBook fans\n\n"
         fanctl="$HOME/.local/bin/thinkbook-fanctl"
         if [ -x "$fanctl" ]; then
-            if data=$(sudo -- "$fanctl" status --json); then
+            if data=$(sudo -- "$fanctl" status --json --brief); then
                 printf "%s\n" "$data" | jq -r '\''
                     "Control: \(.control_mode)",
                     (.fans[] | "Fan \(.id): \(.rpm) RPM (target \(.target_rpm) RPM)")

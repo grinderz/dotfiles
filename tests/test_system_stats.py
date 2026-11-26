@@ -37,7 +37,7 @@ class SystemStatsTest(unittest.TestCase):
             shadow.chmod(0o755)
             if installed:
                 path = prefix / 'thinkbook-fanctl'
-                path.write_text('#!/bin/sh\nprintf "%s %s\\n" "$1" "$2" >> "$CAPTURE/queries"\n'
+                path.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CAPTURE/queries"\n'
                                 'printf \'%s\\n\' \'{"control_mode":"auto","fans":[{"id":1,"rpm":2200,"target_rpm":2200},'
                                 '{"id":2,"rpm":1900,"target_rpm":1900}]}\'\n')
                 path.chmod(0o755)
@@ -54,8 +54,8 @@ class SystemStatsTest(unittest.TestCase):
     def test_popup_requests_read_only_telemetry_once(self):
         result, captures = self.invoke(popup=True)
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(captures['queries'], 'status --json\n')
-        self.assertEqual(captures['sudo'].splitlines()[-2:], ['status', '--json'])
+        self.assertEqual(captures['queries'], 'status --json --brief\n')
+        self.assertEqual(captures['sudo'].splitlines()[-3:], ['status', '--json', '--brief'])
         self.assertIn('Control: auto', result.stdout)
         self.assertIn('Fan 1: 2200 RPM (target 2200 RPM)', result.stdout)
         self.assertIn('Fan 2: 1900 RPM (target 1900 RPM)', result.stdout)
