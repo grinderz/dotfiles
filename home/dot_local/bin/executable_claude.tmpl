@@ -38,6 +38,12 @@ for dir in $(printf '%s' "$PATH" | tr ':' '\n'); do
 done
 [ -n "$real" ] || { echo 'claude wrapper: no claude binary in PATH' >&2; exit 127; }
 
+if [ -t 0 ] && [ -t 1 ]; then
+    printf 'Start Claude Code? [y/N] '
+    IFS= read -r answer || { printf '\n'; exit 0; }
+    case $answer in y | Y) ;; *) exit 0 ;; esac
+fi
+
 config=${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 cwd=$(pwd -P)
 

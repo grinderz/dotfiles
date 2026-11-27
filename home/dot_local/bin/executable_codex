@@ -184,4 +184,15 @@ def real_codex():
 
 if __name__ == '__main__':
     binary = real_codex()
-    os.execv(binary, [binary, *resume_defaults(sys.argv[1:])])
+    args = sys.argv[1:]
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        try:
+            if input('Start Codex? [y/N] ').lower() != 'y':
+                sys.exit(0)
+        except EOFError:
+            print()
+            sys.exit(0)
+        except KeyboardInterrupt:
+            print()
+            sys.exit(130)
+    os.execv(binary, [binary, *resume_defaults(args)])
