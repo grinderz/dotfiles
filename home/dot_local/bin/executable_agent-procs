@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+# Waybar module: processes of Claude Code and Codex sessions and their MCP servers.
+#
+# The text is one number: every agent with everything it spawned, at any
+# depth (MCP servers, helpers like the sandbox's socat proxy, the commands
+# it is running right now), so it moves between polls. The tooltip draws
+# each agent's tree (pid, memory, age; the agent also its directory,
+# process count and tree memory). Hidden while nothing runs.
+#
+# An MCP server with no claude or codex among its ancestors is an orphan:
+# its session exited without reaping it. While one lives the module gets
+# class "warning" and the tooltip lists its tree apart. Any other leftover
+# is reparented to systemd and cannot be told from the rest.
+#
+# Usage: agent-procs [show]   waybar json, or the trees as plain text
+#
+# Agents are matched by comm, not by their arguments: helpers they start
+# carry "claude" in their paths too, and the wrappers in ~/.local/bin exec
+# the real binary, so they never show up as a process of their own. An
+# MCP server is a process with "mcp" as a word in an argument, or
+# "modelcontextprotocol" (the npm scope of the reference servers).
+# Linux only: everything is read from /proc.
+
+import html
+import json
+import os
+import re
+import sys
+
+AGENTS = ('claude', 'codex')
+# a shell is never the server itself, only its launcher, and the -c
+# scripts agents run (grep mcp, this very check) would match otherwise
+SHELLS = ('sh', 'bash', 'dash', 'zsh', 'fish')
+MCP = re.compile(r'(?<![a-z])mcp(?![a-z])|modelcontextprotocol', re.IGNORECASE)
+
+
+def read(path, mode='r'):
+    try:
+        with open(path, mode) as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def processes():
+    """pid -> dict(ppid, comm, argv, rss, start) for every readable process."""
+    procs = {}
+    page = os.sysconf('SC_PAGE_SIZE')
+    for entry in os.listdir('/proc'):
+        # pid 1 is init (or a sandbox's launcher shell): never a server,
+        # and as everyone's ancestor it would swallow the real ones; this
+        # very process is not worth a line either
+        if not entry.isdigit() or entry == '1' or int(entry) == os.getpid():
+            continue
+        stat = read(f'/proc/{entry}/stat')
+        cmdline = read(f'/proc/{entry}/cmdline', 'rb')
+        statm = read(f'/proc/{entry}/statm')
+        if stat is None or cmdline is None:
+            continue
+        # comm sits in parentheses and may hold spaces or ')' itself
+        comm = stat[stat.index('(') + 1:stat.rindex(')')]
+        fields = stat[stat.rindex(')') + 2:].split()
+        procs[int(entry)] = {
+            'ppid': int(fields[1]),
+            'comm': comm,
+            'argv': [a.decode(errors='replace') for a in cmdline.split(b'\0') if a],
+            'rss': int(statm.split()[1]) * page if statm else 0,
+            'start': int(fields[19]),
+        }
+    return procs
+
+
+def mcp_words(proc):
+    """Words of the command line that name an MCP server, options skipped.
+
+    Split on blanks: npm puts its whole command into argv[0]."""
+    return [w for a in proc['argv'] for w in a.split()
+            if not w.startswith('-') and MCP.search(w)]
+
+
+def is_mcp(proc):
+    return proc['comm'] not in AGENTS + SHELLS and bool(mcp_words(proc))
+
+
+def mcp_label(proc):
+    """The path component that says mcp: gitlab-mcp/dist/index.js is
+    gitlab-mcp; a bare scope (@modelcontextprotocol/server-fetch, the
+    docker image mcp/github) takes the name after it."""
+    parts = [p for p in mcp_words(proc)[0].split('/') if p]
+    i = max(i for i, p in enumerate(parts) if MCP.search(p))
+    if i + 1 < len(parts) and (parts[i].startswith('@') or parts[i].lower() == 'mcp'):
+        return parts[i + 1] if parts[i].startswith('@') else f'{parts[i]}/{parts[i + 1]}'
+    return parts[i]
+
+
+def cwd(pid):
+    try:
+        path = os.readlink(f'/proc/{pid}/cwd')
+    except OSError:
+        return '?'
+    return os.path.basename(path) or path
+
+
+def size(n):
+    for unit in ('B', 'K', 'M', 'G'):
+        if n < 1024 or unit == 'G':
+            return f'{n:.0f}{unit}' if unit in ('B', 'K') else f'{n:.1f}{unit}'
+        n /= 1024
+
+
+def age(start):
+    uptime = float(read('/proc/uptime').split()[0])
+    s = max(0, uptime - start / os.sysconf('SC_CLK_TCK'))
+    if s < 3600:
+        return f'{s // 60:.0f}m'
+    if s < 86400:
+        return f'{s // 3600:.0f}h'
+    return f'{s // 86400:.0f}d'
+
+
+def collect():
+    """The trees to draw: (agent roots, orphan MCP roots) and a row maker."""
+    procs = processes()
+    children = {}
+    for pid, p in procs.items():
+        children.setdefault(p['ppid'], []).append(pid)
+
+    def ancestors(pid):
+        while pid in procs:
+            pid = procs[pid]['ppid']
+            if pid in procs:
+                yield pid
+
+    def tree(pid):
+        """pid and every descendant, depth first, as (depth, pid)."""
+        out, stack = [], [(0, pid)]
+        while stack:
+            depth, p = stack.pop()
+            out.append((depth, p))
+            stack += [(depth + 1, c) for c in sorted(children.get(p, ()), reverse=True)]
+        return out
+
+    # a claude started from codex (or the other way) is drawn inside the
+    # outer tree, not counted twice
+    roots = sorted(pid for pid, p in procs.items() if p['comm'] in AGENTS
+                   and not any(procs[a]['comm'] in AGENTS for a in ancestors(pid)))
+    orphans = sorted(pid for pid, p in procs.items() if is_mcp(p)
+                     and not any(procs[a]['comm'] in AGENTS or is_mcp(procs[a])
+                                 for a in ancestors(pid)))
+    return procs, [tree(r) for r in roots], [tree(o) for o in orphans]
+
+
+def table(procs, trees):
+    lines = []
+    for t in trees:
+        for depth, pid in t:
+            p = procs[pid]
+            if p['comm'] in AGENTS:
+                name = f"{p['comm']} {cwd(pid)}"
+            elif is_mcp(p):
+                name = f'mcp {mcp_label(p)}'
+            else:
+                name = p['comm']
+            name = ('  ' * depth + name)[:32]
+            line = f"{name:<32} {pid:>7} {size(p['rss']):>7} {age(p['start']):>4}"
+            if depth == 0:
+                rss = sum(procs[q]['rss'] for _, q in t)
+                line += f"  ({len(t)} proc{'s' * (len(t) > 1)}, {size(rss)})"
+            lines.append(line)
+    return lines
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else 'status'
+    if cmd not in ('status', 'show'):
+        sys.exit(f'usage: {os.path.basename(sys.argv[0])} [status|show]')
+    procs, agents, orphans = collect()
+    lines = table(procs, agents)
+    if orphans:
+        lines += ['orphans'] + table(procs, orphans)
+    if cmd == 'show':
+        print('\n'.join(lines) or 'nothing running')
+        return
+    total = sum(len(t) for t in agents + orphans)
+    if not total:
+        print(json.dumps({'text': ''}))
+        return
+    print(json.dumps({
+        'text': f'󰚩 {total}',
+        'tooltip': '<tt>' + html.escape('\n'.join(lines)) + '</tt>',
+        'class': 'warning' if orphans else 'ok',
+    }))
+
+
+if __name__ == '__main__':
+    main()

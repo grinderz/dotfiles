@@ -49,7 +49,7 @@
     },
     "group/work": {
         "orientation": "inherit",
-        "modules": ["custom/gitlab", "custom/jira", "custom/mail"]
+        "modules": ["custom/gitlab", "custom/jira", "custom/mail", "custom/agents"]
     },
     "group/devices": {
         "orientation": "inherit",
@@ -302,6 +302,14 @@
         "interval": 30,
         "on-click": "$HOME/.local/bin/mail-status pick",
         "on-click-right": "$HOME/.local/bin/mail-status open"
+    },
+    // claude, codex and their MCP servers: one total, the breakdown in
+    // the tooltip; yellow while an MCP server outlives its session
+    "custom/agents": {
+        "exec": "$HOME/.local/bin/agent-procs",
+        "return-type": "json",
+        "format": "{}",
+        "interval": 15
     },
     "custom/usb": {
         "exec": "$HOME/.local/bin/usb-storage status",

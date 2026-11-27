@@ -101,6 +101,7 @@ button:hover {
 #custom-jira,
 #custom-starline,
 #custom-mail,
+#custom-agents,
 #custom-usb,
 #battery,
 #custom-system-stats,
@@ -346,6 +347,11 @@ label:focus {
 /* drawers (devices, toggles): children slide out of the handle on hover */
 .drawer-child {
     background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* an MCP server left behind by a session that is gone */
+#custom-agents.warning {
+    color: @warning;
 }
 
 #custom-notify.dnd {
