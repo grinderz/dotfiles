@@ -44,8 +44,8 @@ jobs:
       - name: install chezmoi for template tests
         working-directory: ${{ runner.temp }}
         env:
-          CHEZMOI_VERSION: 2.74.1
-          CHEZMOI_SHA256: ae01c66b1a6dbf563667c63fbbd9986b3cfa3c98dd266ddee732f63e8af2e9d1
+          CHEZMOI_VERSION: 2.74.2
+          CHEZMOI_SHA256: 5f2024119a1860f18f2243b892dd43a79f0fefe2ebef9786ee143f4d5fd69ccb
         run: |
           archive="chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz"
           curl -fsSLO "https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}/$archive"
