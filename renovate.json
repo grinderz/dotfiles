@@ -4,15 +4,15 @@
     "Renovate on GitHub updates workflow actions, pre-commit hooks, Ruff, pre-commit, ShellCheck and the chezmoi binary used in CI."
   ],
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":semanticCommitTypeAll(chore)"
   ],
   "timezone": "Europe/Istanbul",
   "schedule": [
-    "before 9am on saturday"
+    "every weekend"
   ],
-  "dependencyDashboard": true,
   "prConcurrentLimit": 5,
-  "semanticCommitType": "chore",
+  "semanticCommits": "enabled",
   "baseBranchPatterns": [
     "main"
   ],
@@ -87,7 +87,9 @@
     {
       "customType": "regex",
       "description": "Update the CI chezmoi version and its Linux amd64 archive checksum together",
-      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/"
+      ],
       "matchStrings": [
         "CHEZMOI_VERSION: (?<currentValue>\\d+\\.\\d+\\.\\d+)\\r?\\n[ \\t]+CHEZMOI_SHA256: (?<currentDigest>[0-9a-f]{64})"
       ],
