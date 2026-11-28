@@ -31,7 +31,7 @@ lint.shellcheck:
 lint.openwrt:
 	shellcheck -s sh infra/scripts/*.sh infra/scripts/tests/*.sh infra/files/openwrt/*.sh infra/files/openwrt/etc/hotplug.d/*/* infra/files/openwrt/etc/nut/upssched-cmd
 
-RUFF_VERSION ?= 0.17.2
+RUFF_VERSION ?= 0.17.6
 
 lint.ruff:
 	scripts/lint-python.sh $(RUFF_VERSION)
