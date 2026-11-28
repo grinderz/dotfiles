@@ -134,12 +134,13 @@ class ConfigMergeTest(unittest.TestCase):
                 str(ROOT / 'home/.chezmoitemplates/codex-config'),
             ], text=True, input=text, stderr=subprocess.PIPE)
 
-    def claude_script(self, system='linux', retired=()):
+    def claude_script(self, system='linux', retired=(), extra=None):
         return subprocess.check_output([
             'chezmoi', '--config', '/dev/null', '--config-format', 'toml',
             '--source', str(ROOT / 'home'),
             '--override-data', json.dumps({'chezmoi': {'os': system},
-                                           'agents': {'deny_paths': DENY_PATHS, 'retired_deny_paths': list(retired)}}),
+                                           'agents': {'deny_paths': DENY_PATHS, 'retired_deny_paths': list(retired)},
+                                           **(extra or {})}),
             'execute-template', '--file',
             str(ROOT / 'home/dot_claude/modify_settings.json.tmpl'),
         ], text=True, stderr=subprocess.PIPE)
@@ -381,6 +382,20 @@ extends = ":read-only"
                 self.assertIn(f'{tool}({pattern})', data['permissions']['deny'])
             self.assertIn(path, sandbox['filesystem']['denyRead'])
             self.assertIn(path, sandbox['filesystem']['denyWrite'])
+
+    @unittest.skipUnless(shutil.which('jq'), 'Claude settings merge requires jq')
+    def test_claude_ssh_to_homelab_host_only_and_always_asks(self):
+        fixture = {'permissions': {'ask': ['Bash(ssh other *)']},
+                   'sandbox': {'excludedCommands': ['ssh other *']}}
+        script = self.claude_script(extra={'homelab': {'deploy_host': 'docker-host'}})
+        data = json.loads(subprocess.check_output(['sh', '-c', script], input=json.dumps(fixture), text=True))
+        self.assertEqual(data['sandbox']['excludedCommands'], ['ssh docker-host *'])
+        self.assertEqual(data['permissions']['ask'], ['Bash(ssh docker-host *)'])
+
+        script = self.claude_script()
+        data = json.loads(subprocess.check_output(['sh', '-c', script], input=json.dumps(fixture), text=True))
+        self.assertEqual(data['sandbox']['excludedCommands'], [])
+        self.assertEqual(data['permissions']['ask'], [])
 
 
 if __name__ == '__main__':

@@ -150,3 +150,15 @@
 
 [alias]
     tagm = tag -a
+{{- with lookPath "gh" }}
+
+# git over https to GitHub takes gh's login token (what `gh auth setup-git`
+# writes); the empty helper drops any helper set before this one. The ssh
+# remotes do not go through it.
+[credential "https://github.com"]
+	helper =
+	helper = !{{ . }} auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !{{ . }} auth git-credential
+{{- end }}

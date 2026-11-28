@@ -8,6 +8,13 @@
 # agents.retired_deny_paths: a path only dropped from deny_paths would stay,
 # since nothing tells it apart from a local restriction.
 #
+# ssh to the homelab docker host ([data.homelab] deploy_host in the private
+# toml) runs outside the sandbox: plain ssh cannot pass the sandbox proxy.
+# Only `ssh <host> ...` matches, not another host, a jump or a forward given
+# before the host, nor make targets calling ssh; the ask rule keeps every
+# such call behind a prompt even after an allow. A machine without that
+# key gets neither.
+#
 # The caveman marketplace is not pinned; third-party marketplaces do not
 # auto-update, so it moves on `/plugin marketplace update caveman`.
 {{- $rules := list }}
@@ -33,6 +40,12 @@
 {{- $otherRules = append $otherRules (printf "Edit(%s)" $pattern) }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- $sshCommands := list }}
+{{- $sshRules := list }}
+{{- with dig "homelab" "deploy_host" "" . }}
+{{- $sshCommands = list (printf "ssh %s *" .) }}
+{{- $sshRules = list (printf "Bash(ssh %s *)" .) }}
 {{- end }}
 jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
     .permissions.deny = ((($current.permissions.deny // []) + $managed.permissions.deny | unique) - $otherRules) |
@@ -60,6 +73,7 @@ jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
   },
   "permissions": {
     "defaultMode": "default",
+    "ask": {{ $sshRules | toJson }},
     "deny": {{ $rules | toJson }}
   },
   "sandbox": {
@@ -67,7 +81,7 @@ jq -n '[inputs] | (.[0] // {}) as $current | $current * $managed |
     "autoAllowBashIfSandboxed": false,
     "allowUnsandboxedCommands": false,
     "failIfUnavailable": true,
-    "excludedCommands": [],
+    "excludedCommands": {{ $sshCommands | toJson }},
     "filesystem": {
       "disabled": false,
       "denyRead": {{ $paths | toJson }},
